@@ -1,73 +1,48 @@
-[![GitHub Release](https://img.shields.io/github/v/release/claration/Feather?include_prereleases)](https://github.com/claration/Feather/releases)
-[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/claration/Feather/total)](https://github.com/claration/Feather/releases)
-[![GitHub License](https://img.shields.io/github/license/claration/Feather?color=%23C96FAD)](https://github.com/claration/Feather/blob/main/LICENSE)
-[![Sponsor Me](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/khcrysalis)
-
 <div align="center">
-
-<img title="Feather" alt="Feather" height="180" src=".github/landing.png">
-
-Sideloading app meant for developer certificates.
-
-<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/demo-dark.png"><source media="(prefers-color-scheme: light)" srcset=".github/demo-light.png"><img alt="Feather" src=".github/demo-light.png"></picture></p>
-
-
+  <img src="Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png" width="160" alt="NullSign app icon">
+  <h1>NullSign</h1>
+  <p>An on-device IPA signer with a small footprint and no certificate uploads.</p>
 </div>
 
-## Features
+NullSign is for people who already have an Apple developer certificate and want a simple way to use it on their own device. Import an IPA, choose a saved certificate, sign it, and install it without sending the app or your credentials to a signing website.
 
-- User friendly, and clean UI.
-- Sign and install applications.
-- Supports [AltStore](https://faq.altstore.io/distribute-your-apps/make-a-source#apps) repositories.
-- View detailed information about apps and your certificates.
-- Configurable signing options mainly for modifying the app, such as appearance and allowing support for the files app.
-  - This includes patching apps for compatibility and Liquid Glass.
-- Tweak support for advanced users, using [Ellekit](https://github.com/tealbathingsuit/ellekit) for injection. 
-  - Supports injecting `.deb` and `.dylib` files.
-- Actively maintained: always ensuring most apps get installed properly.
-- No tracking or analytics, ensuring user privacy.
-- Of course, open source and free.
+The interface is deliberately small: **Signer** handles local IPA files, **Apps** browses AltStore-compatible repositories, and **Settings** holds certificates and installation options.
 
-## Download
+## What it does
 
-Visit [releases](https://github.com/claration/Feather/releases) and get the latest `.ipa`.
+- Imports IPA files from Files or a URL
+- Signs apps directly on the device
+- Saves multiple `.p12` and `.mobileprovision` pairs
+- Lets you name, inspect, select, check, and remove saved certificates
+- Browses apps from repositories you add
+- Uses an OLED-black interface with a cyan accent
 
-<a href="https://celloserenity.github.io/altdirect/?url=https://raw.githubusercontent.com/claration/Feather/refs/heads/main/app-repo.json" target="_blank">
-   <img src="https://github.com/CelloSerenity/altdirect/blob/main/assets/png/AltSource_Blue.png?raw=true" alt="Add AltSource" width="200">
-</a>
-<a href="https://github.com/claration/Feather/releases/latest/download/Feather.ipa" target="_blank">
-   <img src="https://github.com/CelloSerenity/altdirect/blob/main/assets/png/Download_Blue.png?raw=true" alt="Download .ipa" width="200">
-</a>
+## Installing NullSign
 
-## Translating
+The IPA produced by this repository is unsigned. That is intentional: the public build never needs access to anyone's certificate.
 
-Impactor now has translation support, all localizations are located in `Feather/Resources/Localizable.xcstrings`.
+1. Open the **Actions** tab and select **Build NullSign IPA**.
+2. Run the workflow from the `main` branch.
+3. Download the `NullSign-unsigned-IPA` artifact when the build finishes.
+4. Sign that first IPA with a signer you already use, then install it on your phone.
+5. In NullSign, open **Settings → Import & Manage Certificates** and add your `.p12`, password, and matching `.mobileprovision` file.
 
-To add a new language, open Xcode and use the interface to add/contribute to languages.
+That first sign is the bootstrap step. Once NullSign is installed, it can handle the IPAs you import afterward.
 
-To properly contribute and test potentially test localizations, you can head over to the [contributing guide](./CONTRIBUTING.md).
+## Building from source
 
-## Sponsors
+The included GitHub Actions workflow builds on a hosted Mac, so you do not need to own one. It checks out the submodules, builds the iPhone target with Xcode, packages the app as `NullSign-unsigned.ipa`, and stores it as a workflow artifact.
 
-| Thanks to all my [sponsors](https://github.com/sponsors/claration)!! |
-|:--------------------------------------------------------------------:|
-| <img src="https://sponsors.claration.dev/sponsors.png">              |
-| _**"samara is cute" - Vendicated**_                                  |
+No repository secrets are required for the unsigned build.
 
-## Acknowledgements
+## A note about certificates
 
-- [Samara](https://github.com/claration) - The maker
-- [idevice](https://github.com/jkcoxson/idevice) - Backend for builds with this included, used for communication with `installd`.
-- [*.backloop.dev](https://backloop.dev/) - localhost with public CA signed SSL certificate
-- [Vapor](https://github.com/vapor/vapor) - A server-side Swift HTTP web framework.
-- [Zsign](https://github.com/zhlynn/zsign) - Allowing to sign on-device, reimplimented to work on other platforms such as iOS.
-- [LiveContainer](https://github.com/LiveContainer/LiveContainer) - Fixes/some help
-- [Nuke](https://github.com/kean/Nuke) - Image caching.
-- [Asspp](https://github.com/Lakr233/Asspp) - Some code for setting up the http server.
-- [plistserver](https://github.com/nekohaxx/plistserver) - Hosted on https://api.palera.in.
+Use certificates and provisioning profiles that belong to you or that you are authorized to use. Your profile must support the device and app you are trying to install. NullSign cannot repair an expired or revoked certificate.
 
-## License 
+## Credits
 
-This project is licensed under the GPL-3.0 license. You can see the full details of the license [here](https://github.com/claration/Feather/blob/main/LICENSE). It's under this specific license because I wanted to make a project that is transparent to the user thats related to certificate paired sideloading, before this project there weren't any open source projects that filled in this gap.
+NullSign is based on [Feather](https://github.com/claration/Feather), including its on-device signing and installation work. It also relies on [Zsign](https://github.com/zhlynn/zsign) for code signing. The people behind those projects did the difficult groundwork that makes this app possible.
 
-By contributing to this project, you agree to license your code under the GPL-3.0 license as well (including agreeing to license exceptions), ensuring that your work, like all other contributions, remains freely accessible and open.
+## License
+
+NullSign is free software under the [GNU General Public License v3.0](LICENSE). Because it is derived from Feather, redistributed versions must keep the same license and make their corresponding source available.
