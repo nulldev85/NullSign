@@ -159,27 +159,48 @@ enum FR {
 	
 	static func handleSource(
 		_ urlString: String,
-		competion: @escaping () -> Void
+		competion: @escaping () -> Void,
+		failure: @escaping () -> Void = {}
 	) {
-		guard let url = URL(string: urlString) else { return }
+		let normalizedURL = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+		guard let url = URL(string: normalizedURL), url.scheme != nil else {
+			DispatchQueue.main.async {
+				UIAlertController.showAlertWithOk(
+					title: .localized("Error"),
+					message: .localized("Enter a valid repository URL.")
+				)
+				failure()
+			}
+			return
+		}
 		
 		NBFetchService().fetch<ASRepository>(from: url) { (result: Result<ASRepository, Error>) in
 			switch result {
 			case .success(let data):
 				let id = data.id ?? url.absoluteString
-				
-				if !Storage.shared.sourceExists(id) {
-					Storage.shared.addSource(url, repository: data, id: id) { _ in
+
+				DispatchQueue.main.async {
+					guard !Storage.shared.sourceExists(id) else {
 						competion()
+						return
 					}
-				} else {
-					DispatchQueue.main.async {
-						UIAlertController.showAlertWithOk(title: .localized("Error"), message: .localized("Repository already added."))
+
+					Storage.shared.addSource(url, repository: data, id: id) { error in
+						if let error {
+							UIAlertController.showAlertWithOk(
+								title: .localized("Error"),
+								message: error.localizedDescription
+							)
+							failure()
+							return
+						}
+						competion()
 					}
 				}
 			case .failure(let error):
 				DispatchQueue.main.async {
 					UIAlertController.showAlertWithOk(title: .localized("Error"), message: error.localizedDescription)
+					failure()
 				}
 			}
 		}

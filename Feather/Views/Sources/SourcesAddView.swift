@@ -53,7 +53,12 @@ struct SourcesAddView: View {
 	].map { URL(string: $0)! }
 	
 	@State private var _isImporting = false
+	@State private var _isSaving = false
 	@State private var _sourceURL = ""
+
+	private var _isBusy: Bool {
+		_isImporting || _isSaving
+	}
 	
 	// MARK: Body
 	var body: some View {
@@ -118,23 +123,27 @@ struct SourcesAddView: View {
 							}
 						}
 					} footer: {
-						Text(.localized("Open an [issue](https://github.com/claration/Feather/issues) on GitHub if you want your source to be featured."))
+						Text("Want a repository featured here? Open an [issue](https://github.com/nulldev85/NullSign/issues).")
 					}
 				}
 			}
 			.toolbar {
 				NBToolbarButton(role: .cancel)
 				
-				if !_isImporting {
+				if !_isBusy {
 					NBToolbarButton(
 						.localized("Save"),
 						style: .text,
 						placement: .confirmationAction,
-						isDisabled: _sourceURL.isEmpty
+						isDisabled: _sourceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 					) {
-						FR.handleSource(_sourceURL) {
-							dismiss()
-						}
+						_isSaving = true
+						let sourceURL = _sourceURL.trimmingCharacters(in: .whitespacesAndNewlines)
+						FR.handleSource(
+							sourceURL,
+							competion: { dismiss() },
+							failure: { _isSaving = false }
+						)
 					}
 				} else {
 					ToolbarItem(placement: .confirmationAction) {
