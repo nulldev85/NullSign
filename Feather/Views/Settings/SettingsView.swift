@@ -41,6 +41,14 @@ struct SettingsView: View {
 					Text("Choose how NullSign installs apps after signing.")
 				}
 
+				NBSection("Signing") {
+					NavigationLink(destination: ConfigurationView()) {
+						Label("Signing Defaults & Advanced Options", systemImage: "signature")
+					}
+				} footer: {
+					Text("Set defaults for app signing, injection, ElleKit, and post-signing behavior.")
+				}
+
 				Section("NullSign") {
 					LabeledContent("Theme", value: "OLED Black / Cyan")
 					LabeledContent("Version", value: Bundle.main.version)

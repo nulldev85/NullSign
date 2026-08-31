@@ -15,6 +15,7 @@ The interface is deliberately small: **Signer** handles local IPA files, **Apps*
 - Saves multiple `.p12` and `.mobileprovision` pairs
 - Lets you name, inspect, select, check, and remove saved certificates
 - Browses apps from repositories you add
+- Imports optional `.deb` and `.dylib` tweaks, with ElleKit support when needed
 - Uses an OLED-black interface with a cyan accent
 
 ## Installing NullSign

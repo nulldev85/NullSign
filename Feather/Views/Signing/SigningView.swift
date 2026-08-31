@@ -49,6 +49,7 @@ struct SigningView: View {
 			Form {
 				_customizationOptions(for: app)
 				_cert()
+				_tweaks()
 				_customizationProperties(for: app)
 				
 				// horrible
@@ -207,6 +208,28 @@ extension SigningView {
 			}
 		}
 	}
+
+	@ViewBuilder
+	private func _tweaks() -> some View {
+		NBSection("Tweaks & Injection") {
+			NavigationLink {
+				SigningTweaksView(options: $_temporaryOptions)
+			} label: {
+				LabeledContent {
+					Text(_temporaryOptions.injectionFiles.count.description)
+						.foregroundStyle(.secondary)
+				} label: {
+					Label("Add .deb or .dylib", systemImage: "shippingbox.and.arrow.backward")
+				}
+			}
+
+			Toggle(isOn: $_temporaryOptions.experiment_replaceSubstrateWithEllekit) {
+				Label("Replace Substrate with ElleKit", systemImage: "arrow.triangle.2.circlepath")
+			}
+		} footer: {
+			Text("NullSign adds ElleKit when an imported tweak needs a hooking runtime. Enable replacement only when the app already contains Cydia Substrate and you want to swap it for ElleKit.")
+		}
+	}
 	
 	@ViewBuilder
 	private func _customizationProperties(for app: AppInfoPresentable) -> some View {
@@ -232,11 +255,6 @@ extension SigningView {
 						)
 					}
 				#endif
-				NavigationLink(.localized("Tweaks")) {
-					SigningTweaksView(
-						options: $_temporaryOptions
-					)
-				}
 			}
 			
 			NavigationLink(.localized("Properties")) {
