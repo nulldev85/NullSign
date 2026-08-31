@@ -19,6 +19,7 @@ struct InstallPreviewView: View {
 	@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 0
 	@State private var _isWebviewPresenting = false
 	@State private var progressTask: Task<Void, Never>?
+	@State private var installAttempt = 0
 	
 	var app: AppInfoPresentable
 	@StateObject var viewModel: InstallerStatusViewModel
@@ -92,6 +93,7 @@ struct InstallPreviewView: View {
 			}
 		}
 		.onAppear(perform: _install)
+		.onChange(of: installAttempt) { _ in _install() }
 		
 		#if !targetEnvironment(macCatalyst)
 		.onAppear {
@@ -129,6 +131,15 @@ struct InstallPreviewView: View {
 				}
 				.padding()
 				.compatTransition()
+			}
+			if case .broken = viewModel.status {
+				Button {
+					viewModel.status = .none
+					installAttempt += 1
+				} label: {
+					NBButton("Retry", systemImage: "arrow.clockwise", style: .text)
+				}
+				.padding()
 			}
 		}
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
@@ -238,7 +249,7 @@ struct InstallPreviewView: View {
 					break
 				}
 
-				try? await Task.sleep(nanoseconds: 1_000_000) // 1 ms
+				try? await Task.sleep(nanoseconds: 500_000_000)
 			}
 		}
 	}

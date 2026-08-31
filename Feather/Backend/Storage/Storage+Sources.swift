@@ -26,9 +26,11 @@ extension Storage {
 		deferSave: Bool = false,
 		completion: @escaping (Error?) -> Void
 	) {
-		if sourceExists(identifier) {
+		let normalizedURL = normalizedSourceURL(url)
+		let normalizedIdentifier = identifier.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+		if sourceExists(normalizedIdentifier) || sourceExists(url: normalizedURL) {
 			completion(nil)
-			Logger.misc.debug("ignoring \(identifier)")
+			Logger.misc.debug("Ignoring duplicate repository \(normalizedURL.absoluteString)")
 			return
 		}
 		
@@ -37,8 +39,8 @@ extension Storage {
 		let new = AltSource(context: context)
 		new.name = name
 		new.date = Date()
-		new.identifier = identifier
-		new.sourceURL = url
+		new.identifier = normalizedIdentifier
+		new.sourceURL = normalizedURL
 		new.iconURL = iconURL
 		
 		do {
@@ -76,6 +78,7 @@ extension Storage {
 		completion: @escaping (Error?) -> Void
 	) {
 		let generator = UIImpactFeedbackGenerator(style: .light)
+		var firstError: Error?
 		
 		for (url, repo) in repos {
 			addSource(
@@ -83,16 +86,14 @@ extension Storage {
 				repository: repo,
 				deferSave: true,
 				completion: { error in
-					if let error {
-						completion(error)
-					}
+					if firstError == nil { firstError = error }
 				}
 			)
 		}
 		
 		saveContext()
 		generator.impactOccurred()
-		completion(nil)
+		completion(firstError)
 	}
 
 	func deleteSource(for source: AltSource) {
@@ -111,5 +112,26 @@ extension Storage {
 			Logger.misc.error("Error checking if repository exists: \(error)")
 			return false
 		}
+	}
+
+	func sourceExists(url: URL) -> Bool {
+		let normalized = normalizedSourceURL(url).absoluteString
+		let request: NSFetchRequest<AltSource> = AltSource.fetchRequest()
+		guard let sources = try? context.fetch(request) else { return false }
+		return sources.contains { source in
+			guard let existing = source.sourceURL else { return false }
+			return normalizedSourceURL(existing).absoluteString == normalized
+		}
+	}
+
+	private func normalizedSourceURL(_ url: URL) -> URL {
+		guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
+		components.scheme = components.scheme?.lowercased()
+		components.host = components.host?.lowercased()
+		components.fragment = nil
+		if components.path.count > 1 && components.path.hasSuffix("/") {
+			components.path.removeLast()
+		}
+		return components.url ?? url
 	}
 }

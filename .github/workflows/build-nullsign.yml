@@ -22,6 +22,18 @@ jobs:
       - name: Build unsigned NullSign IPA
         run: make iphoneos
 
+      - name: Verify IPA structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          workdir="$(mktemp -d)"
+          trap 'rm -rf "$workdir"' EXIT
+          unzip -q packages/NullSign-unsigned.ipa -d "$workdir"
+          plist_count="$(find "$workdir/Payload" -mindepth 2 -maxdepth 2 -type f -path '*.app/Info.plist' | wc -l | tr -d ' ')"
+          test "$plist_count" -eq 1
+          plist_path="$(find "$workdir/Payload" -mindepth 2 -maxdepth 2 -type f -path '*.app/Info.plist')"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist_path"
+
       - name: Upload NullSign IPA
         uses: actions/upload-artifact@v4
         with:

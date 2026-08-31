@@ -50,6 +50,8 @@ final class ArchiveHandler: NSObject {
 				throw SigningFileHandlerError.appNotFound
 			}
 			
+			try AppValidator.verifyPayload(at: payloadUrl)
+			ReliabilityCenter.shared.record(.packaging, "Payload structure passed; creating IPA")
 			let zipUrl = self._uniqueWorkDir.appendingPathComponent("Archive.zip")
 			let ipaUrl = self._uniqueWorkDir.appendingPathComponent("Archive.ipa")
 			
@@ -65,6 +67,11 @@ final class ArchiveHandler: NSObject {
 				})
 			
 			try FileManager.default.moveItem(at: zipUrl, to: ipaUrl)
+			guard FileManager.default.fileExists(atPath: ipaUrl.path),
+			      ((try? ipaUrl.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) > 0 else {
+				throw AppValidationError.malformedIPA("The archive is empty.")
+			}
+			ReliabilityCenter.shared.record(.complete, "IPA package created successfully")
 			return ipaUrl
 		}.value
 	}

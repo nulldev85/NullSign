@@ -38,6 +38,7 @@ final class SigningHandler: NSObject {
 	}
 	
 	func copy() async throws {
+		ReliabilityCenter.shared.record(.preparing, "Starting \(_app.name ?? "app")")
 		guard let appUrl = Storage.shared.getAppDirectory(for: _app) else {
 			throw SigningFileHandlerError.appNotFound
 		}
@@ -48,6 +49,8 @@ final class SigningHandler: NSObject {
 		
 		try _fileManager.copyItem(at: appUrl, to: movedAppURL)
 		_movedAppPath = movedAppURL
+		try AppValidator.preflight(appURL: movedAppURL, certificate: appCertificate, options: _options)
+		ReliabilityCenter.shared.record(.preflight, "App, certificate, profile, injection files, and storage passed")
 		Logger.misc.info("[\(self._uuid)] Moved Payload to: \(movedAppURL.path)")
 	}
 	
@@ -56,6 +59,7 @@ final class SigningHandler: NSObject {
 			throw SigningFileHandlerError.appNotFound
 		}
 		
+		ReliabilityCenter.shared.record(.modifying, "Applying selected signing options")
 		guard
 			let infoDictionary = NSDictionary(
 				contentsOf: movedAppPath.appendingPathComponent("Info.plist")
@@ -110,6 +114,7 @@ final class SigningHandler: NSObject {
 			_options.signingOption == .default,
 			appCertificate != nil
 		{
+			ReliabilityCenter.shared.record(.signing, "Signing main app and nested content")
 			try await handler.sign()
 //		} else if _options.signingOption == .adhoc {
 //			try await handler.adhocSign()
@@ -119,12 +124,15 @@ final class SigningHandler: NSObject {
 			throw SigningFileHandlerError.missingCertifcate
 		}
 		
+		if let error = handler.hadError { throw error }
+		ReliabilityCenter.shared.record(.verifying, "Checking the signed app before saving")
+		try AppValidator.verifySignedApp(
+			at: movedAppPath,
+			requiresProfile: _options.signingOption == .default && !_options.removeProvisioning
+		)
 		try await self.move()
 		try await self.addToDatabase()
-		
-		if let error = handler.hadError {
-			throw error
-		}
+		ReliabilityCenter.shared.record(.complete, "Signed app passed verification")
 	}
 	
 	func move() async throws {

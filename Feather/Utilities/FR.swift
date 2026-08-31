@@ -36,6 +36,7 @@ enum FR {
 					completion(nil)
 				}
 			} catch {
+				ReliabilityCenter.shared.record(.preflight, "Import failed: \(error.localizedDescription)")
 				try? await handler.clean()
 				await MainActor.run {
 					completion(error)
@@ -64,6 +65,7 @@ enum FR {
 					completion(nil)
 				}
 			} catch {
+				ReliabilityCenter.shared.record(.verifying, "Signing stopped: \(error.localizedDescription)")
 				try? await handler.clean()
 				await MainActor.run {
 					completion(error)

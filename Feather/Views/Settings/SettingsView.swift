@@ -49,6 +49,14 @@ struct SettingsView: View {
 					Text("Set defaults for app signing, injection, ElleKit, and post-signing behavior.")
 				}
 
+				NBSection("Reliability") {
+					NavigationLink(destination: DiagnosticsView()) {
+						Label("Diagnostics", systemImage: "stethoscope")
+					}
+				} footer: {
+					Text("Review NullSign's local checks or export a privacy-safe log when an app will not sign.")
+				}
+
 				Section("NullSign") {
 					LabeledContent("Theme", value: "OLED Black / Cyan")
 					LabeledContent("Version", value: Bundle.main.version)
