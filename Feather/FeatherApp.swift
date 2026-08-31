@@ -11,7 +11,7 @@ import IDeviceSwift
 import OSLog
 
 @main
-struct FeatherApp: App {
+struct NullSignApp: App {
 	@UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 	
 	let heartbeat = HeartbeatManager.shared
@@ -30,6 +30,8 @@ struct FeatherApp: App {
 					.transition(.move(edge: .top).combined(with: .opacity))
 			}
 			.animation(.smooth, value: downloadManager.manualDownloads.description)
+			.preferredColorScheme(.dark)
+			.tint(.cyan)
 			.onReceive(NotificationCenter.default.publisher(for: .heartbeatInvalidHost)) { _ in
 				DispatchQueue.main.async {
 					UIAlertController.showAlertWithOk(
@@ -40,17 +42,16 @@ struct FeatherApp: App {
 			}
 			// dear god help me
 			.onAppear {
-				if let style = UIUserInterfaceStyle(rawValue: UserDefaults.standard.integer(forKey: "Feather.userInterfaceStyle")) {
-					UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = style
-				}
-				
-				UIApplication.topViewController()?.view.window?.tintColor = UIColor(Color(hex: UserDefaults.standard.string(forKey: "Feather.userTintColor") ?? "#848ef9"))
+				UserDefaults.standard.set(UIUserInterfaceStyle.dark.rawValue, forKey: "Feather.userInterfaceStyle")
+				UserDefaults.standard.set("#00E5FF", forKey: "Feather.userTintColor")
+				UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = .dark
+				UIApplication.topViewController()?.view.window?.tintColor = .cyan
 			}
 		}
 	}
 	
 	private func _handleURL(_ url: URL) {
-		if url.scheme == "feather" {
+		if url.scheme == "nullsign" || url.scheme == "feather" {
 			/// feather://import-certificate?p12=<base64>&mobileprovision=<base64>&password=<base64>
 			if url.host == "import-certificate" {
 				guard

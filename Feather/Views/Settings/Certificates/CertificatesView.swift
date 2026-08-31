@@ -101,36 +101,41 @@ extension CertificatesView {
 			}
 		}()
 		
-		Button {
-			_selectedCertBinding.wrappedValue = index
-		} label: {
-			CertificatesCellView(
-				cert: cert
-			)
-			.padding()
-			.background(
-				RoundedRectangle(cornerRadius: cornerRadius)
-					.fill(Color(uiColor: .quaternarySystemFill))
-			)
-			.overlay(
-				RoundedRectangle(cornerRadius: cornerRadius)
-					.strokeBorder(
-						_selectedCertBinding.wrappedValue == index ? Color.accentColor : Color.clear,
-						lineWidth: 2
-					)
-			)
-			.contextMenu {
+		HStack(spacing: 0) {
+			Button {
+				_selectedCertBinding.wrappedValue = index
+			} label: {
+				CertificatesCellView(cert: cert)
+					.padding()
+					.frame(maxWidth: .infinity, alignment: .leading)
+			}
+			.buttonStyle(.plain)
+
+			Menu {
 				_contextActions(for: cert)
 				if cert.isDefault != true {
 					Divider()
 					_actions(for: cert)
 				}
+			} label: {
+				Image(systemName: "ellipsis.circle")
+					.font(.title3)
+					.padding()
 			}
-			.transaction {
-				$0.animation = nil
-			}
+			.accessibilityLabel("Certificate actions")
 		}
-		.buttonStyle(.plain)
+		.background(
+			RoundedRectangle(cornerRadius: cornerRadius)
+				.fill(Color(uiColor: .quaternarySystemFill))
+		)
+		.overlay(
+			RoundedRectangle(cornerRadius: cornerRadius)
+				.strokeBorder(
+					_selectedCertBinding.wrappedValue == index ? Color.cyan : Color.clear,
+					lineWidth: 2
+				)
+		)
+		.transaction { $0.animation = nil }
 	}
 	
 	@ViewBuilder
@@ -145,7 +150,7 @@ extension CertificatesView {
 		Button(.localized("Get Info"), systemImage: "info.circle") {
 			_isSelectedInfoPresenting = cert
 		}
-		Button(.localized("Change Nickname"), systemImage: "pencil") {
+		Button("Rename", systemImage: "pencil") {
 			_newNickname = cert.nickname ?? ""
 			_certToRename = cert
 			_isRenamingPresenting = true
