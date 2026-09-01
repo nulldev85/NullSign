@@ -30,7 +30,7 @@ struct InstallPreviewView: View {
 	init(app: AppInfoPresentable, isSharing: Bool = false) {
 		self.app = app
 		self.isSharing = isSharing
-		let viewModel = InstallerStatusViewModel(isIdevice: app.platform == .tvOS || UserDefaults.standard.integer(forKey: "Feather.installationMethod") == 1)
+		let viewModel = InstallerStatusViewModel(isIdevice: app.platform == .tvOS)
 		self._viewModel = StateObject(wrappedValue: viewModel)
 		self._installer = StateObject(wrappedValue: try! ServerInstaller(app: app, viewModel: viewModel))
 	}
@@ -80,7 +80,7 @@ struct InstallPreviewView: View {
 			SafariRepresentableView(url: installer.pageEndpoint).ignoresSafeArea()
 		}
 		.onReceive(viewModel.$status) { newStatus in
-			if _installationMethod == 0 {
+			if _installationMethod == 0 || app.platform == .iOS {
 				if case .ready = newStatus {
 					if _serverMethod == 0 {
 						UIApplication.shared.open(URL(string: installer.iTunesLink)!)
@@ -188,8 +188,6 @@ struct InstallPreviewView: View {
 			do {
 				let targetPlatform = await app.platform
 				let sharing = await isSharing
-				let installationMethod = await _installationMethod
-
 				if targetPlatform == .tvOS && !sharing {
 					try await AppleTVManager.shared.prepareForInstall()
 				} else if targetPlatform == .iOS {
@@ -201,7 +199,7 @@ struct InstallPreviewView: View {
 				let packageUrl = try await handler.archive()
 				
 				if !sharing {
-					if targetPlatform == .iOS && installationMethod == 0 {
+					if targetPlatform == .iOS {
 						await MainActor.run {
 							installer.packageUrl = packageUrl
 							viewModel.status = .ready
