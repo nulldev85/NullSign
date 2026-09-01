@@ -117,7 +117,9 @@ enum AppValidator {
 			let supportedPlatforms = profile.Platform.map { $0.lowercased() }
 			let appPlatforms = info["CFBundleSupportedPlatforms"] as? [String] ?? []
 			let deviceFamilies = info["UIDeviceFamily"] as? [Int] ?? []
-			let isTVApp = appPlatforms.contains { $0.localizedCaseInsensitiveContains("AppleTV") } || deviceFamilies.contains(3)
+			let hasTVPlatform = appPlatforms.contains { $0.localizedCaseInsensitiveContains("AppleTV") }
+			let hasPhonePlatform = appPlatforms.contains { $0.localizedCaseInsensitiveContains("iPhone") }
+			let isTVApp = hasTVPlatform || (!hasPhonePlatform && appPlatforms.isEmpty && deviceFamilies.contains(3))
 			if isTVApp && !supportedPlatforms.contains(where: { $0.contains("tvos") || $0.contains("appletv") }) {
 				throw AppValidationError.incompatibleProvisioningProfile(required: "tvOS")
 			}

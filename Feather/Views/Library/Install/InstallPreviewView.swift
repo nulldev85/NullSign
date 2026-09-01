@@ -190,8 +190,6 @@ struct InstallPreviewView: View {
 				let sharing = await isSharing
 				if targetPlatform == .tvOS && !sharing {
 					try await AppleTVManager.shared.prepareForInstall()
-				} else if targetPlatform == .iOS {
-					await HeartbeatManager.shared.usePhoneTarget()
 				}
 				let handler = await ArchiveHandler(app: app, viewModel: viewModel)
 				try await handler.move()

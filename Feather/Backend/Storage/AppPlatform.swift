@@ -15,9 +15,9 @@ extension AppInfoPresentable {
 
 		let supported = info["CFBundleSupportedPlatforms"] as? [String] ?? []
 		let families = info["UIDeviceFamily"] as? [Int] ?? []
-		return supported.contains(where: { $0.localizedCaseInsensitiveContains("AppleTV") }) || families.contains(3)
-			? .tvOS
-			: .iOS
+		if supported.contains(where: { $0.localizedCaseInsensitiveContains("AppleTV") }) { return .tvOS }
+		if supported.contains(where: { $0.localizedCaseInsensitiveContains("iPhone") }) { return .iOS }
+		return supported.isEmpty && families.contains(3) ? .tvOS : .iOS
 	}
 }
 
