@@ -41,7 +41,7 @@ struct TunnelView: View {
 						Label(_appleTV.isScanning ? "Looking for Apple TV…" : "No Apple TV found", systemImage: "appletv")
 							.foregroundStyle(.secondary)
 					Spacer()
-					Button(_appleTV.isScanning ? "Refresh" : "Scan") { _appleTV.startScanning() }
+					Button(_appleTV.isScanning ? "Refresh" : "Scan") { _appleTV.refresh() }
 						.font(.subheadline.weight(.semibold)).foregroundStyle(NullSignStyle.cyan)
 					}
 				} else {
