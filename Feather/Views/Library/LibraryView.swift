@@ -67,11 +67,23 @@ struct LibraryView: View {
 		sortDescriptors: [NSSortDescriptor(keyPath: \AltSource.name, ascending: true)],
 		animation: .snappy
 	) private var _sources: FetchedResults<AltSource>
+
+	@FetchRequest(
+		entity: CertificatePair.entity(),
+		sortDescriptors: [NSSortDescriptor(keyPath: \CertificatePair.date, ascending: false)]
+	) private var _certificates: FetchedResults<CertificatePair>
 	
 	// MARK: Body
 	var body: some View {
 		NBNavigationView("Signer") {
 			NBListAdaptable {
+				NullSignDashboardHeader(
+					signedCount: _signedApps.count,
+					importedCount: _importedApps.count,
+					hasCertificate: !_certificates.isEmpty,
+					importAction: { _isImportingPresenting = true }
+				)
+
 				if
 					!_filteredSignedApps.isEmpty,
 					_selectedScope == .all || _selectedScope == .signed
@@ -114,6 +126,8 @@ struct LibraryView: View {
 					}
 				}
 			}
+			.scrollContentBackground(.hidden)
+			.background(Color.black)
 			.searchable(text: $_searchText, placement: .platform())
 			.compatSearchScopes($_selectedScope) {
 				ForEach(Scope.allCases, id: \.displayName) { scope in

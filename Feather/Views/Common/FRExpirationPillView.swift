@@ -18,22 +18,22 @@ struct FRExpirationPillView: View {
 			? .localized("Revoked")
 			: expiration?.formatted ?? title
 		
-		let textForeground = (expiration == nil)
-			? Color.accentColor
-			: .white
-		
-		let textBackground = revoked
-			? .red
-			: expiration?.color.opacity(0.85) ?? Color(uiColor: .quaternarySystemFill)
-		
-		Text(textLabel)
-			.lineLimit(0)
-			.font(.headline.bold())
-			.foregroundStyle(textForeground)
-			.padding(.horizontal, 12)
-			.padding(.vertical, 6)
-			.background(textBackground)
-			.clipShape(Capsule())
+		let statusColor = revoked ? Color.red : (expiration?.color ?? NullSignStyle.cyan)
+
+		HStack(spacing: 6) {
+			Circle()
+				.fill(statusColor)
+				.frame(width: 6, height: 6)
+			Text(textLabel.uppercased())
+				.lineLimit(1)
+		}
+		.font(.system(size: 12, weight: .bold, design: .monospaced))
+		.foregroundStyle(statusColor)
+		.padding(.horizontal, 10)
+		.padding(.vertical, 7)
+		.background(NullSignStyle.raisedPanel)
+		.overlay(Capsule().stroke(statusColor.opacity(0.35), lineWidth: 1))
+		.clipShape(Capsule())
 	}
 }
 

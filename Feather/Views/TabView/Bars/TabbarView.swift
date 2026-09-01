@@ -20,5 +20,8 @@ struct TabbarView: View {
 					.tag(tab)
 			}
 		}
+		.tint(NullSignStyle.cyan)
+		.toolbarBackground(Color.black.opacity(0.96), for: .tabBar)
+		.toolbarBackground(.visible, for: .tabBar)
 	}
 }

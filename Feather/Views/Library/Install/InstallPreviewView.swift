@@ -51,7 +51,7 @@ struct InstallPreviewView: View {
 			_button()
 		}
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-		.background(Color(UIColor.secondarySystemBackground))
+		.background(NullSignStyle.panel)
 		.cornerRadius(cornerRadius)
 		.padding()
 		.sheet(isPresented: $_isWebviewPresenting) {

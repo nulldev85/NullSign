@@ -47,6 +47,7 @@ struct SigningView: View {
 	var body: some View {
 		NBNavigationView("", displayMode: .inline) {
 			Form {
+				NullSignSigningHeader(app: app)
 				_customizationOptions(for: app)
 				_cert()
 				_tweaks()

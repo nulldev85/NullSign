@@ -11,7 +11,6 @@ import NimbleViews
 
 // MARK: - View
 struct LibraryCellView: View {
-	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 	@Environment(\.editMode) private var editMode
 	@ObservedObject private var updateManager = UpdateManager.shared
 	@State private var _signedUpdateConfirmation: AppUpdate?
@@ -48,7 +47,6 @@ struct LibraryCellView: View {
 	
 	// MARK: Body
 	var body: some View {
-		let isRegular = horizontalSizeClass != .compact
 		let isEditing = editMode?.wrappedValue == .active
 		
 		HStack(spacing: 18) {
@@ -75,13 +73,8 @@ struct LibraryCellView: View {
 				_buttonActions(for: app)
 			}
 		}
-		.padding(isRegular ? 12 : 0)
-		.background(
-			isRegular
-				? RoundedRectangle(cornerRadius: 18, style: .continuous)
-				.fill(_isSelected && isEditing ? Color.accentColor.opacity(0.1) : Color(.quaternarySystemFill))
-				: nil
-		)
+		.nullSignPanel()
+		.background(_isSelected && isEditing ? NullSignStyle.cyan.opacity(0.08) : Color.clear)
 		.contentShape(Rectangle())
 		.onTapGesture {
 			if isEditing {
