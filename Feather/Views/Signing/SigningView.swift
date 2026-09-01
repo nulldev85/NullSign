@@ -49,9 +49,13 @@ struct SigningView: View {
 			Form {
 				NullSignSigningHeader(app: app)
 				_customizationOptions(for: app)
+					.listRowBackground(NullSignStyle.panel)
 				_cert()
+					.listRowBackground(NullSignStyle.panel)
 				_tweaks()
+					.listRowBackground(NullSignStyle.panel)
 				_customizationProperties(for: app)
+					.listRowBackground(NullSignStyle.panel)
 				
 				// horrible
 				Rectangle()
@@ -59,6 +63,8 @@ struct SigningView: View {
 					.frame(height: 30)
 					.listRowBackground(EmptyView())
 			}
+			.scrollContentBackground(.hidden)
+			.background(Color.black)
 			.overlay {
 				VStack(spacing: 0) {
 					Spacer()
@@ -69,8 +75,19 @@ struct SigningView: View {
 							Button {
 								_start()
 							} label: {
-								NBSheetButton(title: .localized("Start Signing"), style: .prominent)
-									.padding()
+								HStack {
+									Image(systemName: "checkmark.seal")
+									Text("Sign App")
+										.font(.system(size: 15, weight: .semibold))
+									Spacer()
+									Image(systemName: "arrow.right")
+								}
+								.foregroundStyle(.black)
+								.padding(.horizontal, 17)
+								.frame(height: 50)
+								.background(NullSignStyle.cyan)
+								.clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+								.padding(.horizontal, 16)
 							}
 							.buttonStyle(.plain)
 							.offset(y: UIDevice.current.userInterfaceIdiom == .pad ? -20 : -40)
@@ -82,10 +99,8 @@ struct SigningView: View {
 			.toolbar {
 				NBToolbarButton(role: .dismiss)
 				ToolbarItem(placement: .principal) {
-					Image("Glyph")
-						.resizable()
-						.scaledToFit()
-						.frame(height: 38)
+					Text("Sign App")
+						.font(.headline)
 				}
 				NBToolbarButton(
 					.localized("Reset"),

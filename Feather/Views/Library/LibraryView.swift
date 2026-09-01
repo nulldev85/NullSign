@@ -48,6 +48,18 @@ struct LibraryView: View {
 	private var _filteredImportedApps: [Imported] {
 		filteredAndSortedApps(from: _importedApps)
 	}
+
+	private var _hasApps: Bool {
+		!_signedApps.isEmpty || !_importedApps.isEmpty
+	}
+
+	private var _visibleAppsEmpty: Bool {
+		switch _selectedScope {
+		case .all: return _filteredSignedApps.isEmpty && _filteredImportedApps.isEmpty
+		case .signed: return _filteredSignedApps.isEmpty
+		case .imported: return _filteredImportedApps.isEmpty
+		}
+	}
 	
 	// MARK: Fetch
 	@FetchRequest(
@@ -76,88 +88,84 @@ struct LibraryView: View {
 	// MARK: Body
 	var body: some View {
 		NBNavigationView("Signer") {
-			NBListAdaptable {
-				NullSignDashboardHeader(
-					signedCount: _signedApps.count,
-					importedCount: _importedApps.count,
-					hasCertificate: !_certificates.isEmpty,
-					importAction: { _isImportingPresenting = true }
-				)
+			Group {
+				if _hasApps {
+					NBListAdaptable {
+						NullSignLibrarySummary(
+							signedCount: _signedApps.count,
+							importedCount: _importedApps.count,
+							hasCertificate: !_certificates.isEmpty
+						)
+						_libraryTools
 
-				if
-					!_filteredSignedApps.isEmpty,
-					_selectedScope == .all || _selectedScope == .signed
-				{
-					NBSection(
-						.localized("Signed"),
-						secondary: _filteredSignedApps.count.description
-					) {
-						ForEach(_filteredSignedApps, id: \.uuid) { app in
-							LibraryCellView(
-								app: app,
-								selectedInfoAppPresenting: $_selectedInfoAppPresenting,
-								selectedSigningAppPresenting: $_selectedSigningAppPresenting,
-								selectedInstallAppPresenting: $_selectedInstallAppPresenting,
-								selectedAppUUIDs: $_selectedAppUUIDs
-							)
-							.compatMatchedTransitionSource(id: app.uuid ?? "", ns: _namespace)
-						}
-					}
-				}
-				
-				if
-					!_filteredImportedApps.isEmpty,
-					_selectedScope == .all || _selectedScope == .imported
-				{
-					NBSection(
-						.localized("Imported"),
-						secondary: _filteredImportedApps.count.description
-					) {
-						ForEach(_filteredImportedApps, id: \.uuid) { app in
-							LibraryCellView(
-								app: app,
-								selectedInfoAppPresenting: $_selectedInfoAppPresenting,
-								selectedSigningAppPresenting: $_selectedSigningAppPresenting,
-								selectedInstallAppPresenting: $_selectedInstallAppPresenting,
-								selectedAppUUIDs: $_selectedAppUUIDs
-							)
-							.compatMatchedTransitionSource(id: app.uuid ?? "", ns: _namespace)
-						}
-					}
-				}
-			}
-			.scrollContentBackground(.hidden)
-			.background(Color.black)
-			.searchable(text: $_searchText, placement: .platform())
-			.compatSearchScopes($_selectedScope) {
-				ForEach(Scope.allCases, id: \.displayName) { scope in
-					Text(scope.displayName).tag(scope)
-				}
-			}
-			.scrollDismissesKeyboard(.interactively)
-			.overlay {
-				if
-					_filteredSignedApps.isEmpty,
-					_filteredImportedApps.isEmpty
-				{
-					if #available(iOS 17, *) {
-						ContentUnavailableView {
-							Label(.localized("No Apps"), systemImage: "questionmark.app.fill")
-						} description: {
-							Text(.localized("Get started by importing your first IPA file."))
-						} actions: {
-							Menu {
-								_importActions()
-							} label: {
-								NBButton(.localized("Import"), style: .text)
+						if
+							!_filteredSignedApps.isEmpty,
+							_selectedScope == .all || _selectedScope == .signed
+						{
+							NBSection(.localized("Signed"), secondary: _filteredSignedApps.count.description) {
+								ForEach(_filteredSignedApps, id: \.uuid) { app in
+									LibraryCellView(
+										app: app,
+										selectedInfoAppPresenting: $_selectedInfoAppPresenting,
+										selectedSigningAppPresenting: $_selectedSigningAppPresenting,
+										selectedInstallAppPresenting: $_selectedInstallAppPresenting,
+										selectedAppUUIDs: $_selectedAppUUIDs
+									)
+									.compatMatchedTransitionSource(id: app.uuid ?? "", ns: _namespace)
+								}
 							}
 						}
+
+						if
+							!_filteredImportedApps.isEmpty,
+							_selectedScope == .all || _selectedScope == .imported
+						{
+							NBSection(.localized("Imported"), secondary: _filteredImportedApps.count.description) {
+								ForEach(_filteredImportedApps, id: \.uuid) { app in
+									LibraryCellView(
+										app: app,
+										selectedInfoAppPresenting: $_selectedInfoAppPresenting,
+										selectedSigningAppPresenting: $_selectedSigningAppPresenting,
+										selectedInstallAppPresenting: $_selectedInstallAppPresenting,
+										selectedAppUUIDs: $_selectedAppUUIDs
+									)
+									.compatMatchedTransitionSource(id: app.uuid ?? "", ns: _namespace)
+								}
+							}
+						}
+
+						if _visibleAppsEmpty {
+							VStack(spacing: 8) {
+								Image(systemName: "line.3.horizontal.decrease.circle")
+									.font(.system(size: 24, weight: .light))
+									.foregroundStyle(NullSignStyle.cyan)
+								Text(_searchText.isEmpty ? "Nothing in this group" : "No matching apps")
+									.font(.system(size: 15, weight: .semibold))
+								if !_searchText.isEmpty {
+									Button("Clear search") { _searchText = "" }
+										.font(.footnote.weight(.semibold))
+								}
+							}
+							.frame(maxWidth: .infinity)
+							.padding(.vertical, 26)
+							.listRowBackground(Color.clear)
+							.listRowSeparator(.hidden)
+						}
 					}
+					.scrollContentBackground(.hidden)
+					.background(Color.black)
+					.scrollDismissesKeyboard(.interactively)
+				} else {
+					NullSignEmptySignerView(
+						hasCertificate: !_certificates.isEmpty,
+						importFile: { _isImportingPresenting = true },
+						importURL: { _isDownloadingPresenting = true }
+					)
 				}
 			}
 			.toolbar {
-				ToolbarItem(placement: .topBarLeading) {
-					EditButton()
+				if _hasApps {
+					ToolbarItem(placement: .topBarLeading) { EditButton() }
 				}
 				
 				if _editMode.isEditing {
@@ -168,7 +176,7 @@ struct LibraryView: View {
 					) {
 						_bulkDeleteSelectedApps()
 					}
-				} else {
+				} else if _hasApps {
 					ToolbarItem(placement: .topBarTrailing) {
 						Button {
 							Task {
@@ -203,7 +211,7 @@ struct LibraryView: View {
 			}
 			.sheet(item: $_selectedInstallAppPresenting) { app in
 				InstallPreviewView(app: app.base, isSharing: app.archive)
-					.presentationDetents([.height(200)])
+					.presentationDetents([.height(230)])
 					.presentationDragIndicator(.visible)
 			}
 			.fullScreenCover(item: $_selectedSigningAppPresenting) { app in
@@ -257,6 +265,55 @@ struct LibraryView: View {
 
 // MARK: - Extension: View
 extension LibraryView {
+	private var _libraryTools: some View {
+		VStack(spacing: 10) {
+			HStack(spacing: 10) {
+				Image(systemName: "magnifyingglass")
+					.foregroundStyle(NullSignStyle.muted)
+				TextField("Search signed and imported apps", text: $_searchText)
+					.textInputAutocapitalization(.never)
+					.autocorrectionDisabled()
+				if !_searchText.isEmpty {
+					Button { _searchText = "" } label: {
+						Image(systemName: "xmark.circle.fill").foregroundStyle(NullSignStyle.muted)
+					}
+					.buttonStyle(.plain)
+				}
+			}
+			.padding(.horizontal, 13)
+			.frame(height: 42)
+			.background(NullSignStyle.panel)
+			.overlay {
+				RoundedRectangle(cornerRadius: 11, style: .continuous)
+					.stroke(NullSignStyle.hairline, lineWidth: 1)
+			}
+			.clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+
+			HStack(spacing: 6) {
+				ForEach(Scope.allCases, id: \.displayName) { scope in
+					Button {
+						withAnimation(.easeOut(duration: 0.16)) { _selectedScope = scope }
+					} label: {
+						Text(scope.displayName)
+							.font(.system(size: 12, weight: .semibold))
+							.foregroundStyle(_selectedScope == scope ? .black : NullSignStyle.muted)
+							.frame(maxWidth: .infinity)
+							.frame(height: 30)
+							.background(_selectedScope == scope ? NullSignStyle.cyan : Color.clear)
+							.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+					}
+					.buttonStyle(.plain)
+				}
+			}
+			.padding(3)
+			.background(NullSignStyle.panel)
+			.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+		}
+		.listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 12, trailing: 16))
+		.listRowBackground(Color.clear)
+		.listRowSeparator(.hidden)
+	}
+
 	@ViewBuilder
 	private func _importActions() -> some View {
 		Button(.localized("Import from Files"), systemImage: "folder") {

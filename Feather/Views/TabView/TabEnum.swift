@@ -23,9 +23,9 @@ enum TabEnum: String, CaseIterable, Hashable {
 	
 	var icon: String {
 		switch self {
-		case .signer: 		return "signature"
-		case .apps: 		return "square.grid.2x2"
-		case .settings: 	return "gearshape.2"
+		case .signer: 		return "checkmark.seal"
+		case .apps: 		return "square.stack.3d.up"
+		case .settings: 	return "slider.horizontal.3"
 		}
 	}
 	

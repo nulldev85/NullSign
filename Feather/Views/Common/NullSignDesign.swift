@@ -2,111 +2,124 @@ import SwiftUI
 
 enum NullSignStyle {
 	static let cyan = Color(red: 0.0, green: 0.90, blue: 1.0)
-	static let panel = Color(red: 0.035, green: 0.045, blue: 0.055)
-	static let raisedPanel = Color(red: 0.065, green: 0.078, blue: 0.09)
+	static let panel = Color(red: 0.045, green: 0.05, blue: 0.055)
+	static let raisedPanel = Color(red: 0.075, green: 0.08, blue: 0.085)
 	static let hairline = Color.white.opacity(0.08)
+	static let muted = Color.white.opacity(0.52)
 }
 
-struct NullSignDashboardHeader: View {
+struct NullSignLibrarySummary: View {
 	let signedCount: Int
 	let importedCount: Int
 	let hasCertificate: Bool
-	let importAction: () -> Void
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 18) {
-			HStack(alignment: .top) {
-				VStack(alignment: .leading, spacing: 5) {
-					Text("NULLSIGN // CONSOLE")
-						.font(.system(size: 11, weight: .bold, design: .monospaced))
-						.tracking(1.8)
-						.foregroundStyle(NullSignStyle.cyan)
-					Text("Sign without the noise.")
-						.font(.system(size: 23, weight: .bold, design: .rounded))
-				}
-
-				Spacer()
-
-				ZStack {
-					Circle()
-						.stroke(NullSignStyle.cyan.opacity(0.18), lineWidth: 5)
-					Circle()
-						.trim(from: 0.08, to: 0.82)
-						.stroke(NullSignStyle.cyan, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-						.rotationEffect(.degrees(-90))
-					Image(systemName: "signature")
-						.font(.system(size: 17, weight: .bold))
-						.foregroundStyle(NullSignStyle.cyan)
-				}
-				.frame(width: 48, height: 48)
+		HStack(spacing: 16) {
+			_metric(value: signedCount, label: "Signed")
+			_metric(value: importedCount, label: "Unsigned")
+			Spacer(minLength: 4)
+			HStack(spacing: 7) {
+				Circle()
+					.fill(hasCertificate ? NullSignStyle.cyan : .orange)
+					.frame(width: 7, height: 7)
+				Text(hasCertificate ? "Certificate ready" : "Certificate needed")
+					.font(.system(size: 12, weight: .medium))
+					.foregroundStyle(NullSignStyle.muted)
 			}
-
-			HStack(spacing: 0) {
-				_metric(value: signedCount, label: "SIGNED")
-				Divider().overlay(NullSignStyle.hairline).padding(.vertical, 3)
-				_metric(value: importedCount, label: "QUEUED")
-				Divider().overlay(NullSignStyle.hairline).padding(.vertical, 3)
-				VStack(alignment: .leading, spacing: 4) {
-					HStack(spacing: 6) {
-						Circle()
-							.fill(hasCertificate ? NullSignStyle.cyan : .orange)
-							.frame(width: 7, height: 7)
-						Text(hasCertificate ? "READY" : "NO CERT")
-							.font(.system(size: 12, weight: .bold, design: .monospaced))
-					}
-					Text("IDENTITY")
-						.font(.system(size: 9, weight: .semibold, design: .monospaced))
-						.foregroundStyle(.secondary)
-				}
-				.frame(maxWidth: .infinity, alignment: .leading)
-				.padding(.leading, 16)
-			}
-
-			Button(action: importAction) {
-				HStack {
-					Image(systemName: "plus")
-					Text("IMPORT IPA")
-						.font(.system(size: 13, weight: .bold, design: .monospaced))
-					Spacer()
-					Image(systemName: "arrow.down.to.line.compact")
-				}
-				.foregroundStyle(.black)
-				.padding(.horizontal, 16)
-				.frame(height: 44)
-				.background(NullSignStyle.cyan)
-				.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-			}
-			.buttonStyle(.plain)
 		}
-		.padding(18)
+		.padding(.horizontal, 16)
+		.frame(height: 58)
 		.background(
-			ZStack(alignment: .topTrailing) {
-				RoundedRectangle(cornerRadius: 22, style: .continuous)
-					.fill(NullSignStyle.panel)
-				RoundedRectangle(cornerRadius: 22, style: .continuous)
-					.stroke(NullSignStyle.hairline, lineWidth: 1)
-				LinearGradient(
-					colors: [NullSignStyle.cyan.opacity(0.16), .clear],
-					startPoint: .topTrailing,
-					endPoint: .center
-				)
-				.clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-			}
+			RoundedRectangle(cornerRadius: 14, style: .continuous)
+				.fill(NullSignStyle.panel)
+				.overlay(alignment: .top) {
+					Rectangle().fill(NullSignStyle.cyan).frame(height: 1)
+				}
+				.overlay {
+					RoundedRectangle(cornerRadius: 14, style: .continuous)
+						.stroke(NullSignStyle.hairline, lineWidth: 1)
+				}
 		)
-		.listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 14, trailing: 16))
+		.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+		.listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 12, trailing: 16))
 		.listRowBackground(Color.clear)
 		.listRowSeparator(.hidden)
 	}
 
 	private func _metric(value: Int, label: String) -> some View {
-		VStack(alignment: .leading, spacing: 2) {
-			Text(value.description)
-				.font(.system(size: 20, weight: .bold, design: .rounded))
-			Text(label)
-				.font(.system(size: 9, weight: .semibold, design: .monospaced))
-				.foregroundStyle(.secondary)
+		HStack(alignment: .firstTextBaseline, spacing: 5) {
+			Text(value.description).font(.system(size: 17, weight: .semibold, design: .rounded))
+			Text(label).font(.system(size: 11, weight: .medium)).foregroundStyle(NullSignStyle.muted)
 		}
-		.frame(maxWidth: .infinity, alignment: .leading)
+	}
+}
+
+struct NullSignEmptySignerView: View {
+	let hasCertificate: Bool
+	let importFile: () -> Void
+	let importURL: () -> Void
+
+	var body: some View {
+		VStack(spacing: 0) {
+			Spacer(minLength: 36)
+			VStack(spacing: 18) {
+				ZStack {
+					RoundedRectangle(cornerRadius: 18, style: .continuous)
+						.fill(NullSignStyle.panel)
+						.frame(width: 72, height: 72)
+					Image(systemName: "app.dashed")
+						.font(.system(size: 30, weight: .light))
+						.foregroundStyle(NullSignStyle.cyan)
+				}
+				VStack(spacing: 7) {
+					Text("Import an app to begin")
+						.font(.system(size: 24, weight: .semibold, design: .rounded))
+					Text("NullSign checks the package before it signs anything.")
+						.font(.subheadline)
+						.foregroundStyle(NullSignStyle.muted)
+						.multilineTextAlignment(.center)
+				}
+
+				VStack(spacing: 10) {
+					Button(action: importFile) {
+						Label("Choose IPA from Files", systemImage: "folder")
+							.font(.system(size: 15, weight: .semibold))
+							.frame(maxWidth: .infinity)
+							.frame(height: 48)
+							.foregroundStyle(.black)
+							.background(NullSignStyle.cyan)
+							.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+					}
+					.buttonStyle(.plain)
+
+					Button(action: importURL) {
+						Label("Import from URL", systemImage: "link")
+							.font(.system(size: 15, weight: .medium))
+							.frame(maxWidth: .infinity)
+							.frame(height: 46)
+							.background(NullSignStyle.panel)
+							.overlay {
+								RoundedRectangle(cornerRadius: 12, style: .continuous)
+									.stroke(NullSignStyle.hairline, lineWidth: 1)
+							}
+							.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+					}
+					.buttonStyle(.plain)
+				}
+				.frame(maxWidth: 390)
+
+				HStack(spacing: 7) {
+					Circle().fill(hasCertificate ? NullSignStyle.cyan : .orange).frame(width: 6, height: 6)
+					Text(hasCertificate ? "Signing certificate ready" : "Import a certificate in Settings before signing")
+						.font(.footnote)
+						.foregroundStyle(NullSignStyle.muted)
+				}
+			}
+			.padding(.horizontal, 28)
+			Spacer(minLength: 40)
+		}
+		.frame(maxWidth: .infinity, maxHeight: .infinity)
+		.background(Color.black)
 	}
 }
 
@@ -118,9 +131,8 @@ struct NullSignSigningHeader: View {
 			HStack(spacing: 14) {
 				FRAppIconView(app: app, size: 54)
 				VStack(alignment: .leading, spacing: 3) {
-					Text("SIGNING SESSION")
-						.font(.system(size: 10, weight: .bold, design: .monospaced))
-						.tracking(1.5)
+					Text("Signing session")
+						.font(.system(size: 11, weight: .semibold))
 						.foregroundStyle(NullSignStyle.cyan)
 					Text(app.name ?? "Unknown App")
 						.font(.system(size: 19, weight: .bold, design: .rounded))
@@ -134,11 +146,11 @@ struct NullSignSigningHeader: View {
 			}
 
 			HStack(spacing: 7) {
-				_step("01", "PREP")
+				_step("1", "Prepare")
 				_line
-				_step("02", "SIGN")
+				_step("2", "Sign")
 				_line
-				_step("03", "VERIFY")
+				_step("3", "Verify")
 			}
 		}
 		.padding(16)
@@ -158,7 +170,7 @@ struct NullSignSigningHeader: View {
 			Text(number).foregroundStyle(NullSignStyle.cyan)
 			Text(label).foregroundStyle(.secondary)
 		}
-		.font(.system(size: 9, weight: .bold, design: .monospaced))
+		.font(.system(size: 10, weight: .semibold))
 	}
 
 	private var _line: some View {
@@ -172,23 +184,18 @@ struct NullSignSigningHeader: View {
 struct NullSignPanelModifier: ViewModifier {
 	func body(content: Content) -> some View {
 		content
-			.padding(.vertical, 10)
-			.padding(.horizontal, 12)
+			.padding(.vertical, 11)
+			.padding(.leading, 10)
 			.background(
-				RoundedRectangle(cornerRadius: 16, style: .continuous)
-					.fill(NullSignStyle.panel)
+				Color.black
 					.overlay(alignment: .leading) {
-						Capsule()
-							.fill(NullSignStyle.cyan.opacity(0.8))
-							.frame(width: 2, height: 28)
-							.padding(.leading, 1)
+						Rectangle().fill(NullSignStyle.cyan.opacity(0.7)).frame(width: 2, height: 30)
 					}
-					.overlay {
-						RoundedRectangle(cornerRadius: 16, style: .continuous)
-							.stroke(NullSignStyle.hairline, lineWidth: 1)
+					.overlay(alignment: .bottom) {
+						Rectangle().fill(NullSignStyle.hairline).frame(height: 1)
 					}
 			)
-			.listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+			.listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
 			.listRowBackground(Color.clear)
 			.listRowSeparator(.hidden)
 	}

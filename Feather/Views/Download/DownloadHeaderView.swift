@@ -15,23 +15,28 @@ struct DownloadHeaderView: View {
 	var body: some View {
 		ZStack {
 			if !downloadManager.manualDownloads.isEmpty {
-				VStack {
-					VStack(spacing: 12) {
-						if let firstDownload = downloadManager.manualDownloads.first {
+				VStack(spacing: 0) {
+					if let firstDownload = downloadManager.manualDownloads.first {
+						HStack(spacing: 12) {
+							Image(systemName: "arrow.down")
+								.font(.system(size: 13, weight: .bold))
+								.foregroundStyle(.black)
+								.frame(width: 28, height: 28)
+								.background(NullSignStyle.cyan)
+								.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 							DownloadItemView(download: firstDownload)
-							
 							if downloadManager.manualDownloads.count > 1 {
-								HStack {
-									Spacer()
-									Text(verbatim: "+\(downloadManager.manualDownloads.count - 1)")
-										.font(.caption)
-										.foregroundColor(.secondary)
-										.padding(.vertical, 4)
-								}
+								Text(verbatim: "+\(downloadManager.manualDownloads.count - 1)")
+									.font(.caption.weight(.semibold))
+									.foregroundStyle(NullSignStyle.cyan)
 							}
 						}
+						.padding(12)
+						.background(NullSignStyle.panel)
+						.overlay(alignment: .bottom) {
+							Rectangle().fill(NullSignStyle.hairline).frame(height: 1)
+						}
 					}
-					.padding(.horizontal)
 				}
 				.transition(.move(edge: .top).combined(with: .opacity))
 			}
@@ -48,13 +53,14 @@ struct DownloadItemView: View {
 	@State private var unpackageProgress: Double = 0
 	
 	var body: some View {
-		VStack(alignment: .leading, spacing: 4) {
+		VStack(alignment: .leading, spacing: 5) {
 			Text(download.fileName)
-				.font(.subheadline)
+				.font(.subheadline.weight(.semibold))
 				.lineLimit(1)
 			
 			ProgressView(value: overallProgress)
 				.progressViewStyle(.linear)
+				.tint(NullSignStyle.cyan)
 			
 			HStack {
 				Text(verbatim: "\(Int(overallProgress * 100))%")
@@ -68,7 +74,7 @@ struct DownloadItemView: View {
 			.font(.caption)
 			.foregroundColor(.secondary)
 		}
-		.padding(.vertical, 4)
+		.frame(maxWidth: .infinity)
 		.onReceive(download.$progress) { self.progress = $0 }
 		.onReceive(download.$bytesDownloaded) { self.bytesDownloaded = $0 }
 		.onReceive(download.$totalBytes) { self.totalBytes = $0 }

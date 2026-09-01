@@ -45,11 +45,30 @@ struct InstallPreviewView: View {
 			}
 		}()
 		
-		ZStack {
-			InstallProgressView(app: app, viewModel: viewModel)
-			_status()
-			_button()
+		VStack(alignment: .leading, spacing: 16) {
+			HStack(spacing: 16) {
+				InstallProgressView(app: app, viewModel: viewModel)
+				VStack(alignment: .leading, spacing: 6) {
+					Text(app.name ?? "App")
+						.font(.system(size: 18, weight: .semibold, design: .rounded))
+						.lineLimit(1)
+					_status()
+				}
+				Spacer(minLength: 8)
+				_button()
+			}
+
+			GeometryReader { proxy in
+				ZStack(alignment: .leading) {
+					Capsule().fill(Color.white.opacity(0.08))
+					Capsule()
+						.fill(NullSignStyle.cyan)
+						.frame(width: proxy.size.width * max(0.025, min(viewModel.overallProgress, 1)))
+				}
+			}
+			.frame(height: 3)
 		}
+		.padding(20)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
 		.background(NullSignStyle.panel)
 		.cornerRadius(cornerRadius)
@@ -114,36 +133,39 @@ struct InstallPreviewView: View {
 	@ViewBuilder
 	private func _status() -> some View {
 		Label(viewModel.statusLabel, systemImage: viewModel.statusImage)
-			.padding()
-			.labelStyle(.titleAndIcon)
-			.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+			.font(.system(size: 12, weight: .semibold))
+			.foregroundStyle(viewModel.isCompleted ? NullSignStyle.cyan : NullSignStyle.muted)
 			.animation(.smooth, value: viewModel.statusImage)
 	}
 	
 	@ViewBuilder
 	private func _button() -> some View {
-		ZStack {
+		Group {
 			if viewModel.isCompleted {
-				Button {
+				_actionButton("Open", icon: "arrow.up.forward.app") {
 					UIApplication.openApp(with: app.identifier ?? "")
-				} label: {
-					NBButton("Open", systemImage: "", style: .text)
 				}
-				.padding()
-				.compatTransition()
-			}
-			if case .broken = viewModel.status {
-				Button {
+			} else if case .broken = viewModel.status {
+				_actionButton("Retry", icon: "arrow.clockwise") {
 					viewModel.status = .none
 					installAttempt += 1
-				} label: {
-					NBButton("Retry", systemImage: "arrow.clockwise", style: .text)
 				}
-				.padding()
 			}
 		}
-		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
 		.animation(.easeInOut(duration: 0.3), value: viewModel.isCompleted)
+	}
+
+	private func _actionButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
+		Button(action: action) {
+			Label(title, systemImage: icon)
+				.font(.system(size: 12, weight: .semibold))
+				.padding(.horizontal, 12)
+				.frame(height: 34)
+				.foregroundStyle(.black)
+				.background(NullSignStyle.cyan)
+				.clipShape(Capsule())
+		}
+		.buttonStyle(.plain)
 	}
 	
 	private func _install() {

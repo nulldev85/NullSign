@@ -6,15 +6,68 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct VariedTabbarView: View {
+	@State private var selectedTab: TabEnum = .signer
+	@State private var visitedTabs: Set<TabEnum> = [.signer]
+
 	init() {}
 	
 	var body: some View {
-		if #available(iOS 18, *) {
-			ExtendedTabbarView()
-		} else {
-			TabbarView()
+		ZStack {
+			ForEach(TabEnum.defaultTabs.filter { visitedTabs.contains($0) }, id: \.self) { tab in
+				TabEnum.view(for: tab)
+					.opacity(selectedTab == tab ? 1 : 0)
+					.allowsHitTesting(selectedTab == tab)
+					.accessibilityHidden(selectedTab != tab)
+			}
 		}
+		.background(Color.black)
+		.safeAreaInset(edge: .bottom, spacing: 0) {
+			NullSignTabBar(selection: Binding(
+				get: { selectedTab },
+				set: { tab in
+					visitedTabs.insert(tab)
+					selectedTab = tab
+					UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+				}
+			))
+		}
+	}
+}
+
+private struct NullSignTabBar: View {
+	@Binding var selection: TabEnum
+
+	var body: some View {
+		HStack(spacing: 0) {
+			ForEach(TabEnum.defaultTabs, id: \.self) { tab in
+				Button {
+					guard selection != tab else { return }
+					UISelectionFeedbackGenerator().selectionChanged()
+					selection = tab
+				} label: {
+					VStack(spacing: 5) {
+						Rectangle()
+							.fill(selection == tab ? NullSignStyle.cyan : Color.clear)
+							.frame(width: 24, height: 2)
+						Image(systemName: tab.icon)
+							.font(.system(size: 18, weight: selection == tab ? .semibold : .regular))
+						Text(tab.title)
+							.font(.system(size: 10, weight: .semibold))
+					}
+					.foregroundStyle(selection == tab ? NullSignStyle.cyan : NullSignStyle.muted)
+					.frame(maxWidth: .infinity)
+					.frame(height: 57)
+					.contentShape(Rectangle())
+				}
+				.buttonStyle(.plain)
+				.accessibilityLabel(tab.title)
+				.accessibilityAddTraits(selection == tab ? .isSelected : [])
+			}
+		}
+		.background(Color.black.opacity(0.98))
+		.overlay(alignment: .top) { Rectangle().fill(NullSignStyle.hairline).frame(height: 1) }
 	}
 }

@@ -64,24 +64,25 @@ final class SourcesViewModel: ObservableObject {
 		
 		for startIndex in stride(from: 0, to: sourcesArray.count, by: batchSize) {
 			let endIndex = min(startIndex + batchSize, sourcesArray.count)
-			let batch = sourcesArray[startIndex..<endIndex]
+			let batch = Array(sourcesArray[startIndex..<endIndex])
+			let requests = batch.enumerated().map { (index: $0.offset, url: $0.element.sourceURL) }
 			
-			let batchResults = await withTaskGroup(of: (AltSource, Result<ASRepository, Error>).self) { group in
-				for source in batch {
+			let batchResults = await withTaskGroup(of: (Int, Result<ASRepository, Error>).self) { group in
+				for request in requests {
 					group.addTask {
-						guard let url = source.sourceURL else {
-							return (source, .failure(URLError(.badURL)))
+						guard let url = request.url else {
+							return (request.index, .failure(URLError(.badURL)))
 						}
 						
 						return await withCheckedContinuation { continuation in
 							self._dataService.fetch(from: url) { (result: RepositoryDataHandler) in
-								continuation.resume(returning: (source, result))
+								continuation.resume(returning: (request.index, result))
 							}
 						}
 					}
 				}
 
-				var results: [(AltSource, Result<ASRepository, Error>)] = []
+				var results: [(Int, Result<ASRepository, Error>)] = []
 				for await result in group {
 					results.append(result)
 				}
@@ -89,7 +90,8 @@ final class SourcesViewModel: ObservableObject {
 			}
 			
 			await MainActor.run {
-				for (source, result) in batchResults {
+				for (index, result) in batchResults {
+					let source = batch[index]
 					switch result {
 					case .success(let repo):
 						self.sources[source] = repo
