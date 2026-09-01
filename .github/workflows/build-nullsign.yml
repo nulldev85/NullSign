@@ -34,6 +34,17 @@ jobs:
           plist_path="$(find "$workdir/Payload" -mindepth 2 -maxdepth 2 -type f -path '*.app/Info.plist')"
           /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist_path"
 
+          expected_version="$(sed -nE 's/^NULLSIGN_MARKETING_VERSION[[:space:]]*=[[:space:]]*([^[:space:]]+).*$/\1/p' NullSign.xcconfig)"
+          expected_build="$(sed -nE 's/^NULLSIGN_BUILD_NUMBER[[:space:]]*=[[:space:]]*([^[:space:]]+).*$/\1/p' NullSign.xcconfig)"
+          actual_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist_path")"
+          actual_build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist_path")"
+
+          test -n "$expected_version"
+          test -n "$expected_build"
+          test "$actual_version" = "$expected_version"
+          test "$actual_build" = "$expected_build"
+          echo "Verified NullSign $actual_version ($actual_build)"
+
       - name: Upload NullSign IPA
         uses: actions/upload-artifact@v4
         with:
