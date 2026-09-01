@@ -1,99 +1,47 @@
-//
-//  AppIconView.swift
-//  Feather
-//
-//  Created by samara on 19.06.2025.
-//
-
 import SwiftUI
-import NimbleViews
 
-// MARK: - View extension: Model
-extension AppIconView {
-	struct AltIcon: Identifiable {
-		var displayName: String
-		var author: String
-		var key: String?
-		var image: UIImage
-		var id: String { key ?? displayName }
-		
-		init(displayName: String, author: String, key: String? = nil) {
-			self.displayName = displayName
-			self.author = author
-			self.key = key
-			self.image = altImage(key)
-		}
-	}
-	
-	static func altImage(_ name: String?) -> UIImage {
-		let path = Bundle.main.bundleURL.appendingPathComponent((name ?? "AppIcon60x60") + "@2x.png")
-		return UIImage(contentsOfFile: path.path) ?? UIImage()
-	}
-}
-
-// MARK: - View
 struct AppIconView: View {
 	@Binding var currentIcon: String?
-	
-	// dont translate
-	var sections: [String: [AltIcon]] = [
-		"Main": [
-			AltIcon(displayName: "Feather", author: "Samara", key: nil),
-			AltIcon(displayName: "Feather (macOS)", author: "Samara", key: "V2Mac"),
-			AltIcon(displayName: "Feather v1", author: "Samara", key: "V1"),
-			AltIcon(displayName: "Feather v1 (macOS)", author: "Samara", key: "V1Mac"),
-			AltIcon(displayName: "Feather v0", author: "Samara", key: "V0"),
-			AltIcon(displayName: "Feather Donor", author: "Samara", key: "Donor")
-		],
-		"Wingio": [
-			AltIcon(displayName: "Feather", author: "Wingio", key: "Wing"),
-		]
-	]
-	
-	// MARK: Body
+
 	var body: some View {
-		NBList(.localized("App Icon")) {
-			ForEach(sections.keys.sorted(), id: \.self) { section in
-				if let icons = sections[section] {
-					NBSection(section) {
-						ForEach(icons) { icon in
-							_icon(icon: icon)
+		ScrollView {
+			VStack(spacing: 22) {
+				VStack(spacing: 12) {
+					FRAppIconView(size: 88)
+						.clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+					Text("NullSign")
+						.font(.title3.weight(.semibold))
+					Text("NullSign currently ships with one official icon.")
+						.font(.subheadline)
+						.foregroundStyle(.secondary)
+				}
+				.frame(maxWidth: .infinity)
+
+				if currentIcon != nil {
+					NullSignSettingsCard {
+						Button {
+							UIApplication.shared.setAlternateIconName(nil) { _ in
+								currentIcon = UIApplication.shared.alternateIconName
+							}
+						} label: {
+							NullSignSettingsRow(
+								title: "Restore NullSign Icon",
+								detail: "Remove an icon left by an older build",
+								systemImage: "app",
+								showsChevron: false
+							)
 						}
+						.buttonStyle(.plain)
 					}
 				}
 			}
+			.padding(.horizontal, 16)
+			.padding(.top, 20)
 		}
+		.background(Color.black.ignoresSafeArea())
+		.navigationTitle("App Icon")
 		.onAppear {
 			currentIcon = UIApplication.shared.alternateIconName
-		}
-	}
-}
-
-// MARK: - View extension
-extension AppIconView {
-	@ViewBuilder
-	private func _icon(
-		icon: AppIconView.AltIcon
-	) -> some View {
-		Button {
-			UIApplication.shared.setAlternateIconName(icon.key) { _ in
-				currentIcon = UIApplication.shared.alternateIconName
-			}
-		} label: {
-			HStack(spacing: 18) {
-				Image(uiImage: icon.image)
-					.appIconStyle()
-				
-				NBTitleWithSubtitleView(
-					title: icon.displayName,
-					subtitle: icon.author,
-					linelimit: 0
-				)
-				
-				if currentIcon == icon.key {
-					Image(systemName: "checkmark").bold()
-				}
-			}
 		}
 	}
 }

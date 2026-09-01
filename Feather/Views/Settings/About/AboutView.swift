@@ -1,119 +1,111 @@
-//
-//  AboutView.swift
-//  Feather
-//
-//  Created by samara on 30.04.2025.
-//
-
 import SwiftUI
 import NimbleViews
-import NimbleJSON
 
-// MARK: - Extension: Model
-extension AboutView {
-	struct CreditsModel: Codable, Hashable {
-		let name: String?
-		let desc: String?
-		let github: String
-	}
-}
-
-// MARK: - View
 struct AboutView: View {
-	@State private var _credits: [CreditsModel] = [
-		.init(name: "C", desc: "Developer", github: "claration"),
-		.init(name: "Asami", desc: "Developer", github: "Nyasami"),
-		.init(name: "Lakhan Lothiyi", desc: "AltStore Repositories", github: "llsc12"),
-	]
-	
-	let pngURL = URL(string: "https://sponsors.claration.dev/sponsors.png")!
-	
-	// MARK: Body
-	var body: some View {
-		NBList(.localized("About")) {
-			Section {
-				VStack {
-					FRAppIconView(size: 72)
-					
-					Text(Bundle.main.exec)
-						.font(.largeTitle)
-						.bold()
-						.foregroundStyle(Color.accentColor)
-					
-					HStack(spacing: 4) {
-						Text(.localized("Version"))
-						Text(Bundle.main.version)
-					}
-					.font(.footnote)
-					.foregroundStyle(.secondary)
-				}
-			}
-			.frame(maxWidth: .infinity)
-			.listRowBackground(EmptyView())
-			
-			NBSection(.localized("Credits")) {
-				ForEach(_credits, id: \.github) { credit in
-					_credit(name: credit.name, desc: credit.desc, github: credit.github)
-				}
-				.transition(.slide)
-			}
-			
-			NBSection(.localized("Sponsors")) {
-				Text(.localized("💜 This couldn't of been done without my sponsors!"))
-					.foregroundStyle(.secondary)
-					.padding(.vertical, 2)
-				AsyncImage(url: pngURL) { phase in
-					switch phase {
-					case .empty:
-						ProgressView()
-							.frame(maxWidth: .infinity)
-							.frame(height: 120)
-					case .success(let image):
-						image
-							.resizable()
-							.scaledToFit()
-							.frame(maxWidth: .infinity)
-							.listRowInsets(EdgeInsets())
-					case .failure:
-						Image(systemName: "photo")
-							.resizable()
-							.scaledToFit()
-							.frame(maxWidth: .infinity)
-							.foregroundColor(.gray)
-							.frame(height: 120)
-						
-					@unknown default:
-						EmptyView()
-					}
-				}
-			}
-		}
+	private var _build: String {
+		Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
 	}
-}
 
-// MARK: - Extension: view
-extension AboutView {
-	@ViewBuilder
-	private func _credit(
-		name: String?,
-		desc: String?,
-		github: String
+	var body: some View {
+		ScrollView {
+			VStack(spacing: 22) {
+				VStack(spacing: 10) {
+					FRAppIconView(size: 76)
+						.clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+					Text("NullSign")
+						.font(.title2.weight(.bold))
+					Text("Version \(Bundle.main.version) · Build \(_build)")
+						.font(.subheadline)
+						.foregroundStyle(.secondary)
+				}
+				.frame(maxWidth: .infinity)
+				.padding(.vertical, 8)
+
+				NullSignSettingsSection("Project") {
+					_linkRow(
+						title: "Source Code",
+						detail: "nulldev85/NullSign",
+						systemImage: "chevron.left.forwardslash.chevron.right",
+						url: "https://github.com/nulldev85/NullSign"
+					)
+				}
+
+				NullSignSettingsSection(
+					"Credits",
+					detail: "NullSign is a fork of Feather. Its signing, repository, and installation foundations came from Feather and its contributors."
+				) {
+					_linkRow(
+						title: "nulldev85",
+						detail: "NullSign maintainer",
+						systemImage: "person",
+						url: "https://github.com/nulldev85"
+					)
+					NullSignSettingsDivider()
+					_linkRow(
+						title: "Feather",
+						detail: "Original project by claration and contributors",
+						systemImage: "arrow.triangle.branch",
+						url: "https://github.com/claration/Feather"
+					)
+					NullSignSettingsDivider()
+					_linkRow(
+						title: "C",
+						detail: "Feather developer · claration",
+						systemImage: "person.2",
+						url: "https://github.com/claration"
+					)
+					NullSignSettingsDivider()
+					_linkRow(
+						title: "Asami",
+						detail: "Feather developer · Nyasami",
+						systemImage: "person.2",
+						url: "https://github.com/Nyasami"
+					)
+					NullSignSettingsDivider()
+					_linkRow(
+						title: "Lakhan Lothiyi",
+						detail: "AltStore repository work · llsc12",
+						systemImage: "person.2",
+						url: "https://github.com/llsc12"
+					)
+				}
+
+				NullSignSettingsSection(
+					"License",
+					detail: "NullSign is free software distributed under GNU GPL v3. Forks and redistributed builds must keep the license and provide corresponding source."
+				) {
+					_linkRow(
+						title: "GNU GPL v3",
+						detail: "Read the license in this repository",
+						systemImage: "doc.text",
+						url: "https://github.com/nulldev85/NullSign/blob/main/LICENSE"
+					)
+				}
+			}
+			.padding(.horizontal, 16)
+			.padding(.top, 16)
+			.padding(.bottom, 28)
+		}
+		.background(Color.black.ignoresSafeArea())
+		.navigationTitle("About")
+		.navigationBarTitleDisplayMode(.inline)
+	}
+
+	private func _linkRow(
+		title: String,
+		detail: String,
+		systemImage: String,
+		url: String
 	) -> some View {
 		Button {
-			UIApplication.open("https://github.com/\(github)")
+			UIApplication.open(url)
 		} label: {
-			HStack {
-				FRIconCellView(
-					title: name ?? github,
-					subtitle: desc ?? "",
-					iconUrl: URL(string: "https://github.com/\(github).png")!,
-					size: 45,
-					isCircle: true
-				)
-				
-				Image(systemName: "arrow.up.right")
-					.foregroundColor(.secondary.opacity(0.65))
-			}
+			NullSignSettingsRow(
+				title: title,
+				detail: detail,
+				systemImage: systemImage
+			)
 		}
+		.buttonStyle(.plain)
 	}
 }

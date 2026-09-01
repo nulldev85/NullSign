@@ -1,71 +1,62 @@
-//
-//  SourceNewsCardView.swift
-//  Feather
-//
-//  Created by samara on 3.05.2025.
-//
-
 import SwiftUI
 import AltSourceKit
 import NukeUI
-import NimbleViews
 
-// MARK: - View
 struct SourceNewsCardView: View {
-	var new: ASRepository.News
-	
-	// MARK: Body
+	let new: ASRepository.News
+
 	var body: some View {
-		ZStack(alignment: .bottomLeading) {
-			let placeholderView = {
-				Color.gray.opacity(0.2)
-			}()
-			
-			if let iconURL = new.imageURL {
-				LazyImage(url: iconURL) { state in
-					if let image = state.image {
-						image
-							.resizable()
-							.aspectRatio(contentMode: .fill)
-							.frame(width: 250, height: 150)
-							.clipped()
-					} else {
-						placeholderView
-					}
+		HStack(spacing: 0) {
+			_newsImage
+			VStack(alignment: .leading, spacing: 6) {
+				Text(new.title)
+					.font(.subheadline.weight(.semibold))
+					.foregroundStyle(.primary)
+					.lineLimit(3)
+					.multilineTextAlignment(.leading)
+				Spacer(minLength: 0)
+				if let date = new.date?.date {
+					Text(date.formatted(date: .abbreviated, time: .omitted))
+						.font(.caption2)
+						.foregroundStyle(.secondary)
 				}
-			} else {
-				placeholderView
 			}
-			
-			LinearGradient(
-				gradient: Gradient(colors: [.black.opacity(0.8), .clear]),
-				startPoint: .bottom,
-				endPoint: .top
-			)
-			.frame(height: 70)
-			.frame(maxWidth: .infinity, alignment: .bottom)
-			.overlay(
-				NBVariableBlurView()
-					.rotationEffect(.degrees(180))
-					.frame(height: 50)
-					.frame(maxHeight: .infinity, alignment: .bottom)
-			)
-			.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-			
-			Text(new.title)
-				.font(.headline)
-				.foregroundColor(.white)
-				.lineLimit(2)
-				.multilineTextAlignment(.leading)
-				.padding()
+			.padding(11)
+			.frame(width: 128, alignment: .leading)
 		}
-		.frame(width: 250, height: 150)
-		.background(new.tintColor ?? Color.secondary)
-		.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-		.overlay(
-			RoundedRectangle(cornerRadius: 12, style: .continuous)
-				.strokeBorder(Color.gray.opacity(0.2), lineWidth: 1)
-		)
+		.frame(width: 230, height: 112)
+		.background(NullSignStyle.panel)
+		.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+		.overlay {
+			RoundedRectangle(cornerRadius: 14, style: .continuous)
+				.stroke(NullSignStyle.hairline, lineWidth: 1)
+		}
+	}
+
+	@ViewBuilder
+	private var _newsImage: some View {
+		if let url = new.imageURL {
+			LazyImage(url: url) { state in
+				if let image = state.image {
+					image.resizable().aspectRatio(contentMode: .fill)
+				} else {
+					_placeholder
+				}
+			}
+			.frame(width: 102, height: 112)
+			.clipped()
+		} else {
+			_placeholder.frame(width: 102, height: 112)
+		}
+	}
+
+	private var _placeholder: some View {
+		ZStack {
+			NullSignStyle.raisedPanel
+			Image(systemName: "newspaper")
+				.font(.title3)
+				.foregroundStyle(NullSignStyle.cyan)
+		}
 	}
 }
 

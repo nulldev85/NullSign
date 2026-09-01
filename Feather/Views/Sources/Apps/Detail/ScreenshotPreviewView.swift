@@ -25,6 +25,7 @@ struct ScreenshotPreviewView: View {
 	var body: some View {
 		NavigationStack {
 			_imageScrollView()
+				.background(Color.black.ignoresSafeArea())
 				.toolbar {
 					ToolbarItem(placement: .topBarLeading) {
 						if #available(iOS 26.0, *) {
@@ -34,24 +35,13 @@ struct ScreenshotPreviewView: View {
 						}
 					}
 					ToolbarItem(placement: .topBarTrailing) {
-						if #available(iOS 26.0, *) {
-							Text(verbatim: "\(currentIndex + 1) / \(screenshotURLs.count)")
-								.font(.subheadline)
-								.padding(.horizontal, 12)
-								.padding(.vertical, 6)
-						} else {
-							Text(verbatim: "\(currentIndex + 1) / \(screenshotURLs.count)")
-								.font(.subheadline)
-								.padding(.horizontal, 12)
-								.padding(.vertical, 6)
-								.background(
-									Capsule()
-										.fill(.ultraThinMaterial)
-								)
-						}
+						Text(verbatim: "\(currentIndex + 1) of \(screenshotURLs.count)")
+							.font(.caption.weight(.semibold))
+							.foregroundStyle(.secondary)
 					}
 				}
 		}
+		.tint(NullSignStyle.cyan)
 	}
 }
 
@@ -65,11 +55,13 @@ extension ScreenshotPreviewView {
 						image
 							.resizable()
 							.aspectRatio(contentMode: .fit)
-							.clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+							.clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 							.overlay {
-								RoundedRectangle(cornerRadius: 32, style: .continuous)
-									.strokeBorder(.gray.opacity(0.3), lineWidth: 1)
+								RoundedRectangle(cornerRadius: 18, style: .continuous)
+									.strokeBorder(NullSignStyle.hairline, lineWidth: 1)
 							}
+					} else {
+						ProgressView().tint(NullSignStyle.cyan)
 					}
 				}
 				.tag(index)

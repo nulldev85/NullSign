@@ -14,42 +14,61 @@ struct ExpandableText: View {
 
 	@State private var expanded: Bool = false
 	@State private var truncated: Bool = false
+	@State private var collapsedHeight: CGFloat = 0
+	@State private var fullHeight: CGFloat = 0
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 4) {
+		VStack(alignment: .leading, spacing: 7) {
 			Text(text)
 				.lineLimit(expanded ? nil : lineLimit)
 				.background(
+					GeometryReader { proxy in
+						Color.clear
+							.onAppear { _recordCollapsedHeight(proxy.size.height) }
+							.onChange(of: proxy.size.height) { _recordCollapsedHeight($0) }
+					}
+				)
+				.background(
 					Text(text)
-						.lineLimit(lineLimit)
+						.lineLimit(nil)
+						.fixedSize(horizontal: false, vertical: true)
+						.hidden()
 						.background(GeometryReader { proxy in
 							Color.clear
-								.onAppear {
-									let totalHeight = proxy.size.height
-									let lineHeight = UIFont.preferredFont(forTextStyle: .body).lineHeight
-									truncated = totalHeight > lineHeight * CGFloat(lineLimit)
-								}
+								.onAppear { _recordFullHeight(proxy.size.height) }
+								.onChange(of: proxy.size.height) { _recordFullHeight($0) }
 						})
-						.hidden()
 				)
-				.onTapGesture {pGesture in
-					withAnimation {
+				.onTapGesture {
+					guard truncated else { return }
+					withAnimation(.easeInOut(duration: 0.2)) {
 						expanded.toggle()
 					}
 				}
 
 			if truncated {
 				Button(action: {
-					withAnimation {
+					withAnimation(.easeInOut(duration: 0.2)) {
 						expanded.toggle()
 					}
 				}) {
 					Text(expanded ? .localized("Less") : .localized("More"))
-						.font(.caption)
-						.foregroundColor(.accentColor)
+						.font(.caption.weight(.semibold))
+						.foregroundStyle(NullSignStyle.cyan)
 				}
 			}
 		}
+	}
+
+	private func _recordCollapsedHeight(_ height: CGFloat) {
+		guard !expanded else { return }
+		collapsedHeight = height
+		truncated = fullHeight > height + 1
+	}
+
+	private func _recordFullHeight(_ height: CGFloat) {
+		fullHeight = height
+		truncated = height > collapsedHeight + 1
 	}
 }
 

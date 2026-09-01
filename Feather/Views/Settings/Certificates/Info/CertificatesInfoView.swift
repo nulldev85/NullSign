@@ -1,45 +1,91 @@
-//
-//  CertificatesInfoView.swift
-//  Feather
-//
-//  Created by samara on 20.04.2025.
-//
-
 import SwiftUI
 import NimbleViews
-import ZsignSwift
 
-// MARK: - View
 struct CertificatesInfoView: View {
-	@Environment(\.dismiss) var dismiss
-	@State var data: Certificate?
-	
-	var cert: CertificatePair
-	
-	// MARK: Body
+	@Environment(\.dismiss) private var dismiss
+	@State private var data: Certificate?
+
+	let cert: CertificatePair
+
+	private var displayName: String {
+		cert.nickname ?? data?.Name ?? "Certificate"
+	}
+
 	var body: some View {
-		NBNavigationView(cert.nickname ?? "", displayMode: .inline) {
-			Form {
-				Section {} header: {
-					Image("Cert")
-						.resizable()
-						.scaledToFit()
-						.frame(width: 107, height: 107)
-						.frame(maxWidth: .infinity, alignment: .center)
-				}
-				
-				if let data {
-					_infoSection(data: data)
-					_entitlementsSection(data: data)
-					_miscSection(data: data)
-				}
-				
-				Section {
-					Button(.localized("Open in Files"), systemImage: "folder") {
-						UIApplication.open(Storage.shared.getUuidDirectory(for: cert)!.toSharedDocumentsURL()!)
+		NBNavigationView("Certificate Info", displayMode: .inline) {
+			ScrollView {
+				VStack(spacing: 22) {
+					NullSignSettingsIntro(
+						systemImage: cert.revoked ? "xmark.shield.fill" : "checkmark.shield.fill",
+						title: displayName,
+						detail: data?.TeamName ?? "Reading provisioning profile…",
+						status: cert.revoked ? "Revoked" : "Saved",
+						statusColor: cert.revoked ? .red : NullSignStyle.cyan
+					)
+
+					if let data {
+						NullSignSettingsSection("Status") {
+							_infoRow("Expires", value: data.ExpirationDate.expirationInfo().formatted)
+							NullSignSettingsDivider()
+							_infoRow("Revocation", value: cert.revoked ? "Revoked" : "Not detected")
+							if let ppq = data.PPQCheck {
+								NullSignSettingsDivider()
+								_infoRow("PPQ Check", value: ppq ? "Required" : "Not required")
+							}
+						}
+
+						NullSignSettingsSection("Profile") {
+							_infoRow("Name", value: data.Name)
+							NullSignSettingsDivider()
+							_infoRow("App ID", value: data.AppIDName)
+							NullSignSettingsDivider()
+							_infoRow("Team", value: data.TeamName)
+							NullSignSettingsDivider()
+							_infoRow("Platform", value: data.Platform.joined(separator: ", "))
+							NullSignSettingsDivider()
+							_infoRow("Team ID", value: data.TeamIdentifier.joined(separator: ", "))
+							if let devices = data.ProvisionedDevices {
+								NullSignSettingsDivider()
+								_infoRow("Registered Devices", value: devices.count.description)
+							}
+						}
+
+						if let entitlements = data.Entitlements {
+							NullSignSettingsSection("Entitlements") {
+								NavigationLink(destination: CertificatesInfoEntitlementView(entitlements: entitlements)) {
+									NullSignSettingsRow(
+										title: "View Entitlements",
+										detail: "\(entitlements.count) keys",
+										systemImage: "list.bullet.rectangle"
+									)
+								}
+								.buttonStyle(.plain)
+							}
+						}
+					}
+
+					NullSignSettingsSection("Files") {
+						Button {
+							guard
+								let directory = Storage.shared.getUuidDirectory(for: cert),
+								let sharedURL = directory.toSharedDocumentsURL()
+							else { return }
+							UIApplication.open(sharedURL)
+						} label: {
+							NullSignSettingsRow(
+								title: "Open in Files",
+								detail: "View the saved certificate pair",
+								systemImage: "folder"
+							)
+						}
+						.buttonStyle(.plain)
 					}
 				}
+				.padding(.horizontal, 16)
+				.padding(.top, 12)
+				.padding(.bottom, 28)
 			}
+			.background(Color.black.ignoresSafeArea())
 			.toolbar {
 				NBToolbarButton(role: .close)
 			}
@@ -48,78 +94,17 @@ struct CertificatesInfoView: View {
 			data = Storage.shared.getProvisionFileDecoded(for: cert)
 		}
 	}
-}
 
-// MARK: - Extension: View
-extension CertificatesInfoView {
-	@ViewBuilder
-	private func _infoSection(data: Certificate) -> some View {
-		NBSection(.localized("Info")) {
-			_info(.localized("Name"), description: data.Name)
-			_info(.localized("AppID Name"), description: data.AppIDName)
-			_info(.localized("Team Name"), description: data.TeamName)
-		}
-		
-		Section {
-			_info(.localized("Expires"), description: data.ExpirationDate.expirationInfo().formatted)
-				.foregroundStyle(data.ExpirationDate.expirationInfo().color)
-			
-			_info(.localized("Revoked"), description: cert.revoked ? "✓" : "✗")
-			
-			if let ppq = data.PPQCheck {
-				_info(.localized("PPQCheck"), description: ppq ? "✓" : "✗")
-			}
-		}
-	}
-	
-	@ViewBuilder
-	private func _entitlementsSection(data: Certificate) -> some View {
-		if let entitlements = data.Entitlements {
-			Section {
-				NavigationLink(.localized("View Entitlements")) {
-					CertificatesInfoEntitlementView(entitlements: entitlements)
-				}
-			}
-		}
-	}
-	
-	@ViewBuilder
-	private func _miscSection(data: Certificate) -> some View {
-		NBSection(.localized("Misc")) {
-			_disclosure(.localized("Platform"), keys: data.Platform)
-			
-			if let all = data.ProvisionsAllDevices {
-				_info(.localized("Provision All Devices"), description: all.description)
-			}
-			
-			if let devices = data.ProvisionedDevices {
-				_disclosure(.localized("Provisioned Devices"), keys: devices)
-			}
-			
-			_disclosure(.localized("Team Identifiers"), keys: data.TeamIdentifier)
-			
-			if let prefix = data.ApplicationIdentifierPrefix{
-				_disclosure(.localized("Identifier Prefix"), keys: prefix)
-			}
-		}
-	}
-	
-	@ViewBuilder
-	private func _info(_ title: String, description: String) -> some View {
-		LabeledContent(title) {
-			Text(description)
-		}
-		.copyableText(description)
-	}
-	
-	@ViewBuilder
-	private func _disclosure(_ title: String, keys: [String]) -> some View {
-		DisclosureGroup(title) {
-			ForEach(keys, id: \.self) { key in
-				Text(key)
-					.foregroundStyle(.secondary)
-					.copyableText(key)
-			}
+	private func _infoRow(_ title: String, value: String) -> some View {
+		HStack(alignment: .firstTextBaseline, spacing: 16) {
+			Text(title)
+				.font(.body.weight(.medium))
+			Spacer(minLength: 12)
+			Text(value)
+				.font(.subheadline)
+				.foregroundStyle(.secondary)
+				.multilineTextAlignment(.trailing)
+				.copyableText(value)
 		}
 	}
 }

@@ -1,66 +1,39 @@
-//
-//  SourceNewsView.swift
-//  Feather
-//
-//  Created by samara on 3.05.2025.
-//
-
 import SwiftUI
 import AltSourceKit
-import NimbleViews
 
-// MARK: - View
 struct SourceNewsView: View {
-	@State var isLoading = true
-	@State var hasLoadedInitialData = false
-	
-	@State private var _selectedNewsPresenting: ASRepository.News?
-	
+	@State private var _selectedNews: ASRepository.News?
 	@Namespace private var _namespace
-	
-	var news: [ASRepository.News]?
-	
-	// MARK: Body
+
+	let news: [ASRepository.News]?
+
 	var body: some View {
-		VStack {
-			if
-				let news,
-				!news.isEmpty
-			{
+		if let news, !news.isEmpty {
+			VStack(alignment: .leading, spacing: 9) {
+				SourceSectionLabel(title: .localized("Updates"), count: news.count)
+					.padding(.horizontal, 16)
+
 				ScrollView(.horizontal, showsIndicators: false) {
 					LazyHStack(spacing: 10) {
-						ForEach(news.reversed(), id: \.id) { new in
+						ForEach(news.reversed(), id: \.id) { item in
 							Button {
-								_selectedNewsPresenting = new
+								_selectedNews = item
 							} label: {
-								SourceNewsCardView(new: new)
-									.compatMatchedTransitionSource(id: new.id, ns: _namespace)
+								SourceNewsCardView(new: item)
+									.compatMatchedTransitionSource(id: item.id, ns: _namespace)
 							}
+							.buttonStyle(.plain)
 						}
 					}
 					.padding(.horizontal, 16)
 				}
-				.frame(height: 160)
-				.opacity(isLoading ? 0 : 1)
-				.transition(.opacity)
 			}
-		}
-		.frame(height: (news?.isEmpty == false) ? 150 : 0)
-		.onAppear {
-			if !hasLoadedInitialData && news?.isEmpty == false {
-				_load()
-				hasLoadedInitialData = true
+			.padding(.top, 8)
+			.frame(height: 174, alignment: .top)
+			.fullScreenCover(item: $_selectedNews) { item in
+				SourceNewsCardInfoView(new: item)
+					.compatNavigationTransition(id: item.id, ns: _namespace)
 			}
-		}
-		.fullScreenCover(item: $_selectedNewsPresenting) { new in
-			SourceNewsCardInfoView(new: new)
-				.compatNavigationTransition(id: new.id, ns: _namespace)
-		}
-	}
-	
-	private func _load() {
-		withAnimation(.easeIn(duration: 0.3)) {
-			isLoading = false
 		}
 	}
 }

@@ -1,47 +1,90 @@
-//
-//  ConfigurationDictAddView.swift
-//  Feather
-//
-//  Created by samara on 20.04.2025.
-//
-
 import SwiftUI
 import NimbleViews
 
-// MARK: - View
 struct ConfigurationDictAddView: View {
-	@Environment(\.dismiss) var dismiss
-	
+	@Environment(\.dismiss) private var dismiss
+
 	@State private var _newKey = ""
 	@State private var _newValue = ""
 	@State private var _showOverrideAlert = false
-	
-	var saveButtonDisabled: Bool {
-		_newKey.isEmpty || _newValue.isEmpty
-	}
-	
+
 	@Binding var dataDict: [String: String]
-	
-	// MARK: Body
+
+	private var normalizedKey: String {
+		_newKey.trimmingCharacters(in: .whitespacesAndNewlines)
+	}
+
+	private var normalizedValue: String {
+		_newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+	}
+
+	private var saveButtonDisabled: Bool {
+		normalizedKey.isEmpty || normalizedValue.isEmpty
+	}
+
 	var body: some View {
-		NBList(.localized("New")) {
-			Section {
-				TextField(.localized("Value"), text: $_newKey)
-				TextField(.localized("Replacement"), text: $_newValue)
+		ScrollView {
+			VStack(spacing: 22) {
+				NullSignSettingsIntro(
+					systemImage: "arrow.triangle.swap",
+					title: "New Replacement Rule",
+					detail: "When an imported app matches the original value exactly, NullSign uses the replacement while signing."
+				)
+
+				NullSignSettingsSection("Rule") {
+					VStack(alignment: .leading, spacing: 6) {
+						Text("Match")
+							.font(.caption.weight(.semibold))
+							.foregroundStyle(.secondary)
+						TextField("Original value", text: $_newKey)
+							.textInputAutocapitalization(.never)
+							.autocorrectionDisabled()
+					}
+
+					NullSignSettingsDivider()
+
+					VStack(alignment: .leading, spacing: 6) {
+						Text("Replace With")
+							.font(.caption.weight(.semibold))
+							.foregroundStyle(.secondary)
+						TextField("New value", text: $_newValue)
+							.textInputAutocapitalization(.never)
+							.autocorrectionDisabled()
+					}
+				}
 			}
-			.autocapitalization(.none)
+			.padding(.horizontal, 16)
+			.padding(.top, 12)
+			.padding(.bottom, 28)
 		}
+		.background(Color.black.ignoresSafeArea())
+		.navigationTitle("New Rule")
+		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {
 			NBToolbarButton(
-				.localized("Save"),
+				"Save",
 				style: .text,
 				placement: .confirmationAction,
 				isDisabled: saveButtonDisabled
 			) {
-				dataDict[_newKey] = _newValue
-				OptionsManager.shared.saveOptions()
-				dismiss()
+				if dataDict[normalizedKey] != nil {
+					_showOverrideAlert = true
+				} else {
+					_save()
+				}
 			}
 		}
+		.alert("Replace Existing Rule?", isPresented: $_showOverrideAlert) {
+			Button("Cancel", role: .cancel) { }
+			Button("Replace") { _save() }
+		} message: {
+			Text("A rule already matches “\(normalizedKey)”.")
+		}
+	}
+
+	private func _save() {
+		dataDict[normalizedKey] = normalizedValue
+		OptionsManager.shared.saveOptions()
+		dismiss()
 	}
 }

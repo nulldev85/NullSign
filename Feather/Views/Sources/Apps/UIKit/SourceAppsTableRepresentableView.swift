@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AltSourceKit
+import UIKit
 
 // MARK: - Representable
 struct SourceAppsTableRepresentableView: UIViewRepresentable {
@@ -20,14 +21,14 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 		let tableView = UITableView(frame: .zero, style: .plain)
 		tableView.delegate = context.coordinator
 		tableView.dataSource = context.coordinator
+		tableView.backgroundColor = .black
+		tableView.separatorStyle = .none
+		tableView.showsVerticalScrollIndicator = false
+		tableView.contentInset.bottom = 18
 		tableView.register(UITableViewCell.self, forCellReuseIdentifier: "AppCell")
 		tableView.register(UITableViewHeaderFooterView.self, forHeaderFooterViewReuseIdentifier: "SectionHeader")
 		
-		if #available(iOS 17, *) {
-			tableView.allowsSelection = true
-		} else {
-			tableView.allowsSelection = false
-		}
+		tableView.allowsSelection = true
 		
 		if
 			let firstSource = sourceContexts.first,
@@ -36,10 +37,11 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 			!news.isEmpty
 		{
 			let header = UIHostingController(rootView: SourceNewsView(news: news))
+			context.coordinator.headerController = header
 			header.view.translatesAutoresizingMaskIntoConstraints = true
 			header.view.backgroundColor = .clear
-			let fixedHeight: CGFloat = 161
-			let width = tableView.bounds.width
+			let fixedHeight: CGFloat = 178
+			let width = UIScreen.main.bounds.width
 			header.view.frame = CGRect(origin: .zero, size: CGSize(width: width, height: fixedHeight))
 
 			DispatchQueue.main.async {
@@ -99,6 +101,7 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 	
 	private var _cachedSortedApps: [SourceAppEntry] = []
 	weak var uiTableView: UITableView?
+	var headerController: UIViewController?
 	
 	private var _allAppsWithSource: [SourceAppEntry] {
 		sourceContexts.flatMap { context in
@@ -233,25 +236,27 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 		case .date: entry = _groupedAppsByDate[_sortedSectionTitles[indexPath.section]]?[indexPath.row] ?? _sortedApps[indexPath.row]
 		}
 
+		cell.backgroundColor = .clear
+		cell.selectionStyle = .none
 		cell.contentConfiguration = UIHostingConfiguration {
 			SourceAppsCellView(sourceURL: entry.sourceURL, source: entry.source, app: entry.app)
 		}
+		.margins(.all, 0)
+		.background(Color.clear)
 		return cell
 	}
 	
 	func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-		if #available(iOS 17, *) {
-			tableView.deselectRow(at: indexPath, animated: true)
-			
-			let entry: SourceAppEntry
-			switch sortOption {
-			case .default: entry = _sortedApps[indexPath.row]
-			case .name: entry = _groupedAppsByNameFirstLetter[_sortedSectionTitles[indexPath.section]]?[indexPath.row] ?? _sortedApps[indexPath.row]
-			case .date: entry = _groupedAppsByDate[_sortedSectionTitles[indexPath.section]]?[indexPath.row] ?? _sortedApps[indexPath.row]
-			}
-			
-			onSelect(SourceAppsView.SourceAppRoute(sourceURL: entry.sourceURL, source: entry.source, app: entry.app))
+		tableView.deselectRow(at: indexPath, animated: true)
+
+		let entry: SourceAppEntry
+		switch sortOption {
+		case .default: entry = _sortedApps[indexPath.row]
+		case .name: entry = _groupedAppsByNameFirstLetter[_sortedSectionTitles[indexPath.section]]?[indexPath.row] ?? _sortedApps[indexPath.row]
+		case .date: entry = _groupedAppsByDate[_sortedSectionTitles[indexPath.section]]?[indexPath.row] ?? _sortedApps[indexPath.row]
 		}
+
+		onSelect(SourceAppsView.SourceAppRoute(sourceURL: entry.sourceURL, source: entry.source, app: entry.app))
 	}
 	
 	func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
@@ -263,14 +268,15 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 		case .name, .date: title = _sortedSectionTitles[section]
 		}
 		
+		headerView?.backgroundView = UIView()
+		headerView?.backgroundView?.backgroundColor = .black
 		headerView?.contentConfiguration = UIHostingConfiguration {
-			HStack {
-				Text(verbatim: title)
-				Spacer()
-			}
-			.font(.headline)
-			.padding(.vertical, 2)
+			SourceSectionLabel(title: title)
+				.padding(.horizontal, 16)
+				.padding(.top, 8)
 		}
+		.margins(.all, 0)
+		.background(Color.black)
 		
 		return headerView
 	}

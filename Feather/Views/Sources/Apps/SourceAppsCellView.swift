@@ -1,76 +1,86 @@
-//
-//  SourceAppsCellView.swift
-//  Feather
-//
-//  Created by samara on 3.05.2025.
-//
-
 import SwiftUI
 import AltSourceKit
-import NimbleViews
-import Combine
 import NukeUI
 
-// thats a whole pharaghraph of codes
 struct SourceAppsCellView: View {
 	@AppStorage("Feather.storeCellAppearance") private var _storeCellAppearance: Int = 0
-	
+
 	let sourceURL: URL?
 	let source: ASRepository
 	let app: ASRepository.App
-	
+
 	var body: some View {
-		VStack {
-			HStack(spacing: 2) {
-				FRIconCellView(
-					title: app.currentName,
-					subtitle: Self.appDescription(app: app),
-					iconUrl: app.iconURL
-				)
-				.overlay(alignment: .bottomLeading) {
-					if let iconURL = source.currentIconURL {
-						LazyImage(url: iconURL) { state in
-							if let image = state.image {
-								image
-									.appIconStyle(size: 20, isCircle: true, background: Color(uiColor: .secondarySystemBackground))
-									.offset(x: 41, y: 4)
-							}
-						}
+		HStack(alignment: .top, spacing: 13) {
+			_appIcon
+
+			VStack(alignment: .leading, spacing: 5) {
+				Text(app.currentName)
+					.font(.body.weight(.semibold))
+					.lineLimit(1)
+
+				Text(Self.appDescription(app: app))
+					.font(.caption)
+					.foregroundStyle(.secondary)
+					.lineLimit(_storeCellAppearance == 0 ? 1 : 2)
+
+				HStack(spacing: 6) {
+					if let version = app.currentVersion, !version.isEmpty {
+						Text("v\(version)")
+					}
+					if app.currentVersion?.isEmpty == false, source.name?.isEmpty == false {
+						Circle().fill(Color.secondary.opacity(0.65)).frame(width: 3, height: 3)
+					}
+					if let sourceName = source.name {
+						Text(sourceName)
 					}
 				}
-				DownloadButtonView(sourceURL: sourceURL, source: source, app: app)
+				.font(.caption2.weight(.medium))
+				.foregroundStyle(.secondary)
+				.lineLimit(1)
 			}
-			
-			if
-				_storeCellAppearance != 0,
-				let desc = app.localizedDescription
-			{
-				Text(desc)
-					.frame(maxWidth: .infinity, alignment: .leading)
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
-					.padding(.top, 2)
-			}
+
+			Spacer(minLength: 5)
+
+			DownloadButtonView(sourceURL: sourceURL, source: source, app: app)
+				.padding(.top, 8)
+		}
+		.padding(.horizontal, 16)
+		.padding(.vertical, 12)
+		.overlay(alignment: .bottom) {
+			Rectangle()
+				.fill(NullSignStyle.hairline)
+				.frame(height: 1)
+				.padding(.leading, 87)
 		}
 	}
-	
-	static func appDescription(app: ASRepository.App) -> String {
-		let optionalComponents: [String?] = [
-			app.currentVersion,
-			app.currentDescription ?? .localized("An awesome application")
-		]
-		
-		let components: [String] = optionalComponents.compactMap { value in
-			guard
-				let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
-				!trimmed.isEmpty
-			else {
-				return nil
+
+	@ViewBuilder
+	private var _appIcon: some View {
+		if let iconURL = app.iconURL {
+			LazyImage(url: iconURL) { state in
+				if let image = state.image {
+					image.appIconStyle(size: 58, isCircle: false, background: NullSignStyle.raisedPanel)
+				} else {
+					_placeholderIcon
+				}
 			}
-			
-			return trimmed
+		} else {
+			_placeholderIcon
 		}
-		
-		return components.joined(separator: " • ")
+	}
+
+	private var _placeholderIcon: some View {
+		Image("App_Unknown")
+			.appIconStyle(size: 58, isCircle: false, background: NullSignStyle.raisedPanel)
+	}
+
+	static func appDescription(app: ASRepository.App) -> String {
+		let candidates = [app.subtitle, app.description, app.id]
+		for candidate in candidates {
+			if let value = candidate?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty {
+				return value
+			}
+		}
+		return .localized("No description provided")
 	}
 }

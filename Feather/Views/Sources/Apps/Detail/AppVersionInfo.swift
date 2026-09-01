@@ -23,23 +23,24 @@ struct AppVersionInfo: View {
 	}
     
 	var body: some View {
-		VStack(alignment: .leading, spacing: 2) {
+		VStack(alignment: .leading, spacing: 9) {
 			HStack {
 				Text("Version \(version)")
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
+					.font(.subheadline.weight(.semibold))
+					.foregroundStyle(.primary)
                 
 				Spacer()
                 
 				if let date {
 					Text(date.formatted(.relative(presentation: .named)))
-						.font(.subheadline)
+						.font(.caption)
 						.foregroundStyle(.secondary)
 				}
 			}
-			.padding(.vertical, 4)
             
 			ExpandableText(text: description, lineLimit: 3)
+				.font(.subheadline)
+				.foregroundStyle(.secondary)
 		}
 		.frame(maxWidth: .infinity, alignment: .leading)
 	}

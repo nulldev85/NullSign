@@ -1,57 +1,57 @@
-//
-//  InstallationView.swift
-//  Feather
-//
-//  Created by samara on 3.06.2025.
-//
-
 import SwiftUI
-import NimbleViews
 
-// MARK: - View
 struct InstallationView: View {
-	@AppStorage("Feather.installationMethod") private var _installationMethod: Int = 0
+	@AppStorage("Feather.installationMethod") private var _installationMethod = 0
 	@State private var _showMethodChangedAlert = false
 
-	private let _installationMethods: [String] = [
-		.localized("Server"),
-		.localized("idevice")
-	]
-	
-	// MARK: Body
 	var body: some View {
-		NBList(.localized("Installation")) {
-			Section {
-				Picker(.localized("Installation Type"), systemImage: "arrow.down.app", selection: $_installationMethod) {
-					ForEach(_installationMethods.indices, id: \.description) { index in
-						Text(_installationMethods[index]).tag(index)
+		ScrollView {
+			VStack(spacing: 22) {
+				NullSignSettingsIntro(
+					systemImage: _installationMethod == 0 ? "network" : "cable.connector",
+					title: _installationMethod == 0 ? "Local Server" : "Device Tunnel",
+					detail: _installationMethod == 0
+						? "Installs through a temporary local web service on this iPhone."
+						: "Installs directly through a pairing file and local VPN connection.",
+					status: _installationMethod == 0 ? "Recommended" : "Advanced",
+					statusColor: _installationMethod == 0 ? NullSignStyle.cyan : .orange
+				)
+
+				NullSignSettingsSection(
+					"Delivery Route",
+					detail: "The route is used only after an app has signed and passed verification."
+				) {
+					Picker("Installation method", selection: $_installationMethod) {
+						Text("Server").tag(0)
+						Text("Device").tag(1)
 					}
+					.pickerStyle(.segmented)
 				}
-			} footer: {
-				Text(.localized("Server (Recommended):\nUses a locally hosted server and itms-services:// to install applications.\n\nIDevice (advanced):\nUses a VPN and a pairing file. Writes to AFC and manually calls installd, while monitoring install progress by using a callback\nAdvantage: It is very reliable, does not need SSL certificates or a externally hosted server. Rather, works similarly to a computer."))
+
+				if _installationMethod == 0 {
+					ServerView()
+				} else {
+					TunnelView()
+				}
 			}
-			
-			if _installationMethod == 0 {
-				ServerView()
-			} else if _installationMethod == 1 {
-				TunnelView()
-			}
+			.padding(.horizontal, 16)
+			.padding(.top, 12)
+			.padding(.bottom, 28)
 		}
+		.background(Color.black.ignoresSafeArea())
+		.navigationTitle("Installation")
 		.onChange(of: _installationMethod) { newValue in
 			guard newValue == 1 else { return }
 			_showMethodChangedAlert = true
 		}
-		.alert(.localized("Advanced Installation Method"), isPresented: $_showMethodChangedAlert) {
-			Button(.localized("Switch Back"), role: .destructive) {
+		.alert("Device Tunnel", isPresented: $_showMethodChangedAlert) {
+			Button("Use Server Instead", role: .destructive) {
 				_installationMethod = 0
 			}
-			Button(.localized("OK"), role: .cancel) {}
+			Button("Continue", role: .cancel) { }
 		} message: {
-			Text(.localized("idevice warning"))
+			Text("This method needs a pairing file and an active loopback VPN. Use it when the server method is unavailable or unreliable.")
 		}
-
-
-		.animation(.default, value: _installationMethod)
+		.animation(.easeInOut(duration: 0.2), value: _installationMethod)
 	}
 }
-

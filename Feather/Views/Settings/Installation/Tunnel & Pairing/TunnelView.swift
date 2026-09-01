@@ -1,110 +1,127 @@
-//
-//  SettingsTunnelView.swift
-//  Feather (idevice)
-//
-//  Created by samara on 29.04.2025.
-//
-
 import SwiftUI
-import NimbleViews
 import IDeviceSwift
+import NimbleViews
 
-// MARK: - View
 struct TunnelView: View {
 	@State private var _isImportingPairingPresenting = false
-	
-	@State var doesHavePairingFile = false
-	@State private var isLocalDevVpnAvailable = false
-	
-	// MARK: Body
+	@State private var _hasPairingFile = false
+	@State private var _isLocalDevVPNAvailable = false
+
 	var body: some View {
-		Group {
-			Section {
-				if #available(iOS 17.4, *) {
-				} else {
-					_tunnelInfo()
+		VStack(spacing: 22) {
+			NullSignSettingsSection(
+				"Pairing",
+				detail: _hasPairingFile
+					? "The pairing record is stored locally and ready for device installation."
+					: "Create a pairing record on a trusted computer, then import it here."
+			) {
+				HStack(spacing: 12) {
+					Image(systemName: _hasPairingFile ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+						.font(.system(size: 16, weight: .semibold))
+						.foregroundStyle(_hasPairingFile ? NullSignStyle.cyan : .orange)
+						.frame(width: 32, height: 32)
+						.background(NullSignStyle.raisedPanel)
+						.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+					VStack(alignment: .leading, spacing: 2) {
+						Text("Pairing File")
+							.font(.body.weight(.medium))
+						Text(_hasPairingFile ? "Imported" : "Required")
+							.font(.caption)
+							.foregroundStyle(.secondary)
+					}
+					Spacer()
+					Button(_hasPairingFile ? "Replace" : "Import") {
+						_isImportingPairingPresenting = true
+					}
+					.font(.subheadline.weight(.semibold))
+					.foregroundStyle(NullSignStyle.cyan)
+				}
+			}
+
+			if #available(iOS 17.4, *) {
+				// Newer iOS versions do not use the legacy heartbeat controls.
+			} else {
+				NullSignSettingsSection(
+					"Connection",
+					detail: "Heartbeat is restarted when NullSign opens. A live connection is required while installation begins."
+				) {
 					TunnelHeaderView()
-				}
-			} footer: {
-				if doesHavePairingFile {
-					Text(.localized("Seems like you've gotten your hands on your pairing file!"))
-				} else {
-					Text(.localized("No pairing file found, please import it."))
-				}
-			}
-			
-			Section {
-				Button(.localized("Import Pairing File"), systemImage: "square.and.arrow.down") {
-					_isImportingPairingPresenting = true
-				}
-				if #available(iOS 17.4, *) {
-				} else {
-					Button(.localized("Restart Heartbeat"), systemImage: "arrow.counterclockwise") {
-						HeartbeatManager.shared.start(true)
-						
-						DispatchQueue.global(qos: .userInitiated).async {
-							if !HeartbeatManager.shared.checkSocketConnection().isConnected {
-								DispatchQueue.main.async {
-									UIAlertController.showAlertWithOk(
-										title: "Socket",
-										message: "Unable to connect to TCP. Make sure you have loopback VPN enabled and you are on WiFi or Airplane mode."
-									)
-								}
-							}
-						}
+					NullSignSettingsDivider()
+					Button {
+						_restartHeartbeat()
+					} label: {
+						NullSignSettingsRow(
+							title: "Restart Heartbeat",
+							detail: nil,
+							systemImage: "arrow.clockwise",
+							showsChevron: false
+						)
 					}
+					.buttonStyle(.plain)
 				}
 			}
-			
-			NBSection(.localized("Help")) {
-				Button(.localized("Pairing File Guide"), systemImage: "questionmark.circle") {
+
+			NullSignSettingsSection("Setup Help") {
+				Button {
 					UIApplication.open("https://github.com/claration/Impactor#pairing-file")
+				} label: {
+					NullSignSettingsRow(
+						title: "Pairing File Guide",
+						detail: "How to create a device pairing record",
+						systemImage: "questionmark.circle"
+					)
 				}
-				if isLocalDevVpnAvailable {
-					Button(.localized("Connect to LocalDevVPN"), systemImage: "link") {
+				.buttonStyle(.plain)
+
+				NullSignSettingsDivider()
+
+				Button {
+					if _isLocalDevVPNAvailable {
 						UIApplication.open("localdevvpn://enable?scheme=feather")
-					}
-				} else {
-					Button(.localized("Download LocalDevVPN"), systemImage: "arrow.down.app") {
+					} else {
 						UIApplication.open("https://apps.apple.com/us/app/localdevvpn/id6755608044")
 					}
+				} label: {
+					NullSignSettingsRow(
+						title: _isLocalDevVPNAvailable ? "Open LocalDevVPN" : "Get LocalDevVPN",
+						detail: _isLocalDevVPNAvailable ? "Enable the loopback connection" : "Required for the device tunnel",
+						systemImage: "network"
+					)
 				}
+				.buttonStyle(.plain)
 			}
 		}
 		.sheet(isPresented: $_isImportingPairingPresenting) {
 			FileImporterRepresentableView(
-				allowedContentTypes:  [.xmlPropertyList, .plist, .mobiledevicepairing],
+				allowedContentTypes: [.xmlPropertyList, .plist, .mobiledevicepairing],
 				onDocumentsPicked: { urls in
 					guard let selectedFileURL = urls.first else { return }
 					FR.movePairing(selectedFileURL)
-					doesHavePairingFile = true
+					_hasPairingFile = true
 				}
 			)
 			.ignoresSafeArea()
 		}
 		.onAppear {
-			doesHavePairingFile = FileManager.default.fileExists(atPath: HeartbeatManager.pairingFile())
-				? true
-				: false
+			_hasPairingFile = FileManager.default.fileExists(atPath: HeartbeatManager.pairingFile())
 			if let url = URL(string: "localdevvpn://") {
-				isLocalDevVpnAvailable = UIApplication.shared.canOpenURL(url)
-			} else {
-				isLocalDevVpnAvailable = false
+				_isLocalDevVPNAvailable = UIApplication.shared.canOpenURL(url)
 			}
 		}
 	}
-	
-	@ViewBuilder
-	private func _tunnelInfo() -> some View {
-		HStack {
-			VStack(alignment: .leading, spacing: 6) {
-				Text(.localized("Heartbeat"))
-					.font(.headline)
-				Text(.localized("The heartbeat is activated in the background, it will restart when the app is re-opened or prompted. If the status below is pulsing, that means its healthy."))
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
+
+	private func _restartHeartbeat() {
+		HeartbeatManager.shared.start(true)
+
+		DispatchQueue.global(qos: .userInitiated).async {
+			guard !HeartbeatManager.shared.checkSocketConnection().isConnected else { return }
+			DispatchQueue.main.async {
+				UIAlertController.showAlertWithOk(
+					title: "Connection Unavailable",
+					message: "Enable the loopback VPN and connect to Wi-Fi, or use Airplane Mode with Wi-Fi enabled."
+				)
 			}
-			.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
 		}
 	}
 }

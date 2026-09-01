@@ -1,88 +1,79 @@
-//
-//  CertificateCellView.swift
-//  Feather
-//
-//  Created by samara on 16.04.2025.
-//
-
 import SwiftUI
-import NimbleViews
 
-// MARK: - View
 struct CertificatesCellView: View {
-	@State var data: Certificate?
-	
+	@State private var data: Certificate?
 	@ObservedObject var cert: CertificatePair
-	
-	// MARK: Body
-	var body: some View {
-		VStack(spacing: 6) {
-			let title = {
-				var title = cert.nickname ?? data?.Name ?? .localized("Unknown")
-				
-				if let getTaskAllow = data?.Entitlements?["get-task-allow"]?.value as? Bool, getTaskAllow == true {
-					title = "🐞 \(title)"
-				}
-				
-				return title
-			}()
-			
-			NBTitleWithSubtitleView(
-				title: title,
-				subtitle: data?.AppIDName ?? .localized("Unknown")
-			)
-			
-			_certInfoPill(data: cert)
-		}
-		.frame(height: 80)
-		.contentTransition(.opacity)
-		.frame(maxWidth: .infinity, alignment: .leading)
-		.onAppear {
-			withAnimation {
-				data = Storage.shared.getProvisionFileDecoded(for: cert)
-			}
-		}
-	}
-}
+	var isSelected = false
 
-// MARK: - Extension: View
-extension CertificatesCellView {
+	private var title: String {
+		cert.nickname ?? data?.Name ?? "Unknown certificate"
+	}
+
+	private var subtitle: String {
+		if let teamName = data?.TeamName, !teamName.isEmpty { return teamName }
+		return data?.AppIDName ?? "Provisioning profile unavailable"
+	}
+
+	var body: some View {
+		HStack(spacing: 12) {
+			Image(systemName: cert.revoked ? "xmark.shield.fill" : "checkmark.shield.fill")
+				.font(.system(size: 18, weight: .medium))
+				.foregroundStyle(cert.revoked ? .red : NullSignStyle.cyan)
+				.frame(width: 38, height: 38)
+				.background(NullSignStyle.raisedPanel)
+				.clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+
+			VStack(alignment: .leading, spacing: 3) {
+				Text(title)
+					.font(.body.weight(.semibold))
+					.foregroundStyle(.primary)
+					.lineLimit(1)
+				Text(subtitle)
+					.font(.caption)
+					.foregroundStyle(.secondary)
+					.lineLimit(1)
+				_status
+			}
+
+			Spacer(minLength: 4)
+
+			if isSelected {
+				Image(systemName: "checkmark.circle.fill")
+					.font(.body)
+					.foregroundStyle(NullSignStyle.cyan)
+					.accessibilityLabel("Selected")
+			}
+		}
+		.contentTransition(.opacity)
+		.onAppear {
+			data = Storage.shared.getProvisionFileDecoded(for: cert)
+		}
+	}
+
 	@ViewBuilder
-	private func _certInfoPill(data: CertificatePair) -> some View {
-		let pillItems = _buildPills(from: data)
-		HStack(spacing: 6) {
-			ForEach(pillItems.indices, id: \.hashValue) { index in
-				let pill = pillItems[index]
-				NBPillView(
-					title: pill.title,
-					icon: pill.icon,
-					color: pill.color,
-					index: index,
-					count: pillItems.count
-				)
+	private var _status: some View {
+		HStack(spacing: 8) {
+			if cert.revoked {
+				_statusText("Revoked", color: .red)
+			} else if let expiration = cert.expiration {
+				let info = expiration.expirationInfo()
+				_statusText(info.formatted, color: info.color)
+			}
+
+			if cert.ppQCheck == true {
+				_statusText("PPQ", color: .orange)
 			}
 		}
 	}
-	
-	private func _buildPills(from cert: CertificatePair) -> [NBPillItem] {
-		var pills: [NBPillItem] = []
-		
-		if cert.ppQCheck == true {
-			pills.append(NBPillItem(title: .localized("PPQCheck"), icon: "checkmark.shield", color: .red))
+
+	private func _statusText(_ text: String, color: Color) -> some View {
+		HStack(spacing: 4) {
+			Circle()
+				.fill(color)
+				.frame(width: 5, height: 5)
+			Text(text)
 		}
-		
-		if cert.revoked == true {
-			pills.append(NBPillItem(title: .localized("Revoked"), icon: "xmark.octagon", color: .red))
-		}
-		
-		if let info = cert.expiration?.expirationInfo() {
-			pills.append(NBPillItem(
-				title: info.formatted,
-				icon: info.icon,
-				color: info.color
-			))
-		}
-		
-		return pills
+		.font(.caption2.weight(.medium))
+		.foregroundStyle(.secondary)
 	}
 }

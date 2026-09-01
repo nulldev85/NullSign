@@ -1,105 +1,102 @@
-//
-//  SourcesView.swift
-//  Feather
-//
-//  Created by samara on 10.04.2025.
-//
-
 import CoreData
 import AltSourceKit
 import SwiftUI
 import NimbleViews
 
-// MARK: - View
 struct SourcesView: View {
-	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
-	#if !NIGHTLY && !DEBUG
-		@AppStorage("Feather.shouldStar") private var _shouldStar: Int = 0
-	#endif
 	@StateObject var viewModel = SourcesViewModel.shared
 	@State private var _isAddingPresenting = false
-	@State private var _addingSourceLoading = false
 	@State private var _searchText = ""
-	
-	private var _filteredSources: [AltSource] {
-		_sources.filter { _searchText.isEmpty || ($0.name?.localizedCaseInsensitiveContains(_searchText) ?? false) }
-	}
-	
+
 	@FetchRequest(
 		entity: AltSource.entity(),
 		sortDescriptors: [NSSortDescriptor(keyPath: \AltSource.name, ascending: true)],
 		animation: .snappy
 	) private var _sources: FetchedResults<AltSource>
-	
-	// MARK: Body
+
+	private var _filteredSources: [AltSource] {
+		_sources.filter { source in
+			guard !_searchText.isEmpty else { return true }
+			return (source.name?.localizedCaseInsensitiveContains(_searchText) ?? false) ||
+				(source.sourceURL?.absoluteString.localizedCaseInsensitiveContains(_searchText) ?? false)
+		}
+	}
+
+	private var _loadedAppCount: Int {
+		_sources.compactMap { viewModel.sources[$0] }.reduce(0) { $0 + $1.apps.count }
+	}
+
 	var body: some View {
 		NBNavigationView("Apps") {
-			NBListAdaptable {
-				if !_filteredSources.isEmpty {
+			List {
+				if !_sources.isEmpty && _searchText.isEmpty {
 					Section {
 						NavigationLink {
 							SourceAppsView(object: Array(_sources), viewModel: viewModel)
 						} label: {
-							let isRegular = horizontalSizeClass != .compact
-							HStack(spacing: 18) {
-								Image("Repositories").appIconStyle()
-								NBTitleWithSubtitleView(
-									title: .localized("All Repositories"),
-									subtitle: .localized("See all apps from your sources")
-								)
-							}
-							.padding(isRegular ? 12 : 0)
-							.background(
-								isRegular
-									? RoundedRectangle(cornerRadius: 18, style: .continuous)
-									.fill(Color(.quaternarySystemFill))
-									: nil
-							)
+							_catalogRow
 						}
 						.buttonStyle(.plain)
+						.listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 10, trailing: 16))
+						.listRowBackground(Color.clear)
+						.listRowSeparator(.hidden)
 					}
-					
-					NBSection(
-						.localized("Repositories"),
-						secondary: _filteredSources.count.description
-					) {
+				}
+
+				if !_filteredSources.isEmpty {
+					Section {
 						ForEach(_filteredSources) { source in
 							NavigationLink {
 								SourceAppsView(object: [source], viewModel: viewModel)
 							} label: {
-								SourcesCellView(source: source)
+								SourcesCellView(
+									source: source,
+									repository: viewModel.sources[source],
+									isFetching: viewModel.isFetching,
+									didFail: source.sourceURL.map(viewModel.failedSourceURLs.contains) ?? false
+								)
 							}
 							.buttonStyle(.plain)
+							.listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+							.listRowBackground(Color.black)
+							.listRowSeparatorTint(NullSignStyle.hairline)
 						}
+					} header: {
+						SourceSectionLabel(title: .localized("Repositories"), count: _filteredSources.count)
+							.padding(.top, 6)
 					}
 				}
 			}
-			.searchable(text: $_searchText, placement: .platform())
+			.listStyle(.plain)
+			.scrollContentBackground(.hidden)
+			.background(Color.black)
+			.searchable(text: $_searchText, placement: .platform(), prompt: .localized("Search repositories"))
 			.overlay {
-				if _filteredSources.isEmpty {
-					if #available(iOS 17, *) {
-						ContentUnavailableView {
-							Label(.localized("No Repositories"), systemImage: "globe.desk.fill")
-						} description: {
-							Text(.localized("Get started by adding your first repository."))
-						} actions: {
-							Button {
-								_isAddingPresenting = true
-							} label: {
-								NBButton(.localized("Add Source"), style: .text)
-							}
-						}
-					}
+				if _sources.isEmpty {
+					SourceEmptyState(
+						icon: "shippingbox",
+						title: .localized("No Repositories"),
+						message: "Add a source to browse apps and import them into your signing library.",
+						actionTitle: .localized("Add Source"),
+						action: { _isAddingPresenting = true }
+					)
+				} else if _filteredSources.isEmpty {
+					SourceEmptyState(
+						icon: "magnifyingglass",
+						title: .localized("No Results"),
+						message: "No repository matches “\(_searchText)”."
+					)
 				}
 			}
 			.toolbar {
-				NBToolbarButton(
-					systemImage: "plus",
-					style: .icon,
-					placement: .topBarTrailing,
-					isDisabled: _addingSourceLoading
-				) {
-					_isAddingPresenting = true
+				if !_sources.isEmpty {
+					NBToolbarButton(
+						systemImage: "plus",
+						style: .icon,
+						placement: .topBarTrailing
+					) {
+						_isAddingPresenting = true
+					}
 				}
 			}
 			.refreshable {
@@ -109,26 +106,39 @@ struct SourcesView: View {
 				SourcesAddView()
 			}
 		}
+		.tint(NullSignStyle.cyan)
 		.task(id: Array(_sources)) {
 			await viewModel.fetchSources(_sources)
 		}
-		#if !NIGHTLY && !DEBUG
-		.onAppear {
-				guard _shouldStar < 6 else { return }; _shouldStar += 1
-				guard _shouldStar == 6 else { return }
-			
-				let github = UIAlertAction(title: "GitHub", style: .default) { _ in
-					UIApplication.open("https://github.com/nulldev85/NullSign")
-				}
-			
-				let cancel = UIAlertAction(title: .localized("Dismiss"), style: .cancel)
-			
-				UIAlertController.showAlert(
-					title: .localized("Enjoying %@?", arguments: Bundle.main.name),
-					message: .localized("Go to our GitHub and give us a star!"),
-					actions: [github, cancel]
-				)
+	}
+
+	private var _catalogRow: some View {
+		HStack(spacing: 14) {
+			ZStack {
+				RoundedRectangle(cornerRadius: 13, style: .continuous)
+					.fill(NullSignStyle.raisedPanel)
+				Image(systemName: "square.grid.2x2")
+					.font(.system(size: 20, weight: .semibold))
+					.foregroundStyle(NullSignStyle.cyan)
 			}
-		#endif
+			.frame(width: 50, height: 50)
+
+			VStack(alignment: .leading, spacing: 4) {
+				Text("Browse All Apps")
+					.font(.body.weight(.semibold))
+				Text(_catalogSummary)
+					.font(.caption)
+					.foregroundStyle(.secondary)
+			}
+			Spacer()
+		}
+		.sourcePanel(padding: 13)
+	}
+
+	private var _catalogSummary: String {
+		if viewModel.isFetching && _loadedAppCount == 0 {
+			return .localized("Updating catalog…")
+		}
+		return "\(_loadedAppCount.formatted()) apps across \(_sources.count.formatted()) sources"
 	}
 }
