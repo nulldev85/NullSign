@@ -186,9 +186,13 @@ struct InstallPreviewView: View {
 				
 		Task.detached {
 			do {
-				if await app.platform == .tvOS && await !isSharing {
+				let targetPlatform = await app.platform
+				let sharing = await isSharing
+				let installationMethod = await _installationMethod
+
+				if targetPlatform == .tvOS && !sharing {
 					try await AppleTVManager.shared.prepareForInstall()
-				} else if await app.platform == .iOS {
+				} else if targetPlatform == .iOS {
 					await HeartbeatManager.shared.usePhoneTarget()
 				}
 				let handler = await ArchiveHandler(app: app, viewModel: viewModel)
@@ -196,8 +200,8 @@ struct InstallPreviewView: View {
 				
 				let packageUrl = try await handler.archive()
 				
-				if await !isSharing {
-					if await app.platform == .iOS && await _installationMethod == 0 {
+				if !sharing {
+					if targetPlatform == .iOS && installationMethod == 0 {
 						await MainActor.run {
 							installer.packageUrl = packageUrl
 							viewModel.status = .ready
