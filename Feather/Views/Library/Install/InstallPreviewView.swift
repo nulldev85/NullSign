@@ -30,7 +30,7 @@ struct InstallPreviewView: View {
 	init(app: AppInfoPresentable, isSharing: Bool = false) {
 		self.app = app
 		self.isSharing = isSharing
-		let viewModel = InstallerStatusViewModel(isIdevice: UserDefaults.standard.integer(forKey: "Feather.installationMethod") == 1)
+		let viewModel = InstallerStatusViewModel(isIdevice: app.platform == .tvOS || UserDefaults.standard.integer(forKey: "Feather.installationMethod") == 1)
 		self._viewModel = StateObject(wrappedValue: viewModel)
 		self._installer = StateObject(wrappedValue: try! ServerInstaller(app: app, viewModel: viewModel))
 	}
@@ -49,9 +49,12 @@ struct InstallPreviewView: View {
 			HStack(spacing: 16) {
 				InstallProgressView(app: app, viewModel: viewModel)
 				VStack(alignment: .leading, spacing: 6) {
-					Text(app.name ?? "App")
-						.font(.system(size: 18, weight: .semibold, design: .rounded))
-						.lineLimit(1)
+					HStack(spacing: 7) {
+						Text(app.name ?? "App")
+							.font(.system(size: 18, weight: .semibold, design: .rounded))
+							.lineLimit(1)
+						PlatformBadge(platform: app.platform)
+					}
 					_status()
 				}
 				Spacer(minLength: 8)
@@ -142,8 +145,12 @@ struct InstallPreviewView: View {
 	private func _button() -> some View {
 		Group {
 			if viewModel.isCompleted {
-				_actionButton("Open", icon: "arrow.up.forward.app") {
-					UIApplication.openApp(with: app.identifier ?? "")
+				if app.platform == .tvOS {
+					_actionButton("Done", icon: "checkmark") { dismiss() }
+				} else {
+					_actionButton("Open", icon: "arrow.up.forward.app") {
+						UIApplication.openApp(with: app.identifier ?? "")
+					}
 				}
 			} else if case .broken = viewModel.status {
 				_actionButton("Retry", icon: "arrow.clockwise") {
@@ -179,13 +186,18 @@ struct InstallPreviewView: View {
 				
 		Task.detached {
 			do {
+				if await app.platform == .tvOS && await !isSharing {
+					try await AppleTVManager.shared.prepareForInstall()
+				} else if await app.platform == .iOS {
+					await HeartbeatManager.shared.usePhoneTarget()
+				}
 				let handler = await ArchiveHandler(app: app, viewModel: viewModel)
 				try await handler.move()
 				
 				let packageUrl = try await handler.archive()
 				
 				if await !isSharing {
-					if await _installationMethod == 0 {
+					if await app.platform == .iOS && await _installationMethod == 0 {
 						await MainActor.run {
 							installer.packageUrl = packageUrl
 							viewModel.status = .ready
@@ -201,7 +213,7 @@ struct InstallPreviewView: View {
 								progressTask = task
 							}
 						}
-					} else if await _installationMethod == 1 {
+					} else {
 						let handler = await InstallationProxy(viewModel: viewModel)
 						try await handler.install(at: packageUrl, suspend: app.identifier == Bundle.main.bundleIdentifier!)
 					}

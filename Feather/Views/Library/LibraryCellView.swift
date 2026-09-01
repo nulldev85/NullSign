@@ -130,6 +130,10 @@ struct LibraryCellView: View {
 extension LibraryCellView {
 	private func _appIcon(for app: AppInfoPresentable) -> some View {
 		FRAppIconView(app: app, size: 57)
+			.overlay(alignment: .bottomTrailing) {
+				PlatformBadge(platform: app.platform)
+					.offset(x: 5, y: 4)
+			}
 			.overlay(alignment: .topTrailing) {
 				if updateManager.update(for: app) != nil {
 					Image(systemName: "arrow.down.circle.fill")

@@ -59,6 +59,7 @@ enum AppValidationError: LocalizedError {
 	case missingCertificateFile
 	case missingProvisioningProfile
 	case malformedProvisioningProfile
+	case incompatibleProvisioningProfile(required: String)
 	case insufficientStorage(required: Int64, available: Int64)
 	case unsupportedInjectionFile(String)
 	case missingCodeSignature(String)
@@ -74,6 +75,7 @@ enum AppValidationError: LocalizedError {
 		case .missingCertificateFile: "The selected .p12 file is no longer available. Import the certificate again."
 		case .missingProvisioningProfile: "The selected provisioning profile is no longer available."
 		case .malformedProvisioningProfile: "The selected provisioning profile could not be decoded."
+		case .incompatibleProvisioningProfile(let required): "This app requires a \(required) provisioning profile. Choose a certificate imported with the matching profile."
 		case .insufficientStorage(let required, let available): "Signing needs about \(ByteCountFormatter.string(fromByteCount: required, countStyle: .file)), but only \(ByteCountFormatter.string(fromByteCount: available, countStyle: .file)) is available."
 		case .unsupportedInjectionFile(let name): "\(name) is not a supported .deb or .dylib file."
 		case .missingCodeSignature(let name): "Signature verification failed for \(name)."
@@ -109,8 +111,15 @@ enum AppValidator {
 			guard let provision = Storage.shared.getFile(.provision, from: certificate), fileManager.fileExists(atPath: provision.path) else {
 				throw AppValidationError.missingProvisioningProfile
 			}
-			guard CertificateReader(provision).decoded != nil else {
+			guard let profile = CertificateReader(provision).decoded else {
 				throw AppValidationError.malformedProvisioningProfile
+			}
+			let supportedPlatforms = profile.Platform.map { $0.lowercased() }
+			let appPlatforms = info["CFBundleSupportedPlatforms"] as? [String] ?? []
+			let deviceFamilies = info["UIDeviceFamily"] as? [Int] ?? []
+			let isTVApp = appPlatforms.contains { $0.localizedCaseInsensitiveContains("AppleTV") } || deviceFamilies.contains(3)
+			if isTVApp && !supportedPlatforms.contains(where: { $0.contains("tvos") || $0.contains("appletv") }) {
+				throw AppValidationError.incompatibleProvisioningProfile(required: "tvOS")
 			}
 		}
 

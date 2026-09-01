@@ -130,9 +130,12 @@ struct NullSignSigningHeader: View {
 			HStack(spacing: 14) {
 				FRAppIconView(app: app, size: 54)
 				VStack(alignment: .leading, spacing: 3) {
-					Text("Signing session")
-						.font(.system(size: 11, weight: .semibold))
-						.foregroundStyle(NullSignStyle.cyan)
+					HStack(spacing: 7) {
+						Text("Signing session")
+							.font(.system(size: 11, weight: .semibold))
+							.foregroundStyle(NullSignStyle.cyan)
+						PlatformBadge(platform: app.platform)
+					}
 					Text(app.name ?? "Unknown App")
 						.font(.system(size: 19, weight: .bold))
 						.lineLimit(1)
