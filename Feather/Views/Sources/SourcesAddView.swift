@@ -226,7 +226,7 @@ struct SourcesAddView: View {
 					.font(.caption)
 					.foregroundStyle(.secondary)
 					.lineLimit(1)
-				Text(.localized("%lld Apps", arguments: source.apps.count))
+				Text(verbatim: .localized("%lld Apps", arguments: source.apps.count))
 					.font(.caption2)
 					.foregroundStyle(.secondary)
 			}
