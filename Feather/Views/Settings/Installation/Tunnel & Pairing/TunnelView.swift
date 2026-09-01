@@ -50,6 +50,7 @@ struct TunnelView: View {
 						Button {
 							_selectedAppleTV = device
 							_appleTVPIN = ""
+							_beginAppleTVPairing(device)
 						} label: {
 							NullSignSettingsRow(title: device.name, detail: "Pair with six-digit code", systemImage: "appletv")
 						}
@@ -160,14 +161,14 @@ struct TunnelView: View {
 			_appleTV.startScanning()
 		}
 		.alert("Pair Apple TV", isPresented: Binding(
-			get: { _selectedAppleTV != nil },
-			set: { if !$0 { _selectedAppleTV = nil } }
+			get: { _appleTV.isAwaitingPIN },
+			set: { if !$0 && _appleTV.isAwaitingPIN { _appleTV.cancelPairing() } }
 		)) {
 			TextField("Six-digit code", text: $_appleTVPIN)
 				.keyboardType(.numberPad)
-			Button("Cancel", role: .cancel) { _selectedAppleTV = nil }
-			Button(_isPairingAppleTV ? "Pairing…" : "Pair") { _pairAppleTV() }
-				.disabled(_appleTVPIN.count != 6 || _isPairingAppleTV)
+			Button("Cancel", role: .cancel) { _appleTV.cancelPairing() }
+			Button("Pair") { _ = _appleTV.submitPIN(_appleTVPIN) }
+				.disabled(_appleTVPIN.count != 6)
 		} message: {
 			Text("Enter the code currently shown on \(_selectedAppleTV?.name ?? "Apple TV").")
 		}
@@ -181,12 +182,11 @@ struct TunnelView: View {
 		}
 	}
 
-	private func _pairAppleTV() {
-		guard let device = _selectedAppleTV else { return }
+	private func _beginAppleTVPairing(_ device: AppleTVDevice) {
 		_isPairingAppleTV = true
 		Task {
 			do {
-				try await _appleTV.pair(device: device, pin: _appleTVPIN)
+				try await _appleTV.pair(device: device)
 				_selectedAppleTV = nil
 			} catch {
 				_selectedAppleTV = nil
