@@ -16,22 +16,24 @@ struct SigningOptionsView: View {
 	// MARK: Body
 	var body: some View {
 		if (temporaryOptions == nil) {
-			NBSection(.localized("Protection")) {
+			Section {
 				_toggle(
 					.localized("PPQ Protection"),
 					systemImage: "shield",
 					isOn: $options.ppqProtection,
 					temporaryValue: temporaryOptions?.ppqProtection
 				)
+			} header: {
+				SigningSectionHeader(title: .localized("Protection"))
 			} footer: {
-				Text(.localized("Enabling any protection will append a random string to the bundleidentifiers of the apps you sign, this is to ensure your Apple ID does not get flagged by Apple. However, when using a signing service you can ignore this."))
+				Text("PPQ protection appends a short random value to signed bundle identifiers. Signing-service certificates usually do not need it.")
 			}
 		}
 		
-		NBSection(.localized("General")) {
+		Section {
 			Self.picker(
 				.localized("Appearance"),
-				systemImage: "paintpalette",
+				systemImage: "circle.lefthalf.filled",
 				selection: $options.appAppearance,
 				values: Options.AppAppearance.allCases
 			)
@@ -42,6 +44,8 @@ struct SigningOptionsView: View {
 				selection: $options.minimumAppRequirement,
 				values: Options.MinimumAppRequirement.allCases
 			)
+		} header: {
+			SigningSectionHeader(title: .localized("App Output"))
 		}
 		
 		Section {
@@ -51,34 +55,38 @@ struct SigningOptionsView: View {
 				selection: $options.signingOption,
 				values: Options.SigningOption.allCases
 			)
+		} header: {
+			SigningSectionHeader(title: .localized("Signing Mode"))
 		}
 		
 		if (temporaryOptions == nil) {
-			NBSection(.localized("Tweaks")) {
+			Section {
 				Self.picker(
-					.localized("Injection Path"),
-					systemImage: "doc.badge.gearshape",
+					.localized("Load Path"),
+					systemImage: "point.topleft.down.curvedto.point.bottomright.up",
 					selection: $options.injectPath,
 					values: Options.InjectPath.allCases
 				)
 				
 				Self.picker(
-					.localized("Injection Folder"),
-					systemImage: "folder.badge.gearshape",
+					.localized("Destination"),
+					systemImage: "folder",
 					selection: $options.injectFolder,
 					values: Options.InjectFolder.allCases
 				)
 				
 				_toggle(
 					.localized("Inject into Extensions"),
-					systemImage: "syringe",
+					systemImage: "puzzlepiece.extension",
 					isOn: $options.injectIntoExtensions,
 					temporaryValue: temporaryOptions?.injectIntoExtensions
 				)
+			} header: {
+				SigningSectionHeader(title: .localized("Tweak Injection"))
 			}
 		}
 		
-		NBSection(.localized("App Features")) {
+		Section {
 			_toggle(
 				.localized("File Sharing"),
 				systemImage: "folder.badge.person.crop",
@@ -113,55 +121,63 @@ struct SigningOptionsView: View {
 				isOn: $options.ipadFullscreen,
 				temporaryValue: temporaryOptions?.ipadFullscreen
 			)
+		} header: {
+			SigningSectionHeader(title: .localized("App Features"))
 		}
 		
-		NBSection(.localized("Removal")) {
+		Section {
 			_toggle(
-				.localized("Remove URL Scheme"),
-				systemImage: "ellipsis.curlybraces",
+				.localized("Remove URL Schemes"),
+				systemImage: "link.badge.minus",
 				isOn: $options.removeURLScheme,
 				temporaryValue: temporaryOptions?.removeURLScheme
 			)
 			
 			_toggle(
-				.localized("Remove Provisioning"),
-				systemImage: "doc.badge.gearshape",
+				.localized("Remove Provisioning Profile"),
+				systemImage: "doc.badge.minus",
 				isOn: $options.removeProvisioning,
 				temporaryValue: temporaryOptions?.removeProvisioning
 			)
+		} header: {
+			SigningSectionHeader(title: .localized("Package Cleanup"))
 		} footer: {
-			Text(.localized("Removing the provisioning file will exclude the mobileprovision file from being embedded inside of the application when signing, to help prevent any detection."))
+			Text("Removing the provisioning profile can make the app impossible to install. Leave this off unless the target environment requires it.")
 		}
 		
 		Section {
 			_toggle(
-				.localized("Force Localize"),
+				.localized("Force Localized Name"),
 				systemImage: "character.bubble",
 				isOn: $options.changeLanguageFilesForCustomDisplayName,
 				temporaryValue: temporaryOptions?.changeLanguageFilesForCustomDisplayName
 			)
+		} header: {
+			SigningSectionHeader(title: .localized("Display Name"))
 		} footer: {
-			Text(.localized("By default, localized titles for the app won't be changed, however this option overrides it."))
+			Text("Rewrites localized display-name files so the custom name is used consistently.")
 		}
 		
-		NBSection(.localized("Post Signing")) {
+		Section {
 			_toggle(
-				.localized("Install After Signing"),
+				.localized("Install Automatically"),
 				systemImage: "arrow.down.circle",
 				isOn: $options.post_installAppAfterSigned,
 				temporaryValue: temporaryOptions?.post_installAppAfterSigned
 			)
 			_toggle(
-				.localized("Delete After Signing"),
+				.localized("Delete Imported Copy"),
 				systemImage: "trash",
 				isOn: $options.post_deleteAppAfterSigned,
 				temporaryValue: temporaryOptions?.post_deleteAppAfterSigned
 			)
+		} header: {
+			SigningSectionHeader(title: .localized("After Signing"))
 		} footer: {
-			Text(.localized("This will delete your imported application after signing, to save on using unneeded space."))
+			Text("Deleting the imported copy after a successful sign reduces storage use.")
 		}
 		
-		NBSection(.localized("Experiments")) {
+		Section {
 			_toggle(
 				.localized("Replace Substrate with ElleKit"),
 				systemImage: "pencil",
@@ -182,25 +198,34 @@ struct SigningOptionsView: View {
 				isOn: $options.experiment_supportLiquidGlass,
 				temporaryValue: temporaryOptions?.experiment_supportLiquidGlass
 			).disabled(options.experiment_disableLiquidGlass)
+		} header: {
+			SigningSectionHeader(title: .localized("Compatibility"))
 		} footer: {
-			Text(.localized("This option force converts apps to try to use the new liquid glass redesign iOS 26 introduced, this may not work for all applications due to differing frameworks."))
+			Text("These switches change appearance metadata for newer iOS releases and may not work with every app.")
 		}
 	}
 	
 	@ViewBuilder
-	static func picker<SelectionValue: Hashable, T: Hashable & LocalizedDescribable>(
+	static func picker<T: Hashable & LocalizedDescribable>(
 		_ title: String,
 		systemImage: String,
-		selection: Binding<SelectionValue>,
+		selection: Binding<T>,
 		values: [T]
 	) -> some View {
-		Picker(selection: selection) {
-			ForEach(values, id: \.self) { value in
-				Text(value.localizedDescription)
+		HStack(spacing: 12) {
+			SigningRowIcon(systemImage: systemImage)
+			Text(title)
+				.font(.body.weight(.medium))
+			Spacer(minLength: 8)
+			Picker(title, selection: selection) {
+				ForEach(values, id: \.self) { value in
+					Text(value.localizedDescription).tag(value)
+				}
 			}
-		} label: {
-			Label(title, systemImage: systemImage)
+			.labelsHidden()
+			.tint(NullSignStyle.cyan)
 		}
+		.signingDestinationRow()
 	}
 	
 	@ViewBuilder
@@ -211,15 +236,18 @@ struct SigningOptionsView: View {
 		temporaryValue: Bool? = nil
 	) -> some View {
 		Toggle(isOn: isOn) {
-			Label {
+			HStack(spacing: 12) {
+				SigningRowIcon(systemImage: systemImage)
+				Text(title)
+					.font(.body.weight(.medium))
 				if let tempValue = temporaryValue, tempValue != isOn.wrappedValue {
-					Text(title).bold()
-				} else {
-					Text(title)
+					Text("Changed")
+						.font(.caption2.weight(.semibold))
+						.foregroundStyle(NullSignStyle.cyan)
 				}
-			} icon: {
-				Image(systemName: systemImage)
 			}
 		}
+		.tint(NullSignStyle.cyan)
+		.signingDestinationRow()
 	}
 }
