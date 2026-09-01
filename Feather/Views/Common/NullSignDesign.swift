@@ -3,7 +3,6 @@ import SwiftUI
 enum NullSignStyle {
 	// A quieter, slightly blue pastel used consistently throughout the app.
 	static let cyan = Color(red: 0.56, green: 0.86, blue: 0.90)
-	static let cyanWash = cyan.opacity(0.12)
 	static let ink = Color(red: 0.035, green: 0.105, blue: 0.12)
 	static let peach = Color(red: 0.95, green: 0.72, blue: 0.63)
 	static let panel = Color(red: 0.060, green: 0.070, blue: 0.078)
@@ -81,12 +80,12 @@ struct NullSignEmptySignerView: View {
 						.multilineTextAlignment(.center)
 				}
 
-				VStack(spacing: 10) {
+				HStack(spacing: 10) {
 					Button(action: importFile) {
-						Label("Choose IPA from Files", systemImage: "folder")
+						Label("Choose IPA", systemImage: "folder")
 							.font(.system(size: 15, weight: .semibold))
-							.frame(maxWidth: .infinity)
-							.frame(height: 48)
+							.padding(.horizontal, 17)
+							.padding(.vertical, 13)
 							.foregroundStyle(NullSignStyle.ink)
 							.background(NullSignStyle.cyan)
 							.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -94,10 +93,10 @@ struct NullSignEmptySignerView: View {
 					.buttonStyle(.plain)
 
 					Button(action: importURL) {
-						Label("Import from URL", systemImage: "link")
+						Label("Paste URL", systemImage: "link")
 							.font(.system(size: 15, weight: .medium))
-							.frame(maxWidth: .infinity)
-							.frame(height: 46)
+							.padding(.horizontal, 17)
+							.padding(.vertical, 13)
 							.background(NullSignStyle.panel)
 							.overlay {
 								RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -107,7 +106,6 @@ struct NullSignEmptySignerView: View {
 					}
 					.buttonStyle(.plain)
 				}
-				.frame(maxWidth: 390)
 
 				HStack(spacing: 7) {
 					Circle().fill(hasCertificate ? NullSignStyle.cyan : NullSignStyle.peach).frame(width: 6, height: 6)

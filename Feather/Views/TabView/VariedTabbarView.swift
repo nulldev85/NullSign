@@ -57,8 +57,6 @@ private struct NullSignTabBar: View {
 					.foregroundStyle(selection == tab ? NullSignStyle.cyan : NullSignStyle.muted)
 					.frame(maxWidth: .infinity)
 					.frame(height: 50)
-					.background(selection == tab ? NullSignStyle.cyanWash : Color.clear)
-					.clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
 					.padding(.horizontal, 5)
 					.padding(.vertical, 5)
 					.contentShape(Rectangle())
