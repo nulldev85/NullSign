@@ -79,13 +79,13 @@ struct SourcesCellView: View {
 					ProgressView().controlSize(.mini).tint(NullSignStyle.cyan)
 				} else {
 					Circle()
-						.fill(didFail ? Color.orange : NullSignStyle.cyan)
+						.fill(didFail ? NullSignStyle.peach : NullSignStyle.cyan)
 						.frame(width: 5, height: 5)
 				}
 				Text(_loadedStatus(repository.apps.count))
 			}
 			.font(.caption2.weight(.medium))
-			.foregroundStyle(didFail ? Color.orange : Color.secondary)
+			.foregroundStyle(didFail ? NullSignStyle.peach : Color.secondary)
 		} else if isFetching && !didFail {
 			HStack(spacing: 6) {
 				ProgressView().controlSize(.mini).tint(NullSignStyle.cyan)
@@ -96,7 +96,7 @@ struct SourcesCellView: View {
 		} else if didFail {
 			Label("Unavailable — pull to retry", systemImage: "exclamationmark.circle")
 				.font(.caption2)
-				.foregroundStyle(.orange)
+				.foregroundStyle(NullSignStyle.peach)
 		} else {
 			Text("Waiting to update")
 				.font(.caption2)

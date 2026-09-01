@@ -48,18 +48,19 @@ private struct NullSignTabBar: View {
 					UISelectionFeedbackGenerator().selectionChanged()
 					selection = tab
 				} label: {
-					VStack(spacing: 5) {
-						Rectangle()
-							.fill(selection == tab ? NullSignStyle.cyan : Color.clear)
-							.frame(width: 24, height: 2)
+					VStack(spacing: 4) {
 						Image(systemName: tab.icon)
-							.font(.system(size: 18, weight: selection == tab ? .semibold : .regular))
+							.font(.system(size: 19, weight: selection == tab ? .medium : .regular))
 						Text(tab.title)
-							.font(.system(size: 10, weight: .semibold))
+							.font(.system(size: 10, weight: selection == tab ? .semibold : .medium))
 					}
 					.foregroundStyle(selection == tab ? NullSignStyle.cyan : NullSignStyle.muted)
 					.frame(maxWidth: .infinity)
-					.frame(height: 57)
+					.frame(height: 50)
+					.background(selection == tab ? NullSignStyle.cyanWash : Color.clear)
+					.clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+					.padding(.horizontal, 5)
+					.padding(.vertical, 5)
 					.contentShape(Rectangle())
 				}
 				.buttonStyle(.plain)
@@ -67,7 +68,8 @@ private struct NullSignTabBar: View {
 				.accessibilityAddTraits(selection == tab ? .isSelected : [])
 			}
 		}
-		.background(Color.black.opacity(0.98))
+		.padding(.horizontal, 7)
+		.background(NullSignStyle.panel.opacity(0.98))
 		.overlay(alignment: .top) { Rectangle().fill(NullSignStyle.hairline).frame(height: 1) }
 	}
 }

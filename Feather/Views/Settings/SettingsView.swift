@@ -37,7 +37,7 @@ struct NullSignSettingsSection<Content: View>: View {
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 9) {
-			Text(title.uppercased())
+			Text(title)
 				.font(.caption.weight(.semibold))
 				.tracking(0.6)
 				.foregroundStyle(.secondary)
@@ -188,7 +188,7 @@ struct SettingsView: View {
 						title: identityTitle,
 						detail: identityDetail,
 						status: selectedCertificate == nil ? "Setup needed" : "Active",
-						statusColor: selectedCertificate == nil ? .orange : NullSignStyle.cyan
+						statusColor: selectedCertificate == nil ? NullSignStyle.peach : NullSignStyle.cyan
 					)
 
 					NullSignSettingsSection("Signing") {
@@ -241,7 +241,7 @@ struct SettingsView: View {
 								title: "Storage & Reset",
 								detail: "Clear caches or remove local NullSign data",
 								systemImage: "internaldrive",
-								tint: .orange
+								tint: NullSignStyle.peach
 							)
 						}
 						.buttonStyle(.plain)

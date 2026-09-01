@@ -84,7 +84,7 @@ extension LibraryInfoView {
 					}
 					HStack(spacing: 6) {
 						Circle()
-							.fill(app.isSigned ? NullSignStyle.cyan : .orange)
+							.fill(app.isSigned ? NullSignStyle.cyan : NullSignStyle.peach)
 							.frame(width: 6, height: 6)
 						Text(app.isSigned ? "Signed package" : "Imported package")
 							.font(.caption.weight(.medium))

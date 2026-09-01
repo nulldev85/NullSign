@@ -14,7 +14,7 @@ struct InstallationView: View {
 						? "Installs through a temporary local web service on this iPhone."
 						: "Installs directly through a pairing file and local VPN connection.",
 					status: _installationMethod == 0 ? "Recommended" : "Advanced",
-					statusColor: _installationMethod == 0 ? NullSignStyle.cyan : .orange
+					statusColor: _installationMethod == 0 ? NullSignStyle.cyan : NullSignStyle.peach
 				)
 
 				NullSignSettingsSection(

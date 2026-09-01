@@ -18,7 +18,7 @@ struct TunnelView: View {
 				HStack(spacing: 12) {
 					Image(systemName: _hasPairingFile ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
 						.font(.system(size: 16, weight: .semibold))
-						.foregroundStyle(_hasPairingFile ? NullSignStyle.cyan : .orange)
+						.foregroundStyle(_hasPairingFile ? NullSignStyle.cyan : NullSignStyle.peach)
 						.frame(width: 32, height: 32)
 						.background(NullSignStyle.raisedPanel)
 						.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
