@@ -8,11 +8,11 @@ struct InstallationView: View {
 		ScrollView {
 			VStack(spacing: 22) {
 				NullSignSettingsIntro(
-					systemImage: _installationMethod == 0 ? "network" : "cable.connector",
-					title: _installationMethod == 0 ? "Local Server" : "Device Tunnel",
+					systemImage: _installationMethod == 0 ? "iphone" : "appletv.fill",
+					title: _installationMethod == 0 ? "Install on iPhone" : "Apple TV & Device",
 					detail: _installationMethod == 0
 						? "Installs through a temporary local web service on this iPhone."
-						: "Installs directly through a pairing file and local VPN connection.",
+						: "Pairs with Apple TV over Wi-Fi, or uses the advanced tunnel for this iPhone.",
 					status: _installationMethod == 0 ? "Recommended" : "Advanced",
 					statusColor: _installationMethod == 0 ? NullSignStyle.cyan : NullSignStyle.peach
 				)
@@ -22,8 +22,8 @@ struct InstallationView: View {
 					detail: "The route is used only after an app has signed and passed verification."
 				) {
 					Picker("Installation method", selection: $_installationMethod) {
-						Text("Server").tag(0)
-						Text("Device").tag(1)
+						Text("iPhone").tag(0)
+						Text("Apple TV / Tunnel").tag(1)
 					}
 					.pickerStyle(.segmented)
 				}
@@ -44,13 +44,13 @@ struct InstallationView: View {
 			guard newValue == 1 else { return }
 			_showMethodChangedAlert = true
 		}
-		.alert("Device Tunnel", isPresented: $_showMethodChangedAlert) {
-			Button("Use Server Instead", role: .destructive) {
+		.alert("Apple TV & Device", isPresented: $_showMethodChangedAlert) {
+			Button("Use iPhone Instead", role: .destructive) {
 				_installationMethod = 0
 			}
 			Button("Continue", role: .cancel) { }
 		} message: {
-			Text("This method needs a pairing file and an active loopback VPN. Use it when the server method is unavailable or unreliable.")
+			Text("Apple TV pairing works over Wi-Fi without a VPN or imported pairing file. The pairing file and loopback VPN are only for installing directly on this iPhone.")
 		}
 		.animation(.easeInOut(duration: 0.2), value: _installationMethod)
 	}

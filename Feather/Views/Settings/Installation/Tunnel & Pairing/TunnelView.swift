@@ -17,9 +17,25 @@ struct TunnelView: View {
 			NullSignSettingsSection(
 				"Apple TV",
 				detail: _appleTV.pairedDevice == nil
-					? "Pair once with the code on your TV. NullSign remembers the secure pairing record."
+					? "Leave Remote App and Devices open on Apple TV, then select it here. NullSign remembers the pairing."
 					: "Your pairing is saved. Keep both devices on the same Wi-Fi network to install tvOS apps."
 			) {
+				if _appleTV.pairedDevice == nil {
+					VStack(alignment: .leading, spacing: 5) {
+						Text("ON YOUR APPLE TV")
+							.font(.system(size: 10, weight: .bold, design: .rounded))
+							.foregroundStyle(NullSignStyle.cyan)
+						Text("Settings  ›  Remotes and Devices  ›  Remote App and Devices")
+							.font(.caption.weight(.medium))
+							.foregroundStyle(.secondary)
+						Text("No VPN or imported pairing file is needed.")
+							.font(.caption2)
+							.foregroundStyle(.secondary)
+					}
+					.frame(maxWidth: .infinity, alignment: .leading)
+					NullSignSettingsDivider()
+				}
+
 				if let paired = _appleTV.pairedDevice {
 					HStack(spacing: 12) {
 						Image(systemName: "appletv.fill")
