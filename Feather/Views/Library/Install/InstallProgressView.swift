@@ -73,7 +73,9 @@ struct NullSignInstallProgressBar: View {
 				.opacity(showsPercentage && progress != nil && displayedProgress > 0 && displayedProgress < 1 ? 1 : 0)
 				.frame(height: 12)
 
-			TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+			// Fifteen frames per second is smooth at this size and avoids keeping the
+			// main thread busy while an archive is being signed or installed.
+			TimelineView(.periodic(from: .now, by: 1.0 / 15.0)) { timeline in
 				GeometryReader { proxy in
 					let width = max(proxy.size.width, 1)
 					let seconds = timeline.date.timeIntervalSinceReferenceDate
@@ -94,6 +96,8 @@ struct NullSignInstallProgressBar: View {
 							_determinateFill(width: width, seconds: seconds)
 						}
 					}
+					.frame(width: width, height: 8, alignment: .leading)
+					.clipShape(Capsule())
 				}
 				.frame(height: 8)
 			}
@@ -105,10 +109,10 @@ struct NullSignInstallProgressBar: View {
 
 	@ViewBuilder
 	private func _determinateFill(width: CGFloat, seconds: TimeInterval) -> some View {
-		let fillWidth = width * displayedProgress
-		let shimmerTravel = fillWidth + 70
-		let shimmerX = CGFloat(seconds.truncatingRemainder(dividingBy: 1.8) / 1.8) * shimmerTravel - 60
-		let glowPulse = 0.48 + (sin(seconds * 3.0) + 1) * 0.16
+		let fillWidth = min(width, max(0, width * displayedProgress))
+		let shimmerWidth = min(44, fillWidth)
+		let shimmerTravel = max(0, fillWidth - shimmerWidth)
+		let shimmerX = CGFloat(seconds.truncatingRemainder(dividingBy: 1.8) / 1.8) * shimmerTravel
 
 		Capsule()
 			.fill(
@@ -125,25 +129,14 @@ struct NullSignInstallProgressBar: View {
 					startPoint: .leading,
 					endPoint: .trailing
 				)
-				.frame(width: 54)
+				.frame(width: shimmerWidth)
 				.offset(x: shimmerX)
-				.mask(Capsule().frame(width: fillWidth, height: 8, alignment: .leading))
 			}
-
-		if displayedProgress > 0 {
-			Circle()
-				.fill(NullSignStyle.crimson)
-				.frame(width: 7, height: 7)
-				.blur(radius: 2.2)
-				.opacity(glowPulse)
-				.offset(x: max(0, fillWidth - 7))
-				.shadow(color: NullSignStyle.crimson.opacity(glowPulse), radius: 8)
-		}
 	}
 
 	@ViewBuilder
 	private func _indeterminateFill(width: CGFloat, seconds: TimeInterval) -> some View {
-		let segmentWidth = max(54, width * 0.24)
+		let segmentWidth = min(width, max(54, width * 0.24))
 		let travel = max(0, width - segmentWidth)
 		let easedPosition = (sin(seconds * 2.1) + 1) / 2
 

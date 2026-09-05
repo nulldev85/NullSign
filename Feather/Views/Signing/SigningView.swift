@@ -134,7 +134,6 @@ struct SigningView: View {
 				}
 			}
 			.disabled(_isSigning)
-			.animation(.smooth, value: _isSigning)
 		}
 		.onAppear {
 			// ppq protection
@@ -319,6 +318,9 @@ extension SigningView {
 			icon: appIcon,
 			certificate: _selectedCert()
 		) { error in
+			// FR normally completes on MainActor. Keep the interaction state
+			// explicit here so an error never leaves the entire screen locked.
+			_isSigning = false
 			if let error {
 				let ok = UIAlertAction(title: .localized("Dismiss"), style: .cancel) { _ in
 					dismiss()
