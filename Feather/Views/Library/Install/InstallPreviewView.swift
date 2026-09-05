@@ -61,19 +61,13 @@ struct InstallPreviewView: View {
 				_button()
 			}
 
-			GeometryReader { proxy in
-				ZStack(alignment: .leading) {
-					Capsule().fill(Color.white.opacity(0.08))
-					Capsule()
-						.fill(NullSignStyle.accent)
-						.frame(width: proxy.size.width * max(0.025, min(viewModel.overallProgress, 1)))
-				}
-			}
-			.frame(height: 3)
+			NullSignInstallProgressBar(
+				progress: viewModel.isCompleted ? 1 : (viewModel.overallProgress > 0 ? viewModel.overallProgress : nil)
+			)
 		}
 		.padding(20)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-		.background(NullSignStyle.panel)
+		.background(Color(red: 0.110, green: 0.110, blue: 0.118))
 		.cornerRadius(cornerRadius)
 		.padding()
 		.sheet(isPresented: $_isWebviewPresenting) {
