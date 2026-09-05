@@ -43,7 +43,7 @@ struct SigningToggleCellView<T>: View {
 			)) {
 				_rowLabel
 			}
-			.tint(NullSignStyle.cyan)
+			.tint(NullSignStyle.accent)
 		}
 	}
 

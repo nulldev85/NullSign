@@ -65,7 +65,7 @@ struct ServerView: View {
 							.foregroundStyle(.secondary)
 					}
 				}
-				.tint(NullSignStyle.cyan)
+				.tint(NullSignStyle.accent)
 				.disabled(_serverMethod != 1)
 			}
 
@@ -78,7 +78,7 @@ struct ServerView: View {
 				} label: {
 					HStack(spacing: 12) {
 						Image(systemName: "lock.rotation")
-							.foregroundStyle(NullSignStyle.cyan)
+							.foregroundStyle(NullSignStyle.accent)
 							.frame(width: 32, height: 32)
 							.background(NullSignStyle.raisedPanel)
 							.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -87,7 +87,7 @@ struct ServerView: View {
 							.foregroundStyle(.primary)
 						Spacer()
 						if _isUpdatingCertificates {
-							ProgressView().tint(NullSignStyle.cyan)
+							ProgressView().tint(NullSignStyle.accent)
 						} else {
 							Image(systemName: "arrow.down")
 								.foregroundStyle(.secondary)

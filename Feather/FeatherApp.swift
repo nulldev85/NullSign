@@ -31,7 +31,7 @@ struct NullSignApp: App {
 			}
 			.animation(.smooth, value: downloadManager.manualDownloads.description)
 			.preferredColorScheme(.dark)
-			.tint(.cyan)
+			.tint(.white)
 			.onReceive(NotificationCenter.default.publisher(for: .heartbeatInvalidHost)) { _ in
 				DispatchQueue.main.async {
 					UIAlertController.showAlertWithOk(
@@ -43,9 +43,9 @@ struct NullSignApp: App {
 			// dear god help me
 			.onAppear {
 				UserDefaults.standard.set(UIUserInterfaceStyle.dark.rawValue, forKey: "Feather.userInterfaceStyle")
-				UserDefaults.standard.set("#00E5FF", forKey: "Feather.userTintColor")
+				UserDefaults.standard.set("#FFFFFF", forKey: "Feather.userTintColor")
 				UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = .dark
-				UIApplication.topViewController()?.view.window?.tintColor = .cyan
+				UIApplication.topViewController()?.view.window?.tintColor = .white
 			}
 		}
 	}
@@ -149,6 +149,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 		_ application: UIApplication,
 		didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
 	) -> Bool {
+		UIView.appearance().tintColor = .white
+		UITableView.appearance().backgroundColor = .black
+		UICollectionView.appearance().backgroundColor = .black
 		_createPipeline()
 		_createDocumentsDirectories()
 		ResetView.clearWorkCache()

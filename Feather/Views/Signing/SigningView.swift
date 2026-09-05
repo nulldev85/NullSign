@@ -85,7 +85,7 @@ struct SigningView: View {
 								.foregroundStyle(.black)
 								.padding(.horizontal, 17)
 								.frame(height: 50)
-								.background(NullSignStyle.cyan)
+								.background(NullSignStyle.accent)
 								.clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
 								.padding(.horizontal, 16)
 							}

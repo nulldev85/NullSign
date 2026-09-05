@@ -27,7 +27,7 @@ struct ConfigurationDictView: View {
 								.foregroundStyle(.black)
 								.padding(.horizontal, 12)
 								.frame(height: 36)
-								.background(NullSignStyle.cyan)
+								.background(NullSignStyle.accent)
 								.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 						}
 						.buttonStyle(.plain)
@@ -38,7 +38,7 @@ struct ConfigurationDictView: View {
 					VStack(spacing: 9) {
 						Image(systemName: "arrow.triangle.swap")
 							.font(.title2)
-							.foregroundStyle(NullSignStyle.cyan)
+							.foregroundStyle(NullSignStyle.accent)
 						Text("No rules configured")
 							.font(.headline)
 						Text("Apps keep their original value unless a matching rule is added.")
@@ -82,7 +82,7 @@ struct ConfigurationDictView: View {
 				HStack(spacing: 7) {
 					Image(systemName: "arrow.right")
 						.font(.caption.weight(.semibold))
-						.foregroundStyle(NullSignStyle.cyan)
+						.foregroundStyle(NullSignStyle.accent)
 					Text(value)
 						.font(.body.weight(.semibold))
 						.lineLimit(2)

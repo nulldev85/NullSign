@@ -41,7 +41,7 @@ struct SourceAppsDetailView: View {
 											.font(.caption.weight(.semibold))
 									}
 									.font(.subheadline.weight(.semibold))
-									.foregroundStyle(NullSignStyle.cyan)
+									.foregroundStyle(NullSignStyle.accent)
 								}
 								.buttonStyle(.plain)
 							}
@@ -85,7 +85,7 @@ struct SourceAppsDetailView: View {
 				_share()
 			}
 		}
-		.tint(NullSignStyle.cyan)
+		.tint(NullSignStyle.accent)
 		.fullScreenCover(isPresented: $_isScreenshotPreviewPresented) {
 			if let screenshots = app.screenshotURLs {
 				ScreenshotPreviewView(screenshotURLs: screenshots, initialIndex: _selectedScreenshotIndex)
@@ -106,7 +106,7 @@ struct SourceAppsDetailView: View {
 					if let developer = app.developer, !developer.isEmpty {
 						Text(developer)
 							.font(.subheadline.weight(.medium))
-							.foregroundStyle(NullSignStyle.cyan)
+							.foregroundStyle(NullSignStyle.accent)
 					}
 
 					if let summary = app.subtitle ?? app.description, !summary.isEmpty {
@@ -237,7 +237,7 @@ struct SourceAppsDetailView: View {
 		HStack(alignment: .top, spacing: 11) {
 			Image(systemName: icon)
 				.font(.subheadline.weight(.medium))
-				.foregroundStyle(NullSignStyle.cyan)
+				.foregroundStyle(NullSignStyle.accent)
 				.frame(width: 21)
 			VStack(alignment: .leading, spacing: 3) {
 				Text(title).font(.subheadline.weight(.semibold))

@@ -18,7 +18,7 @@ struct FRExpirationPillView: View {
 			? .localized("Revoked")
 			: expiration?.formatted ?? title
 		
-		let statusColor = revoked ? Color.red : (expiration?.color ?? NullSignStyle.cyan)
+		let statusColor = revoked ? NullSignStyle.warning : NullSignStyle.accent
 
 		HStack(spacing: 6) {
 			Circle()

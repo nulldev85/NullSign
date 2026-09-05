@@ -80,7 +80,7 @@ struct SigningEntitlementsView: View {
 		.scrollContentBackground(.hidden)
 		.background(Color.black)
 		.navigationTitle(.localized("Entitlements"))
-		.tint(NullSignStyle.cyan)
+		.tint(NullSignStyle.accent)
 		.sheet(isPresented: $_isAddingPresenting) {
 			FileImporterRepresentableView(
 				allowedContentTypes:  [.xmlPropertyList, .plist, .entitlements],

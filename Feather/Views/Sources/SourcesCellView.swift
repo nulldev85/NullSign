@@ -62,7 +62,7 @@ struct SourcesCellView: View {
 				.fill(NullSignStyle.raisedPanel)
 			Image(systemName: "shippingbox")
 				.font(.system(size: 20, weight: .medium))
-				.foregroundStyle(NullSignStyle.cyan)
+				.foregroundStyle(NullSignStyle.accent)
 		}
 		.frame(width: 50, height: 50)
 		.overlay {
@@ -76,19 +76,19 @@ struct SourcesCellView: View {
 		if let repository {
 			HStack(spacing: 5) {
 				if isFetching && !didFail {
-					ProgressView().controlSize(.mini).tint(NullSignStyle.cyan)
+					ProgressView().controlSize(.mini).tint(NullSignStyle.accent)
 				} else {
 					Circle()
-						.fill(didFail ? NullSignStyle.peach : NullSignStyle.cyan)
+						.fill(didFail ? NullSignStyle.warning : NullSignStyle.accent)
 						.frame(width: 5, height: 5)
 				}
 				Text(_loadedStatus(repository.apps.count))
 			}
 			.font(.caption2.weight(.medium))
-			.foregroundStyle(didFail ? NullSignStyle.peach : Color.secondary)
+			.foregroundStyle(didFail ? NullSignStyle.warning : Color.secondary)
 		} else if isFetching && !didFail {
 			HStack(spacing: 6) {
-				ProgressView().controlSize(.mini).tint(NullSignStyle.cyan)
+				ProgressView().controlSize(.mini).tint(NullSignStyle.accent)
 				Text("Updating")
 			}
 			.font(.caption2)
@@ -96,7 +96,7 @@ struct SourcesCellView: View {
 		} else if didFail {
 			Label("Unavailable — pull to retry", systemImage: "exclamationmark.circle")
 				.font(.caption2)
-				.foregroundStyle(NullSignStyle.peach)
+				.foregroundStyle(NullSignStyle.warning)
 		} else {
 			Text("Waiting to update")
 				.font(.caption2)

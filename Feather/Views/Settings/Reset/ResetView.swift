@@ -90,7 +90,7 @@ struct ResetView: View {
 						title: "Reset Settings",
 						detail: "Restore every preference to its default",
 						systemImage: "slider.horizontal.3",
-						tint: .red
+						tint: NullSignStyle.warning
 					) {
 						Self.resetAlert(title: "Reset Settings") {
 							Self.resetUserDefaults()
@@ -101,7 +101,7 @@ struct ResetView: View {
 						title: "Erase All NullSign Data",
 						detail: "Apps, certificates, repositories, caches, and settings",
 						systemImage: "trash",
-						tint: .red
+						tint: NullSignStyle.warning
 					) {
 						Self.resetAlert(title: "Erase All NullSign Data") {
 							Self.resetAll()
@@ -121,7 +121,7 @@ struct ResetView: View {
 		title: String,
 		detail: String,
 		systemImage: String,
-		tint: Color = NullSignStyle.cyan,
+		tint: Color = NullSignStyle.accent,
 		action: @escaping () -> Void
 	) -> some View {
 		Button(action: action) {

@@ -65,7 +65,7 @@ struct InstallPreviewView: View {
 				ZStack(alignment: .leading) {
 					Capsule().fill(Color.white.opacity(0.08))
 					Capsule()
-						.fill(NullSignStyle.cyan)
+						.fill(NullSignStyle.accent)
 						.frame(width: proxy.size.width * max(0.025, min(viewModel.overallProgress, 1)))
 				}
 			}
@@ -137,7 +137,7 @@ struct InstallPreviewView: View {
 	private func _status() -> some View {
 		Label(viewModel.statusLabel, systemImage: viewModel.statusImage)
 			.font(.system(size: 12, weight: .semibold))
-			.foregroundStyle(viewModel.isCompleted ? NullSignStyle.cyan : NullSignStyle.muted)
+			.foregroundStyle(viewModel.isCompleted ? NullSignStyle.accent : NullSignStyle.muted)
 			.animation(.smooth, value: viewModel.statusImage)
 	}
 	
@@ -169,7 +169,7 @@ struct InstallPreviewView: View {
 				.padding(.horizontal, 12)
 				.frame(height: 34)
 				.foregroundStyle(.black)
-				.background(NullSignStyle.cyan)
+				.background(NullSignStyle.accent)
 				.clipShape(Capsule())
 		}
 		.buttonStyle(.plain)

@@ -74,7 +74,7 @@ struct SigningDylibView: View {
 		.scrollContentBackground(.hidden)
 		.background(Color.black)
 		.navigationTitle(.localized("Dylibs"))
-		.tint(NullSignStyle.cyan)
+		.tint(NullSignStyle.accent)
 		.onAppear(perform: _loadDylibs)
 	}
 }

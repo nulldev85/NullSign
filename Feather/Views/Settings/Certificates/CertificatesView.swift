@@ -89,7 +89,7 @@ extension CertificatesView {
 						.foregroundStyle(.black)
 						.padding(.horizontal, 12)
 						.frame(height: 36)
-						.background(NullSignStyle.cyan)
+						.background(NullSignStyle.accent)
 						.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 				}
 				.buttonStyle(.plain)
@@ -101,7 +101,7 @@ extension CertificatesView {
 		VStack(spacing: 11) {
 			Image(systemName: "checkmark.seal")
 				.font(.system(size: 25, weight: .medium))
-				.foregroundStyle(NullSignStyle.cyan)
+				.foregroundStyle(NullSignStyle.accent)
 			Text("No certificates yet")
 				.font(.headline)
 			Text("Use Import above to add your signing identity. Certificate files and passwords remain on this device.")
@@ -153,13 +153,13 @@ extension CertificatesView {
 		.background(NullSignStyle.panel)
 		.overlay(alignment: .leading) {
 			Capsule()
-				.fill(isSelected ? NullSignStyle.cyan : Color.clear)
+				.fill(isSelected ? NullSignStyle.accent : Color.clear)
 				.frame(width: 3)
 				.padding(.vertical, 12)
 		}
 		.overlay {
 			RoundedRectangle(cornerRadius: 18, style: .continuous)
-				.stroke(isSelected ? NullSignStyle.cyan.opacity(0.5) : NullSignStyle.hairline, lineWidth: 1)
+				.stroke(isSelected ? NullSignStyle.accent.opacity(0.5) : NullSignStyle.hairline, lineWidth: 1)
 		}
 		.clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 		.transaction { $0.animation = nil }

@@ -24,7 +24,7 @@ struct TunnelView: View {
 					VStack(alignment: .leading, spacing: 5) {
 						Text("ON YOUR APPLE TV")
 							.font(.system(size: 10, weight: .bold, design: .rounded))
-							.foregroundStyle(NullSignStyle.cyan)
+							.foregroundStyle(NullSignStyle.accent)
 						Text("Settings  ›  Remotes and Devices  ›  Remote App and Devices")
 							.font(.caption.weight(.medium))
 							.foregroundStyle(.secondary)
@@ -39,7 +39,7 @@ struct TunnelView: View {
 				if let paired = _appleTV.pairedDevice {
 					HStack(spacing: 12) {
 						Image(systemName: "appletv.fill")
-							.foregroundStyle(NullSignStyle.cyan)
+							.foregroundStyle(NullSignStyle.accent)
 							.frame(width: 32, height: 32)
 							.background(NullSignStyle.raisedPanel)
 							.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -58,7 +58,7 @@ struct TunnelView: View {
 							.foregroundStyle(.secondary)
 					Spacer()
 					Button(_appleTV.isScanning ? "Refresh" : "Scan") { _appleTV.refresh() }
-						.font(.subheadline.weight(.semibold)).foregroundStyle(NullSignStyle.cyan)
+						.font(.subheadline.weight(.semibold)).foregroundStyle(NullSignStyle.accent)
 					}
 				} else {
 					ForEach(Array(_appleTV.discovered.enumerated()), id: \.element.id) { index, device in
@@ -84,7 +84,7 @@ struct TunnelView: View {
 				HStack(spacing: 12) {
 					Image(systemName: _hasPairingFile ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
 						.font(.system(size: 16, weight: .semibold))
-						.foregroundStyle(_hasPairingFile ? NullSignStyle.cyan : NullSignStyle.peach)
+						.foregroundStyle(_hasPairingFile ? NullSignStyle.accent : NullSignStyle.warning)
 						.frame(width: 32, height: 32)
 						.background(NullSignStyle.raisedPanel)
 						.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -101,7 +101,7 @@ struct TunnelView: View {
 						_isImportingPairingPresenting = true
 					}
 					.font(.subheadline.weight(.semibold))
-					.foregroundStyle(NullSignStyle.cyan)
+					.foregroundStyle(NullSignStyle.accent)
 				}
 			}
 

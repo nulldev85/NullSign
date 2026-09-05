@@ -106,7 +106,7 @@ struct SourcesView: View {
 				SourcesAddView()
 			}
 		}
-		.tint(NullSignStyle.cyan)
+		.tint(NullSignStyle.accent)
 		.task(id: Array(_sources)) {
 			await viewModel.fetchSources(_sources)
 		}
@@ -119,7 +119,7 @@ struct SourcesView: View {
 					.fill(NullSignStyle.raisedPanel)
 				Image(systemName: "square.grid.2x2")
 					.font(.system(size: 20, weight: .semibold))
-					.foregroundStyle(NullSignStyle.cyan)
+					.foregroundStyle(NullSignStyle.accent)
 			}
 			.frame(width: 50, height: 50)
 

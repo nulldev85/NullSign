@@ -54,7 +54,7 @@ private struct NullSignTabBar: View {
 						Text(tab.title)
 							.font(.system(size: 10, weight: selection == tab ? .semibold : .medium))
 					}
-					.foregroundStyle(selection == tab ? NullSignStyle.cyan : NullSignStyle.muted)
+					.foregroundStyle(selection == tab ? NullSignStyle.accent : NullSignStyle.muted)
 					.frame(maxWidth: .infinity)
 					.frame(height: 50)
 					.padding(.horizontal, 5)

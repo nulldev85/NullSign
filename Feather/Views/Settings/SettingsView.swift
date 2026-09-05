@@ -2,7 +2,7 @@ import SwiftUI
 import NimbleViews
 
 // Settings deliberately use a small set of native-looking building blocks. The
-// cyan is reserved for selection and state; the rest stays quiet on OLED black.
+// White and stepped grays preserve hierarchy on true OLED black.
 struct NullSignSettingsCard<Content: View>: View {
 	private let content: Content
 
@@ -60,7 +60,7 @@ struct NullSignSettingsRow: View {
 	let detail: String?
 	let systemImage: String
 	var value: String? = nil
-	var tint: Color = NullSignStyle.cyan
+	var tint: Color = NullSignStyle.accent
 	var showsChevron = true
 
 	var body: some View {
@@ -115,14 +115,14 @@ struct NullSignSettingsIntro: View {
 	let title: String
 	let detail: String
 	var status: String? = nil
-	var statusColor: Color = NullSignStyle.cyan
+	var statusColor: Color = NullSignStyle.accent
 
 	var body: some View {
 		NullSignSettingsCard {
 			HStack(alignment: .top, spacing: 14) {
 				Image(systemName: systemImage)
 					.font(.system(size: 22, weight: .medium))
-					.foregroundStyle(NullSignStyle.cyan)
+					.foregroundStyle(NullSignStyle.accent)
 					.frame(width: 42, height: 42)
 					.background(NullSignStyle.raisedPanel)
 					.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -188,7 +188,7 @@ struct SettingsView: View {
 						title: identityTitle,
 						detail: identityDetail,
 						status: selectedCertificate == nil ? "Setup needed" : "Active",
-						statusColor: selectedCertificate == nil ? NullSignStyle.peach : NullSignStyle.cyan
+						statusColor: selectedCertificate == nil ? NullSignStyle.warning : NullSignStyle.accent
 					)
 
 					NullSignSettingsSection("Signing") {
@@ -241,7 +241,7 @@ struct SettingsView: View {
 								title: "Storage & Reset",
 								detail: "Clear caches or remove local NullSign data",
 								systemImage: "internaldrive",
-								tint: NullSignStyle.peach
+								tint: NullSignStyle.warning
 							)
 						}
 						.buttonStyle(.plain)

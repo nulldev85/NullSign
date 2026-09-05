@@ -53,7 +53,7 @@ struct LibraryInfoView: View {
 			.listStyle(.plain)
 			.scrollContentBackground(.hidden)
 			.background(Color.black)
-			.tint(NullSignStyle.cyan)
+			.tint(NullSignStyle.accent)
 			.toolbar {
 				NBToolbarButton(role: .close)
 			}
@@ -84,7 +84,7 @@ extension LibraryInfoView {
 					}
 					HStack(spacing: 6) {
 						Circle()
-							.fill(app.isSigned ? NullSignStyle.cyan : NullSignStyle.peach)
+							.fill(app.isSigned ? NullSignStyle.accent : NullSignStyle.warning)
 							.frame(width: 6, height: 6)
 						Text(app.isSigned ? "Signed package" : "Imported package")
 							.font(.caption.weight(.medium))

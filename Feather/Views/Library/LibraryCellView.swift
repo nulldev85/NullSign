@@ -74,7 +74,7 @@ struct LibraryCellView: View {
 			}
 		}
 		.nullSignPanel()
-		.background(_isSelected && isEditing ? NullSignStyle.cyan.opacity(0.08) : Color.clear)
+		.background(_isSelected && isEditing ? NullSignStyle.accent.opacity(0.08) : Color.clear)
 		.contentShape(Rectangle())
 		.onTapGesture {
 			if isEditing {
@@ -139,7 +139,7 @@ extension LibraryCellView {
 					Image(systemName: "arrow.down.circle.fill")
 						.font(.system(size: 18, weight: .semibold))
 						.symbolRenderingMode(.palette)
-						.foregroundStyle(.white, Color.accentColor)
+						.foregroundStyle(.white, NullSignStyle.muted)
 						.background(
 							Circle()
 								.fill(Color(.systemBackground))

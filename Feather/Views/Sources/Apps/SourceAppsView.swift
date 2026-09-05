@@ -106,7 +106,7 @@ struct SourceAppsView: View {
 				_sortActions()
 			}
 		}
-		.tint(NullSignStyle.cyan)
+		.tint(NullSignStyle.accent)
 		.onAppear {
 			_sortOption = SortOption(rawValue: _sortOptionRawValue) ?? .default
 			_load()

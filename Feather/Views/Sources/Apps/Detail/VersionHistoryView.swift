@@ -26,7 +26,7 @@ struct VersionHistoryView: View {
 									.font(.subheadline.weight(.bold))
 									.foregroundStyle(.black)
 									.frame(width: 34, height: 34)
-									.background(NullSignStyle.cyan)
+									.background(NullSignStyle.accent)
 									.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 							}
 							.buttonStyle(.plain)
@@ -48,7 +48,7 @@ struct VersionHistoryView: View {
 			.padding(16)
 		}
 		.background(Color.black)
-		.tint(NullSignStyle.cyan)
+		.tint(NullSignStyle.accent)
 	}
 
 	private func _download(_ version: ASRepository.App.Version, from url: URL) {

@@ -18,7 +18,7 @@ struct CertificatesCellView: View {
 		HStack(spacing: 12) {
 			Image(systemName: cert.revoked ? "xmark.shield.fill" : "checkmark.shield.fill")
 				.font(.system(size: 18, weight: .medium))
-				.foregroundStyle(cert.revoked ? .red : NullSignStyle.cyan)
+				.foregroundStyle(cert.revoked ? NullSignStyle.warning : NullSignStyle.accent)
 				.frame(width: 38, height: 38)
 				.background(NullSignStyle.raisedPanel)
 				.clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
@@ -40,7 +40,7 @@ struct CertificatesCellView: View {
 			if isSelected {
 				Image(systemName: "checkmark.circle.fill")
 					.font(.body)
-					.foregroundStyle(NullSignStyle.cyan)
+					.foregroundStyle(NullSignStyle.accent)
 					.accessibilityLabel("Selected")
 			}
 		}
@@ -54,14 +54,14 @@ struct CertificatesCellView: View {
 	private var _status: some View {
 		HStack(spacing: 8) {
 			if cert.revoked {
-				_statusText("Revoked", color: .red)
+				_statusText("Revoked", color: NullSignStyle.warning)
 			} else if let expiration = cert.expiration {
 				let info = expiration.expirationInfo()
 				_statusText(info.formatted, color: info.color)
 			}
 
 			if cert.ppQCheck == true {
-				_statusText("PPQ", color: .orange)
+				_statusText("PPQ", color: NullSignStyle.muted)
 			}
 		}
 	}

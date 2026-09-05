@@ -28,10 +28,10 @@ struct PlatformBadge: View {
 		if platform == .tvOS {
 			Text("tvOS")
 				.font(.system(size: 9, weight: .bold, design: .rounded))
-				.foregroundStyle(.black.opacity(0.78))
+				.foregroundStyle(.white)
 				.padding(.horizontal, 6)
 				.frame(height: 17)
-				.background(NullSignStyle.peach)
+				.background(NullSignStyle.crimson)
 				.clipShape(Capsule())
 				.accessibilityLabel("Apple TV app")
 		}

@@ -8,7 +8,7 @@ NullSign is a minimal, OLED-first on-device IPA signer based on Feather. It keep
 - Sign and install apps using an imported certificate pair.
 - Browse apps from user-added AltStore-compatible repositories.
 - Import `.p12` and `.mobileprovision` files, validate their password, select the active certificate, inspect it, rename it, check revocation, and delete it.
-- OLED-black appearance with an electric-cyan accent.
+- True OLED-black appearance with a monochrome interface.
 
 ## Build the bootstrap IPA with GitHub Actions
 

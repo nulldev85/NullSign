@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Small, source-specific pieces used throughout the Apps tab.  These deliberately
-/// stay close to native iOS layout and typography; the cyan is reserved for status
+/// stay close to native iOS layout and typography with a monochrome hierarchy
 /// and actions instead of becoming decoration.
 struct SourceSectionLabel: View {
 	let title: String
@@ -37,7 +37,7 @@ struct SourceEmptyState: View {
 					.frame(width: 64, height: 64)
 				Image(systemName: icon)
 					.font(.system(size: 25, weight: .medium))
-					.foregroundStyle(NullSignStyle.cyan)
+					.foregroundStyle(NullSignStyle.accent)
 			}
 
 			VStack(spacing: 5) {
@@ -57,7 +57,7 @@ struct SourceEmptyState: View {
 						.foregroundStyle(.black)
 						.padding(.horizontal, 18)
 						.frame(height: 38)
-						.background(NullSignStyle.cyan)
+						.background(NullSignStyle.accent)
 						.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 				}
 				.buttonStyle(.plain)
@@ -94,7 +94,7 @@ struct SourceLoadingState: View {
 	var body: some View {
 		VStack(spacing: 13) {
 			ProgressView()
-				.tint(NullSignStyle.cyan)
+				.tint(NullSignStyle.accent)
 			Text(label)
 				.font(.subheadline)
 				.foregroundStyle(.secondary)

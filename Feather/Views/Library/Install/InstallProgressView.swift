@@ -24,10 +24,10 @@ struct InstallProgressView: View {
 	private func _appIcon() -> some View {
 		ZStack {
 			Circle()
-				.stroke(NullSignStyle.cyan.opacity(0.16), lineWidth: 4)
+				.stroke(NullSignStyle.accent.opacity(0.16), lineWidth: 4)
 			Circle()
 				.trim(from: 0, to: max(0.035, min(viewModel.overallProgress, 1)))
-				.stroke(NullSignStyle.cyan, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+				.stroke(NullSignStyle.accent, style: StrokeStyle(lineWidth: 4, lineCap: .round))
 				.rotationEffect(.degrees(-90))
 				.animation(.smooth, value: viewModel.overallProgress)
 			FRAppIconView(app: app, size: 58)
@@ -40,7 +40,7 @@ struct InstallProgressView: View {
 				Image(systemName: "checkmark.circle.fill")
 					.font(.system(size: 20, weight: .bold))
 					.symbolRenderingMode(.palette)
-					.foregroundStyle(.black, NullSignStyle.cyan)
+					.foregroundStyle(.black, NullSignStyle.accent)
 					.background(Circle().fill(.black).padding(2))
 					.offset(x: 31, y: 31)
 			}

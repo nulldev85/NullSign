@@ -91,7 +91,7 @@ struct SigningFrameworksView: View {
 		.scrollContentBackground(.hidden)
 		.background(Color.black)
 		.navigationTitle(.localized("Frameworks & PlugIns"))
-		.tint(NullSignStyle.cyan)
+		.tint(NullSignStyle.accent)
 		.onAppear(perform: _listFrameworksAndPlugins)
 	}
 }

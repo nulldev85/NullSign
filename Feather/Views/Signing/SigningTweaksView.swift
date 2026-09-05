@@ -60,7 +60,7 @@ struct SigningTweaksView: View {
 						}
 					}
 				}
-				.tint(NullSignStyle.cyan)
+				.tint(NullSignStyle.accent)
 				.signingDestinationRow()
 			} header: {
 				SigningSectionHeader(
@@ -90,7 +90,7 @@ struct SigningTweaksView: View {
 		.scrollContentBackground(.hidden)
 		.background(Color.black)
 		.navigationTitle(.localized("Tweaks"))
-		.tint(NullSignStyle.cyan)
+		.tint(NullSignStyle.accent)
 		.toolbar {
 			NBToolbarButton(
 				systemImage: "plus",

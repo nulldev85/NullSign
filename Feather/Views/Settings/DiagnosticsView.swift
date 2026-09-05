@@ -15,7 +15,7 @@ struct DiagnosticsView: View {
 						? "A signing log is available to review or share."
 						: "No signing events have been recorded yet.",
 					status: _logExists ? "Log available" : "Empty",
-					statusColor: _logExists ? NullSignStyle.cyan : Color.secondary
+					statusColor: _logExists ? NullSignStyle.accent : Color.secondary
 				)
 
 				NullSignSettingsSection(
@@ -46,7 +46,7 @@ struct DiagnosticsView: View {
 							title: "Clear Diagnostic Log",
 							detail: "Remove all recorded signing events",
 							systemImage: "trash",
-							tint: .red,
+							tint: NullSignStyle.warning,
 							showsChevron: false
 						)
 					}
@@ -78,7 +78,7 @@ struct DiagnosticsView: View {
 		HStack(spacing: 12) {
 			Image(systemName: systemImage)
 				.font(.system(size: 15, weight: .semibold))
-				.foregroundStyle(NullSignStyle.cyan)
+				.foregroundStyle(NullSignStyle.accent)
 				.frame(width: 32, height: 32)
 				.background(NullSignStyle.raisedPanel)
 				.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -87,7 +87,7 @@ struct DiagnosticsView: View {
 			Spacer()
 			Image(systemName: "checkmark")
 				.font(.caption.weight(.bold))
-				.foregroundStyle(NullSignStyle.cyan)
+				.foregroundStyle(NullSignStyle.accent)
 		}
 	}
 

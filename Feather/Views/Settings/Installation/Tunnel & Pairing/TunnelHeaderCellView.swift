@@ -7,7 +7,7 @@ struct TunnelHeaderView: View {
 		HStack(spacing: 12) {
 			Image(systemName: "wave.3.right")
 				.font(.system(size: 15, weight: .semibold))
-				.foregroundStyle(NullSignStyle.cyan)
+				.foregroundStyle(NullSignStyle.accent)
 				.frame(width: 32, height: 32)
 				.background(NullSignStyle.raisedPanel)
 				.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -33,7 +33,7 @@ struct TunnelPulseRing: View {
 	var body: some View {
 		TimelineView(.periodic(from: .now, by: 0.5)) { timeline in
 			let age = timeline.date.timeIntervalSince(lastHeartbeat)
-			let color: Color = age < 5 ? NullSignStyle.cyan : (age < 10 ? .orange : .red)
+			let color: Color = age < 5 ? NullSignStyle.accent : (age < 10 ? NullSignStyle.muted : NullSignStyle.warning)
 
 			HStack(spacing: 6) {
 				Circle()

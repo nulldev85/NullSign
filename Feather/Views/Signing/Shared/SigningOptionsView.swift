@@ -223,7 +223,7 @@ struct SigningOptionsView: View {
 				}
 			}
 			.labelsHidden()
-			.tint(NullSignStyle.cyan)
+			.tint(NullSignStyle.accent)
 		}
 		.signingDestinationRow()
 	}
@@ -243,11 +243,11 @@ struct SigningOptionsView: View {
 				if let tempValue = temporaryValue, tempValue != isOn.wrappedValue {
 					Text("Changed")
 						.font(.caption2.weight(.semibold))
-						.foregroundStyle(NullSignStyle.cyan)
+						.foregroundStyle(NullSignStyle.accent)
 				}
 			}
 		}
-		.tint(NullSignStyle.cyan)
+		.tint(NullSignStyle.accent)
 		.signingDestinationRow()
 	}
 }

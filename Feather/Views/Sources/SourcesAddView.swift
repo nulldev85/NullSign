@@ -54,7 +54,7 @@ struct SourcesAddView: View {
 			.toolbar {
 				NBToolbarButton(role: .cancel)
 			}
-			.tint(NullSignStyle.cyan)
+			.tint(NullSignStyle.accent)
 			.task {
 				await _fetchRecommendedRepositories()
 			}
@@ -73,7 +73,7 @@ struct SourcesAddView: View {
 
 				HStack(spacing: 8) {
 					Image(systemName: "link")
-						.foregroundStyle(NullSignStyle.cyan)
+						.foregroundStyle(NullSignStyle.accent)
 					TextField(.localized("https://example.com/apps.json"), text: $_sourceURL)
 						.keyboardType(.URL)
 						.textInputAutocapitalization(.never)
@@ -83,7 +83,7 @@ struct SourcesAddView: View {
 					} label: {
 						Image(systemName: "doc.on.clipboard")
 							.font(.subheadline.weight(.semibold))
-							.foregroundStyle(NullSignStyle.cyan)
+							.foregroundStyle(NullSignStyle.accent)
 					}
 					.buttonStyle(.plain)
 				}
@@ -105,7 +105,7 @@ struct SourcesAddView: View {
 					.foregroundStyle(.black)
 					.frame(maxWidth: .infinity)
 					.frame(height: 42)
-					.background(NullSignStyle.cyan.opacity(_trimmedURL.isEmpty || _isBusy ? 0.45 : 1))
+					.background(NullSignStyle.accent.opacity(_trimmedURL.isEmpty || _isBusy ? 0.45 : 1))
 					.clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
 				}
 				.buttonStyle(.plain)
@@ -159,7 +159,7 @@ struct SourcesAddView: View {
 			} else if _filteredRecommendedSourcesData.isEmpty {
 				HStack(spacing: 11) {
 					Image(systemName: "checkmark.circle")
-						.foregroundStyle(NullSignStyle.cyan)
+						.foregroundStyle(NullSignStyle.accent)
 					Text("You already have all available featured sources.")
 						.font(.subheadline)
 						.foregroundStyle(.secondary)
@@ -192,7 +192,7 @@ struct SourcesAddView: View {
 			HStack(spacing: 12) {
 				Image(systemName: icon)
 					.font(.system(size: 17, weight: .medium))
-					.foregroundStyle(NullSignStyle.cyan)
+					.foregroundStyle(NullSignStyle.accent)
 					.frame(width: 30)
 				VStack(alignment: .leading, spacing: 2) {
 					Text(title)
@@ -241,7 +241,7 @@ struct SourcesAddView: View {
 					.foregroundStyle(.black)
 					.padding(.horizontal, 14)
 					.frame(height: 32)
-					.background(NullSignStyle.cyan)
+					.background(NullSignStyle.accent)
 					.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 			}
 			.buttonStyle(.plain)
@@ -267,7 +267,7 @@ struct SourcesAddView: View {
 	private var _featuredPlaceholder: some View {
 		ZStack {
 			RoundedRectangle(cornerRadius: 11, style: .continuous).fill(NullSignStyle.raisedPanel)
-			Image(systemName: "shippingbox").foregroundStyle(NullSignStyle.cyan)
+			Image(systemName: "shippingbox").foregroundStyle(NullSignStyle.accent)
 		}
 		.frame(width: 46, height: 46)
 	}

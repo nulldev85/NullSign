@@ -28,16 +28,6 @@ struct AppearanceView: View {
 		(.localized("Big Description"), .localized("Adds the localized description of the app."))
 	]
 	
-	@AppStorage("Feather.userTintColor")
-	private var _selectedColorHex: String = "#848ef9"
-	
-	private var _tintColorBinding: Binding<Color> {
-		Binding(
-			get: { Color(hex: _selectedColorHex) },
-			set: { _selectedColorHex = $0.toHex() }
-		)
-	}
-	
 	// MARK: Body
 	var body: some View {
 		NBList(.localized("Appearance")) {
@@ -51,16 +41,9 @@ struct AppearanceView: View {
 			}
 			
 			NBSection(.localized("Theme")) {
-				AppearanceTintColorView()
-					.listRowInsets(EdgeInsets())
-					.listRowBackground(EmptyView())
-			}
-			
-			Section {
-				ColorPicker(
-					.localized("Custom Theme Color"),
-					selection: _tintColorBinding,
-					supportsOpacity: false
+				NBTitleWithSubtitleView(
+					title: "OLED Monochrome",
+					subtitle: "Pure black, white, and carefully stepped neutral grays."
 				)
 			}
 			

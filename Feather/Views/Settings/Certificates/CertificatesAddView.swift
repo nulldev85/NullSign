@@ -113,7 +113,7 @@ extension CertificatesAddView {
 			HStack(spacing: 12) {
 				Image(systemName: file == nil ? systemImage : "checkmark.circle.fill")
 					.font(.system(size: 16, weight: .semibold))
-					.foregroundStyle(NullSignStyle.cyan)
+					.foregroundStyle(NullSignStyle.accent)
 					.frame(width: 32, height: 32)
 					.background(NullSignStyle.raisedPanel)
 					.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -123,13 +123,13 @@ extension CertificatesAddView {
 						.font(.body.weight(.medium))
 					Text(file?.lastPathComponent ?? "Choose a file")
 						.font(.caption)
-						.foregroundStyle(file == nil ? Color.secondary : NullSignStyle.cyan)
+						.foregroundStyle(file == nil ? Color.secondary : NullSignStyle.accent)
 						.lineLimit(1)
 				}
 				Spacer()
 				Text(file == nil ? "Choose" : "Change")
 					.font(.subheadline.weight(.medium))
-					.foregroundStyle(NullSignStyle.cyan)
+					.foregroundStyle(NullSignStyle.accent)
 			}
 			.contentShape(Rectangle())
 		}

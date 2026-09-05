@@ -20,7 +20,7 @@ struct CertificatesInfoView: View {
 						title: displayName,
 						detail: data?.TeamName ?? "Reading provisioning profile…",
 						status: cert.revoked ? "Revoked" : "Saved",
-						statusColor: cert.revoked ? .red : NullSignStyle.cyan
+						statusColor: cert.revoked ? NullSignStyle.warning : NullSignStyle.accent
 					)
 
 					if let data {

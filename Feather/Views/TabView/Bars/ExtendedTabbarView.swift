@@ -12,7 +12,7 @@ struct ExtendedTabbarView: View {
 				}
 			}
 		}
-		.tint(NullSignStyle.cyan)
+		.tint(NullSignStyle.accent)
 		.toolbarBackground(Color.black.opacity(0.96), for: .tabBar)
 		.toolbarBackground(.visible, for: .tabBar)
 	}

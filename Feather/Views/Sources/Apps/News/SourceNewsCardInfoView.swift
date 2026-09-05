@@ -16,7 +16,7 @@ struct SourceNewsCardInfoView: View {
 						if let date = new.date?.date {
 							Text(date.formatted(date: .long, time: .omitted))
 								.font(.caption.weight(.medium))
-								.foregroundStyle(NullSignStyle.cyan)
+								.foregroundStyle(NullSignStyle.accent)
 						}
 
 						Text(new.title)
@@ -38,7 +38,7 @@ struct SourceNewsCardInfoView: View {
 								.foregroundStyle(.black)
 								.frame(maxWidth: .infinity)
 								.frame(height: 42)
-								.background(NullSignStyle.cyan)
+								.background(NullSignStyle.accent)
 								.clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
 						}
 						.buttonStyle(.plain)
@@ -49,7 +49,7 @@ struct SourceNewsCardInfoView: View {
 			.background(Color.black)
 			.toolbar { NBToolbarButton(role: .close) }
 		}
-		.tint(NullSignStyle.cyan)
+		.tint(NullSignStyle.accent)
 	}
 
 	@ViewBuilder
@@ -79,7 +79,7 @@ struct SourceNewsCardInfoView: View {
 			NullSignStyle.panel
 			Image(systemName: "newspaper")
 				.font(.largeTitle)
-				.foregroundStyle(NullSignStyle.cyan)
+				.foregroundStyle(NullSignStyle.accent)
 		}
 	}
 }

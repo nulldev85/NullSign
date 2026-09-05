@@ -82,7 +82,7 @@
 			Text(title)
 				.frame(maxWidth: .infinity, maxHeight: .infinity)
 				.background(Color.accentColor)
-				.foregroundColor(.white)
+				.foregroundColor(.black)
 				.clipShape(
 					RoundedRectangle(cornerRadius: 12, style: .continuous)
 				)

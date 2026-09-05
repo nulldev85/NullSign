@@ -28,7 +28,7 @@ struct SigningSectionHeader: View {
 
 struct SigningRowIcon: View {
 	let systemImage: String
-	var tint: Color = NullSignStyle.cyan
+	var tint: Color = NullSignStyle.accent
 
 	var body: some View {
 		Image(systemName: systemImage)
@@ -49,7 +49,7 @@ struct SigningEmptyState: View {
 		VStack(spacing: 10) {
 			Image(systemName: systemImage)
 				.font(.system(size: 25, weight: .light))
-				.foregroundStyle(NullSignStyle.cyan)
+				.foregroundStyle(NullSignStyle.accent)
 			Text(title)
 				.font(.headline)
 			Text(detail)
@@ -77,7 +77,7 @@ struct SigningSummaryCard<Content: View>: View {
 			.background(NullSignStyle.panel)
 			.overlay(alignment: .leading) {
 				Rectangle()
-					.fill(NullSignStyle.cyan)
+					.fill(NullSignStyle.accent)
 					.frame(width: 2)
 			}
 			.overlay {

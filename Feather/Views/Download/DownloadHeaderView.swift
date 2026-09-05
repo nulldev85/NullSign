@@ -22,13 +22,13 @@ struct DownloadHeaderView: View {
 								.font(.system(size: 13, weight: .bold))
 								.foregroundStyle(.black)
 								.frame(width: 28, height: 28)
-								.background(NullSignStyle.cyan)
+								.background(NullSignStyle.accent)
 								.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 							DownloadItemView(download: firstDownload)
 							if downloadManager.manualDownloads.count > 1 {
 								Text(verbatim: "+\(downloadManager.manualDownloads.count - 1)")
 									.font(.caption.weight(.semibold))
-									.foregroundStyle(NullSignStyle.cyan)
+									.foregroundStyle(NullSignStyle.accent)
 							}
 						}
 						.padding(12)
@@ -60,7 +60,7 @@ struct DownloadItemView: View {
 			
 			ProgressView(value: overallProgress)
 				.progressViewStyle(.linear)
-				.tint(NullSignStyle.cyan)
+				.tint(NullSignStyle.accent)
 			
 			HStack {
 				Text(verbatim: "\(Int(overallProgress * 100))%")

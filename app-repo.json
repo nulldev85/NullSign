@@ -11,7 +11,7 @@
       "iconURL": "https://raw.githubusercontent.com/nulldev85/NullSign/main/Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png",
       "localizedDescription": "A focused on-device IPA signer with package checks, local certificate management, repository browsing, tweak injection, and post-sign verification.",
       "subtitle": "A clean, reliable on-device signer",
-      "tintColor": "00E5FF",
+      "tintColor": "FFFFFF",
       "versions": [
         {
           "version": "1.0.0",
@@ -32,7 +32,7 @@
       "title": "NullSign 1.0",
       "identifier": "nullsign-1.0",
       "caption": "NullSign now has its own interface, a stricter signing pipeline, local diagnostics, resilient repositories, and verified IPA packaging.",
-      "tintColor": "00E5FF",
+      "tintColor": "FFFFFF",
       "imageURL": "https://raw.githubusercontent.com/nulldev85/NullSign/main/Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png",
       "url": "https://github.com/nulldev85/NullSign",
       "date": "2026-08-31",

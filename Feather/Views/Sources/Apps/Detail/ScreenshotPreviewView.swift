@@ -41,7 +41,7 @@ struct ScreenshotPreviewView: View {
 					}
 				}
 		}
-		.tint(NullSignStyle.cyan)
+		.tint(NullSignStyle.accent)
 	}
 }
 
@@ -61,7 +61,7 @@ extension ScreenshotPreviewView {
 									.strokeBorder(NullSignStyle.hairline, lineWidth: 1)
 							}
 					} else {
-						ProgressView().tint(NullSignStyle.cyan)
+						ProgressView().tint(NullSignStyle.accent)
 					}
 				}
 				.tag(index)

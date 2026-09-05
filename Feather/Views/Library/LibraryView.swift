@@ -138,7 +138,7 @@ struct LibraryView: View {
 							VStack(spacing: 8) {
 								Image(systemName: "line.3.horizontal.decrease.circle")
 									.font(.system(size: 24, weight: .light))
-									.foregroundStyle(NullSignStyle.cyan)
+									.foregroundStyle(NullSignStyle.accent)
 								Text(_searchText.isEmpty ? "Nothing in this group" : "No matching apps")
 									.font(.system(size: 15, weight: .semibold))
 								if !_searchText.isEmpty {
@@ -299,7 +299,7 @@ extension LibraryView {
 							.foregroundStyle(_selectedScope == scope ? .black : NullSignStyle.muted)
 							.frame(maxWidth: .infinity)
 							.frame(height: 30)
-							.background(_selectedScope == scope ? NullSignStyle.cyan : Color.clear)
+							.background(_selectedScope == scope ? NullSignStyle.accent : Color.clear)
 							.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 					}
 					.buttonStyle(.plain)

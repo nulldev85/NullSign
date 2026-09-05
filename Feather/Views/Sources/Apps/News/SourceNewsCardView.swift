@@ -55,7 +55,7 @@ struct SourceNewsCardView: View {
 			NullSignStyle.raisedPanel
 			Image(systemName: "newspaper")
 				.font(.title3)
-				.foregroundStyle(NullSignStyle.cyan)
+				.foregroundStyle(NullSignStyle.accent)
 		}
 	}
 }

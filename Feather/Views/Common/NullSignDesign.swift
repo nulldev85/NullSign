@@ -1,14 +1,14 @@
 import SwiftUI
 
 enum NullSignStyle {
-	// A quieter, slightly blue pastel used consistently throughout the app.
-	static let cyan = Color(red: 0.56, green: 0.86, blue: 0.90)
-	static let ink = Color(red: 0.035, green: 0.105, blue: 0.12)
-	static let peach = Color(red: 0.95, green: 0.72, blue: 0.63)
-	static let panel = Color(red: 0.060, green: 0.070, blue: 0.078)
-	static let raisedPanel = Color(red: 0.092, green: 0.105, blue: 0.114)
-	static let hairline = Color.white.opacity(0.075)
-	static let muted = Color.white.opacity(0.58)
+	static let accent = Color.white
+	static let ink = Color.black
+	static let warning = Color.white.opacity(0.46)
+	static let panel = Color.white.opacity(0.055)
+	static let raisedPanel = Color.white.opacity(0.09)
+	static let hairline = Color.white.opacity(0.10)
+	static let muted = Color.white.opacity(0.60)
+	static let crimson = Color(red: 0.843, green: 0.098, blue: 0.247)
 }
 
 struct NullSignLibrarySummary: View {
@@ -23,7 +23,7 @@ struct NullSignLibrarySummary: View {
 			Spacer(minLength: 4)
 			HStack(spacing: 7) {
 				Circle()
-					.fill(hasCertificate ? NullSignStyle.cyan : NullSignStyle.peach)
+					.fill(hasCertificate ? NullSignStyle.accent : NullSignStyle.warning)
 					.frame(width: 7, height: 7)
 				Text(hasCertificate ? "Certificate ready" : "Certificate needed")
 					.font(.system(size: 12, weight: .medium))
@@ -69,7 +69,7 @@ struct NullSignEmptySignerView: View {
 						.frame(width: 72, height: 72)
 					Image(systemName: "app.dashed")
 						.font(.system(size: 30, weight: .light))
-						.foregroundStyle(NullSignStyle.cyan)
+						.foregroundStyle(NullSignStyle.accent)
 				}
 				VStack(spacing: 7) {
 					Text("Import an app to begin")
@@ -87,7 +87,7 @@ struct NullSignEmptySignerView: View {
 							.padding(.horizontal, 17)
 							.padding(.vertical, 13)
 							.foregroundStyle(NullSignStyle.ink)
-							.background(NullSignStyle.cyan)
+							.background(NullSignStyle.accent)
 							.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 					}
 					.buttonStyle(.plain)
@@ -108,7 +108,7 @@ struct NullSignEmptySignerView: View {
 				}
 
 				HStack(spacing: 7) {
-					Circle().fill(hasCertificate ? NullSignStyle.cyan : NullSignStyle.peach).frame(width: 6, height: 6)
+					Circle().fill(hasCertificate ? NullSignStyle.accent : NullSignStyle.warning).frame(width: 6, height: 6)
 					Text(hasCertificate ? "Signing certificate ready" : "Import a certificate in Settings before signing")
 						.font(.footnote)
 						.foregroundStyle(NullSignStyle.muted)
@@ -133,7 +133,7 @@ struct NullSignSigningHeader: View {
 					HStack(spacing: 7) {
 						Text("Signing session")
 							.font(.system(size: 11, weight: .semibold))
-							.foregroundStyle(NullSignStyle.cyan)
+							.foregroundStyle(NullSignStyle.accent)
 						PlatformBadge(platform: app.platform)
 					}
 					Text(app.name ?? "Unknown App")
@@ -169,7 +169,7 @@ struct NullSignSigningHeader: View {
 
 	private func _step(_ number: String, _ label: String) -> some View {
 		HStack(spacing: 5) {
-			Text(number).foregroundStyle(NullSignStyle.cyan)
+			Text(number).foregroundStyle(NullSignStyle.accent)
 			Text(label).foregroundStyle(.secondary)
 		}
 		.font(.system(size: 10, weight: .semibold))
@@ -177,7 +177,7 @@ struct NullSignSigningHeader: View {
 
 	private var _line: some View {
 		Rectangle()
-			.fill(NullSignStyle.cyan.opacity(0.25))
+			.fill(NullSignStyle.accent.opacity(0.25))
 			.frame(height: 1)
 			.frame(maxWidth: .infinity)
 	}
@@ -191,7 +191,7 @@ struct NullSignPanelModifier: ViewModifier {
 			.background(
 				Color.black
 					.overlay(alignment: .leading) {
-						Rectangle().fill(NullSignStyle.cyan.opacity(0.7)).frame(width: 2, height: 30)
+						Rectangle().fill(NullSignStyle.accent.opacity(0.7)).frame(width: 2, height: 30)
 					}
 					.overlay(alignment: .bottom) {
 						Rectangle().fill(NullSignStyle.hairline).frame(height: 1)

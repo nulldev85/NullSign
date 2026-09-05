@@ -54,14 +54,14 @@ struct SigningPropertiesView: View {
 				.background(NullSignStyle.panel)
 				.overlay {
 					RoundedRectangle(cornerRadius: 12, style: .continuous)
-						.stroke(_isFieldFocused ? NullSignStyle.cyan.opacity(0.7) : NullSignStyle.hairline, lineWidth: 1)
+						.stroke(_isFieldFocused ? NullSignStyle.accent.opacity(0.7) : NullSignStyle.hairline, lineWidth: 1)
 				}
 				.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
 				if text != initialValue {
 					Label("Unsaved change", systemImage: "circle.fill")
 						.font(.caption)
-						.foregroundStyle(NullSignStyle.cyan)
+						.foregroundStyle(NullSignStyle.accent)
 				}
 			}
 			.padding(.horizontal, 16)
@@ -69,7 +69,7 @@ struct SigningPropertiesView: View {
 		}
 		.background(Color.black.ignoresSafeArea())
 		.navigationTitle(title)
-		.tint(NullSignStyle.cyan)
+		.tint(NullSignStyle.accent)
 		.toolbar {
 			NBToolbarButton(
 				.localized("Save"),

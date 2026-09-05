@@ -28,14 +28,14 @@ struct DownloadButtonView: View {
 				} label: {
 					ZStack {
 						Circle()
-							.stroke(NullSignStyle.cyan.opacity(0.18), lineWidth: 2.5)
+							.stroke(NullSignStyle.accent.opacity(0.18), lineWidth: 2.5)
 						Circle()
 							.trim(from: 0, to: max(0.03, downloadProgress))
-							.stroke(NullSignStyle.cyan, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+							.stroke(NullSignStyle.accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
 							.rotationEffect(.degrees(-90))
 						Image(systemName: downloadProgress >= 0.75 ? "archivebox" : "stop.fill")
 							.font(.system(size: 9, weight: .bold))
-							.foregroundStyle(NullSignStyle.cyan)
+							.foregroundStyle(NullSignStyle.accent)
 					}
 					.frame(width: 33, height: 33)
 				}
@@ -57,7 +57,7 @@ struct DownloadButtonView: View {
 						.font(.caption.weight(.bold))
 						.foregroundStyle(.black)
 						.frame(width: 54, height: 32)
-						.background(NullSignStyle.cyan)
+						.background(NullSignStyle.accent)
 						.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 				}
 				.buttonStyle(.borderless)
