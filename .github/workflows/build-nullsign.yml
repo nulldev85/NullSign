@@ -20,7 +20,9 @@ jobs:
           xcode-version: latest-stable
 
       - name: Build unsigned NullSign IPA
-        run: make iphoneos
+        run: |
+          cmp -s Feather/Resources/AppIcon.icon/Assets/nullsign.png Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png
+          make iphoneos
 
       - name: Verify IPA structure
         shell: bash
