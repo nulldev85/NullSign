@@ -73,9 +73,7 @@ struct NullSignInstallProgressBar: View {
 				.opacity(showsPercentage && progress != nil && displayedProgress > 0 && displayedProgress < 1 ? 1 : 0)
 				.frame(height: 12)
 
-			// Fifteen frames per second is smooth at this size and avoids keeping the
-			// main thread busy while an archive is being signed or installed.
-			TimelineView(.periodic(from: .now, by: 1.0 / 15.0)) { timeline in
+			TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: false)) { timeline in
 				GeometryReader { proxy in
 					let width = max(proxy.size.width, 1)
 					let seconds = timeline.date.timeIntervalSinceReferenceDate
@@ -154,8 +152,10 @@ struct NullSignInstallProgressBar: View {
 	}
 
 	private func animate(to value: Double) {
-		withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
-			displayedProgress = value
+		let monotonicTarget = max(displayedProgress, min(max(value, 0), 1))
+		guard monotonicTarget > displayedProgress else { return }
+		withAnimation(.smooth(duration: monotonicTarget == 1 ? 0.42 : 0.62)) {
+			displayedProgress = monotonicTarget
 		}
 	}
 }

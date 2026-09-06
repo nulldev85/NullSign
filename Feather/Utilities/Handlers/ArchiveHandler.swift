@@ -62,7 +62,7 @@ final class ArchiveHandler: NSObject {
 				compression: ZipCompression.allCases[ArchiveHandler.getCompressionLevel()],
 				progress: { progress in
 					Task { @MainActor in
-						self.viewModel.packageProgress = progress
+						self.viewModel.updatePackageProgress(progress)
 					}
 				})
 			

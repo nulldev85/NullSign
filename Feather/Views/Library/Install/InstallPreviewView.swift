@@ -64,6 +64,7 @@ struct InstallPreviewView: View {
 			NullSignInstallProgressBar(
 				progress: viewModel.isCompleted ? 1 : (viewModel.overallProgress > 0 ? viewModel.overallProgress : nil)
 			)
+			.id(installAttempt)
 		}
 		.padding(20)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -148,7 +149,7 @@ struct InstallPreviewView: View {
 				}
 			} else if case .broken = viewModel.status {
 				_actionButton("Retry", icon: "arrow.clockwise") {
-					viewModel.status = .none
+					viewModel.resetProgress()
 					installAttempt += 1
 				}
 			}
@@ -194,7 +195,7 @@ struct InstallPreviewView: View {
 					if targetPlatform == .iOS {
 						await MainActor.run {
 							installer.packageUrl = packageUrl
-							viewModel.status = .ready
+							viewModel.updateStatus(.ready)
 						}
 						
 						if case .installing = await viewModel.status {
@@ -266,13 +267,13 @@ struct InstallPreviewView: View {
 				Logger.misc.info("Install progress for \(bundleID): \(progress)")
 
 				await MainActor.run {
-					viewModel.installProgress = progress
+					viewModel.updateInstallProgress(progress)
 				}
 
 				if hasStarted && rawProgress == 0 {
 					await MainActor.run {
-						viewModel.installProgress = 1.0
-						viewModel.status = .completed(.success(()))
+						viewModel.updateInstallProgress(1.0)
+						viewModel.updateStatus(.completed(.success(())))
 					}
 					break
 				}
