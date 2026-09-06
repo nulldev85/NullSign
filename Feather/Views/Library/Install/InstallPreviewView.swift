@@ -254,7 +254,8 @@ struct InstallPreviewView: View {
 			var hasStarted = false
 
 			while !Task.isCancelled {
-				let rawProgress = await UIApplication.installProgress(for: bundleID) ?? 0.0
+				let snapshot = await UIApplication.installProgressSnapshot(for: bundleID)
+				let rawProgress = snapshot?.fractionCompleted ?? 0.0
 
 				if rawProgress > 0 {
 					hasStarted = true
@@ -270,7 +271,10 @@ struct InstallPreviewView: View {
 					viewModel.updateInstallProgress(progress)
 				}
 
-				if hasStarted && rawProgress == 0 {
+				// iOS may report a terminal Progress object whose fraction stops below
+				// 1.0. Treat the system's finished flag as authoritative; disappearance
+				// after progress began remains the fallback used on older releases.
+				if hasStarted && (snapshot?.isFinished == true || snapshot == nil || rawProgress == 0) {
 					await MainActor.run {
 						viewModel.updateInstallProgress(1.0)
 						viewModel.updateStatus(.completed(.success(())))

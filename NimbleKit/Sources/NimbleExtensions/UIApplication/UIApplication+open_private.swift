@@ -8,6 +8,11 @@
 import UIKit.UIApplication
 
 extension UIApplication {
+	public struct InstallProgressSnapshot: Sendable {
+		public let fractionCompleted: Double
+		public let isFinished: Bool
+	}
+
 	/// Opens an app with an identifier
 	/// - Parameter identifier: Application identifier
 	static public func openApp(with identifier: String) {
@@ -45,6 +50,18 @@ extension UIApplication {
 		for identifier: String,
 		makeSynchronous synchronous: Bool = true
 	) -> Double? {
+		installProgressSnapshot(
+			for: identifier,
+			makeSynchronous: synchronous
+		)?.fractionCompleted
+	}
+
+	/// Returns both the fraction and the terminal state reported by iOS. The
+	/// system can finish an install before its fraction reaches exactly 1.0.
+	static public func installProgressSnapshot(
+		for identifier: String,
+		makeSynchronous synchronous: Bool = true
+	) -> InstallProgressSnapshot? {
 
 		let classNameBase64 = "TFNBcHBsaWNhdGlvbldvcmtzcGFjZQ==" // LSApplicationWorkspace
 		let defaultSelectorBase64 = "ZGVmYXVsdFdvcmtzcGFjZQ=="   // defaultWorkspace
@@ -64,8 +81,11 @@ extension UIApplication {
 			with: synchronous
 		)?.takeUnretainedValue()
 
-		if let number = result as? Progress {
-			return number.fractionCompleted
+		if let progress = result as? Progress {
+			return InstallProgressSnapshot(
+				fractionCompleted: progress.fractionCompleted,
+				isFinished: progress.isFinished
+			)
 		}
 
 		return nil
