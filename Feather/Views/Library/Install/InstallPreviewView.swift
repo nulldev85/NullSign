@@ -274,7 +274,7 @@ struct InstallPreviewView: View {
 				// iOS may report a terminal Progress object whose fraction stops below
 				// 1.0. Treat the system's finished flag as authoritative; disappearance
 				// after progress began remains the fallback used on older releases.
-				if hasStarted && (snapshot?.isFinished == true || snapshot == nil || rawProgress == 0) {
+				if hasStarted && (snapshot?.isFinished == true || snapshot == nil) {
 					await MainActor.run {
 						viewModel.updateInstallProgress(1.0)
 						viewModel.updateStatus(.completed(.success(())))
@@ -288,6 +288,6 @@ struct InstallPreviewView: View {
 	}
 
 	private func _normalizeInstallProgress(_ rawProgress: Double) -> Double {
-		min(1.0, max(0.0, (rawProgress - 0.6) / 0.3))
+		min(1.0, max(0.0, rawProgress))
 	}
 }

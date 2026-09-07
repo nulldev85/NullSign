@@ -59,21 +59,19 @@ struct NullSignInstallProgressBar: View {
 	let progress: Double?
 	var showsPercentage = true
 
-	@State private var displayedProgress = 0.0
-
 	private var targetProgress: Double {
 		min(max(progress ?? 0, 0), 1)
 	}
 
 	var body: some View {
 		VStack(alignment: .trailing, spacing: 5) {
-			Text("\(Int((displayedProgress * 100).rounded()))%")
+			Text("\(Int(targetProgress * 100))%")
 				.font(.system(size: 10, weight: .semibold, design: .rounded).monospacedDigit())
 				.foregroundStyle(NullSignStyle.muted)
-				.opacity(showsPercentage && progress != nil && displayedProgress > 0 && displayedProgress < 1 ? 1 : 0)
+				.opacity(showsPercentage && progress != nil && targetProgress > 0 && targetProgress < 1 ? 1 : 0)
 				.frame(height: 12)
 
-			TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: false)) { timeline in
+			TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: progress != nil)) { timeline in
 				GeometryReader { proxy in
 					let width = max(proxy.size.width, 1)
 					let seconds = timeline.date.timeIntervalSinceReferenceDate
@@ -91,7 +89,7 @@ struct NullSignInstallProgressBar: View {
 						if progress == nil {
 							_indeterminateFill(width: width, seconds: seconds)
 						} else {
-							_determinateFill(width: width, seconds: seconds)
+							_determinateFill(width: width)
 						}
 					}
 					.frame(width: width, height: 8, alignment: .leading)
@@ -100,17 +98,11 @@ struct NullSignInstallProgressBar: View {
 				.frame(height: 8)
 			}
 		}
-		.animation(.easeInOut(duration: 0.22), value: progress == nil)
-		.onAppear { animate(to: targetProgress) }
-		.onChange(of: progress) { _ in animate(to: targetProgress) }
 	}
 
 	@ViewBuilder
-	private func _determinateFill(width: CGFloat, seconds: TimeInterval) -> some View {
-		let fillWidth = min(width, max(0, width * displayedProgress))
-		let shimmerWidth = min(44, fillWidth)
-		let shimmerTravel = max(0, fillWidth - shimmerWidth)
-		let shimmerX = CGFloat(seconds.truncatingRemainder(dividingBy: 1.8) / 1.8) * shimmerTravel
+	private func _determinateFill(width: CGFloat) -> some View {
+		let fillWidth = min(width, max(0, width * targetProgress))
 
 		Capsule()
 			.fill(
@@ -121,15 +113,7 @@ struct NullSignInstallProgressBar: View {
 				)
 			)
 			.frame(width: fillWidth)
-			.overlay(alignment: .leading) {
-				LinearGradient(
-					colors: [.clear, Color.white.opacity(0.42), .clear],
-					startPoint: .leading,
-					endPoint: .trailing
-				)
-				.frame(width: shimmerWidth)
-				.offset(x: shimmerX)
-			}
+			.animation(.linear(duration: 0.2), value: targetProgress)
 	}
 
 	@ViewBuilder
@@ -151,13 +135,6 @@ struct NullSignInstallProgressBar: View {
 			.shadow(color: NullSignStyle.crimson.opacity(0.58), radius: 7)
 	}
 
-	private func animate(to value: Double) {
-		let monotonicTarget = max(displayedProgress, min(max(value, 0), 1))
-		guard monotonicTarget > displayedProgress else { return }
-		withAnimation(.smooth(duration: monotonicTarget == 1 ? 0.42 : 0.62)) {
-			displayedProgress = monotonicTarget
-		}
-	}
 }
 
 #if DEBUG
