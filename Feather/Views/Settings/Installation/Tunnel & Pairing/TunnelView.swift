@@ -4,13 +4,14 @@ import NimbleViews
 
 struct TunnelView: View {
 	@ObservedObject private var _appleTV = AppleTVManager.shared
-	@State private var _isImportingPairingPresenting = false
-	@State private var _hasPairingFile = false
-	@State private var _isLocalDevVPNAvailable = false
 	@State private var _selectedAppleTV: AppleTVDevice?
 	@State private var _appleTVPIN = ""
 	@State private var _isPairingAppleTV = false
 	@State private var _appleTVError: String?
+
+	@State private var _isImportingPairingPresenting = false
+	@State private var _hasPairingFile = false
+	@State private var _isLocalDevVPNAvailable = false
 
 	var body: some View {
 		VStack(spacing: 22) {
@@ -75,36 +76,6 @@ struct TunnelView: View {
 				}
 			}
 
-			NullSignSettingsSection(
-				"This iPhone",
-				detail: _hasPairingFile
-					? "The pairing record is stored locally and ready for device installation."
-					: "Create a pairing record on a trusted computer, then import it here."
-			) {
-				HStack(spacing: 12) {
-					Image(systemName: _hasPairingFile ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-						.font(.system(size: 16, weight: .semibold))
-						.foregroundStyle(_hasPairingFile ? NullSignStyle.accent : NullSignStyle.warning)
-						.frame(width: 32, height: 32)
-						.background(NullSignStyle.raisedPanel)
-						.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-
-					VStack(alignment: .leading, spacing: 2) {
-						Text("Pairing File")
-							.font(.body.weight(.medium))
-						Text(_hasPairingFile ? "Imported" : "Required")
-							.font(.caption)
-							.foregroundStyle(.secondary)
-					}
-					Spacer()
-					Button(_hasPairingFile ? "Replace" : "Import") {
-						_isImportingPairingPresenting = true
-					}
-					.font(.subheadline.weight(.semibold))
-					.foregroundStyle(NullSignStyle.accent)
-				}
-			}
-
 			if #available(iOS 17.4, *) {
 				// Newer iOS versions do not use the legacy heartbeat controls.
 			} else {
@@ -126,41 +97,81 @@ struct TunnelView: View {
 					}
 					.buttonStyle(.plain)
 				}
+
+				NullSignSettingsSection(
+					"Pairing File",
+					detail: "This iPhone's iOS version needs a pairing file and the loopback VPN to install apps directly from NullSign."
+				) {
+					Button {
+						_isImportingPairingPresenting = true
+					} label: {
+						NullSignSettingsRow(
+							title: "Pairing File",
+							detail: _hasPairingFile ? "Imported" : "Required",
+							systemImage: "doc.badge.gearshape",
+							showsChevron: false
+						)
+					}
+					.buttonStyle(.plain)
+
+					NullSignSettingsDivider()
+
+					Button {
+						UIApplication.shared.open(URL(string: "https://github.com/claration/Impactor#pairing-file")!)
+					} label: {
+						NullSignSettingsRow(
+							title: "Pairing File Guide",
+							detail: nil,
+							systemImage: "questionmark.circle",
+							showsChevron: true
+						)
+					}
+					.buttonStyle(.plain)
+
+					NullSignSettingsDivider()
+
+					Button {
+						_openOrGetLocalDevVPN()
+					} label: {
+						NullSignSettingsRow(
+							title: _isLocalDevVPNAvailable ? "Open LocalDevVPN" : "Get LocalDevVPN",
+							detail: nil,
+							systemImage: "network",
+							showsChevron: true
+						)
+					}
+					.buttonStyle(.plain)
+				}
 			}
 
 			NullSignSettingsSection("Setup Help") {
-				Button {
-					UIApplication.open("https://github.com/claration/Impactor#pairing-file")
-				} label: {
-					NullSignSettingsRow(
-						title: "Pairing File Guide",
-						detail: "How to create a device pairing record",
-						systemImage: "questionmark.circle"
-					)
-				}
-				.buttonStyle(.plain)
+				NullSignSettingsRow(
+					title: "Turn on Remote App and Devices",
+					detail: "On the Apple TV: Settings → Remotes and Devices → Remote App and Devices. Leave that screen open while you pair.",
+					systemImage: "appletv",
+					showsChevron: false
+				)
 
 				NullSignSettingsDivider()
 
-				Button {
-					if _isLocalDevVPNAvailable {
-						UIApplication.open("localdevvpn://enable?scheme=feather")
-					} else {
-						UIApplication.open("https://apps.apple.com/us/app/localdevvpn/id6755608044")
-					}
-				} label: {
-					NullSignSettingsRow(
-						title: _isLocalDevVPNAvailable ? "Open LocalDevVPN" : "Get LocalDevVPN",
-						detail: _isLocalDevVPNAvailable ? "Enable the loopback connection" : "Required for the device tunnel",
-						systemImage: "network"
-					)
-				}
-				.buttonStyle(.plain)
+				NullSignSettingsRow(
+					title: "Stay on the same Wi-Fi network",
+					detail: "NullSign only finds an Apple TV that's on the same network as this iPhone.",
+					systemImage: "wifi",
+					showsChevron: false
+				)
 			}
+		}
+		.onAppear {
+			_appleTV.startScanning()
+			_hasPairingFile = FileManager.default.fileExists(
+				atPath: URL.documentsDirectory.appendingPathComponent("pairingFile.plist").path
+			)
+			_isLocalDevVPNAvailable = UIApplication.shared.canOpenURL(URL(string: "localdevvpn://")!)
 		}
 		.sheet(isPresented: $_isImportingPairingPresenting) {
 			FileImporterRepresentableView(
-				allowedContentTypes: [.xmlPropertyList, .plist, .mobiledevicepairing],
+				allowedContentTypes: [.propertyList],
 				onDocumentsPicked: { urls in
 					guard let selectedFileURL = urls.first else { return }
 					FR.movePairing(selectedFileURL)
@@ -168,13 +179,6 @@ struct TunnelView: View {
 				}
 			)
 			.ignoresSafeArea()
-		}
-		.onAppear {
-			_hasPairingFile = FileManager.default.fileExists(atPath: HeartbeatManager.pairingFile())
-			if let url = URL(string: "localdevvpn://") {
-				_isLocalDevVPNAvailable = UIApplication.shared.canOpenURL(url)
-			}
-			_appleTV.startScanning()
 		}
 		.alert("Pair Apple TV", isPresented: Binding(
 			get: { _appleTV.isAwaitingPIN },
@@ -209,6 +213,15 @@ struct TunnelView: View {
 				_appleTVError = String(describing: error)
 			}
 			_isPairingAppleTV = false
+		}
+	}
+
+	private func _openOrGetLocalDevVPN() {
+		let scheme = URL(string: "localdevvpn://")!
+		if UIApplication.shared.canOpenURL(scheme) {
+			UIApplication.shared.open(scheme)
+		} else {
+			UIApplication.shared.open(URL(string: "https://apps.apple.com/app/localdevvpn/id6755608044")!)
 		}
 	}
 
