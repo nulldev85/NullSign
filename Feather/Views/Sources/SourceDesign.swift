@@ -1,8 +1,6 @@
 import SwiftUI
 
-/// Small, source-specific pieces used throughout the Apps tab.  These deliberately
-/// stay close to native iOS layout and typography with a monochrome hierarchy
-/// and actions instead of becoming decoration.
+/// Small, source-specific pieces reused throughout the Apps tab.
 struct SourceSectionLabel: View {
 	let title: String
 	var count: Int? = nil
@@ -73,12 +71,7 @@ struct SourcePanelModifier: ViewModifier {
 	func body(content: Content) -> some View {
 		content
 			.padding(padding)
-			.background(NullSignStyle.panel)
-			.clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-			.overlay {
-				RoundedRectangle(cornerRadius: 16, style: .continuous)
-					.stroke(NullSignStyle.hairline, lineWidth: 1)
-			}
+			.nullSignSurface(cornerRadius: 16)
 	}
 }
 

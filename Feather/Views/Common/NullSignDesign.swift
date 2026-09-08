@@ -11,6 +11,29 @@ enum NullSignStyle {
 	static let crimson = Color(red: 0.843, green: 0.098, blue: 0.247)
 }
 
+/// Shared fill + hairline-stroke card background used across the Library, Sources,
+/// Settings, and Signing screens.
+struct NullSignSurfaceModifier: ViewModifier {
+	var cornerRadius: CGFloat = 16
+	var fill: Color = NullSignStyle.panel
+
+	func body(content: Content) -> some View {
+		content
+			.background(fill)
+			.overlay {
+				RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+					.stroke(NullSignStyle.hairline, lineWidth: 1)
+			}
+			.clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+	}
+}
+
+extension View {
+	func nullSignSurface(cornerRadius: CGFloat = 16, fill: Color = NullSignStyle.panel) -> some View {
+		modifier(NullSignSurfaceModifier(cornerRadius: cornerRadius, fill: fill))
+	}
+}
+
 struct NullSignLibrarySummary: View {
 	let signedCount: Int
 	let importedCount: Int
@@ -32,15 +55,7 @@ struct NullSignLibrarySummary: View {
 		}
 		.padding(.horizontal, 16)
 		.frame(height: 58)
-		.background(
-			RoundedRectangle(cornerRadius: 14, style: .continuous)
-				.fill(NullSignStyle.panel)
-				.overlay {
-					RoundedRectangle(cornerRadius: 14, style: .continuous)
-						.stroke(NullSignStyle.hairline, lineWidth: 1)
-				}
-		)
-		.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+		.nullSignSurface(cornerRadius: 14)
 		.listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 12, trailing: 16))
 		.listRowBackground(Color.clear)
 		.listRowSeparator(.hidden)
@@ -126,60 +141,30 @@ struct NullSignSigningHeader: View {
 	let app: AppInfoPresentable
 
 	var body: some View {
-		VStack(spacing: 14) {
-			HStack(spacing: 14) {
-				FRAppIconView(app: app, size: 54)
-				VStack(alignment: .leading, spacing: 3) {
-					HStack(spacing: 7) {
-						Text("Signing session")
-							.font(.system(size: 11, weight: .semibold))
-							.foregroundStyle(NullSignStyle.accent)
-						PlatformBadge(platform: app.platform)
-					}
-					Text(app.name ?? "Unknown App")
-						.font(.system(size: 19, weight: .bold))
-						.lineLimit(1)
-					Text(app.identifier ?? "No bundle identifier")
-						.font(.system(size: 11, design: .monospaced))
-						.foregroundStyle(.secondary)
-						.lineLimit(1)
+		HStack(spacing: 14) {
+			FRAppIconView(app: app, size: 54)
+			VStack(alignment: .leading, spacing: 3) {
+				HStack(spacing: 7) {
+					Text("Signing session")
+						.font(.system(size: 11, weight: .semibold))
+						.foregroundStyle(NullSignStyle.accent)
+					PlatformBadge(platform: app.platform)
 				}
-				Spacer()
+				Text(app.name ?? "Unknown App")
+					.font(.system(size: 19, weight: .bold))
+					.lineLimit(1)
+				Text(app.identifier ?? "No bundle identifier")
+					.font(.system(size: 11, design: .monospaced))
+					.foregroundStyle(.secondary)
+					.lineLimit(1)
 			}
-
-			HStack(spacing: 7) {
-				_step("1", "Prepare")
-				_line
-				_step("2", "Sign")
-				_line
-				_step("3", "Verify")
-			}
+			Spacer()
 		}
 		.padding(16)
-		.background(NullSignStyle.panel)
-		.overlay {
-			RoundedRectangle(cornerRadius: 18, style: .continuous)
-				.stroke(NullSignStyle.hairline, lineWidth: 1)
-		}
-		.clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+		.nullSignSurface(cornerRadius: 18)
 		.listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 10, trailing: 16))
 		.listRowBackground(Color.clear)
 		.listRowSeparator(.hidden)
-	}
-
-	private func _step(_ number: String, _ label: String) -> some View {
-		HStack(spacing: 5) {
-			Text(number).foregroundStyle(NullSignStyle.accent)
-			Text(label).foregroundStyle(.secondary)
-		}
-		.font(.system(size: 10, weight: .semibold))
-	}
-
-	private var _line: some View {
-		Rectangle()
-			.fill(NullSignStyle.accent.opacity(0.25))
-			.frame(height: 1)
-			.frame(maxWidth: .infinity)
 	}
 }
 

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UIKit
+import NimbleViews
 
 struct VariedTabbarView: View {
 	@State private var selectedTab: TabEnum = .signer
@@ -39,35 +40,56 @@ struct VariedTabbarView: View {
 
 private struct NullSignTabBar: View {
 	@Binding var selection: TabEnum
+	@Namespace private var _indicator
 
 	var body: some View {
 		HStack(spacing: 0) {
 			ForEach(TabEnum.defaultTabs, id: \.self) { tab in
-				Button {
-					guard selection != tab else { return }
-					UISelectionFeedbackGenerator().selectionChanged()
-					selection = tab
-				} label: {
-					VStack(spacing: 4) {
-						Image(systemName: tab.icon)
-							.font(.system(size: 19, weight: selection == tab ? .medium : .regular))
-						Text(tab.title)
-							.font(.system(size: 10, weight: selection == tab ? .semibold : .medium))
-					}
-					.foregroundStyle(selection == tab ? NullSignStyle.accent : NullSignStyle.muted)
-					.frame(maxWidth: .infinity)
-					.frame(height: 50)
-					.padding(.horizontal, 5)
-					.padding(.vertical, 5)
-					.contentShape(Rectangle())
-				}
-				.buttonStyle(.plain)
-				.accessibilityLabel(tab.title)
-				.accessibilityAddTraits(selection == tab ? .isSelected : [])
+				_tabButton(for: tab)
 			}
 		}
-		.padding(.horizontal, 7)
-		.background(NullSignStyle.panel.opacity(0.98))
-		.overlay(alignment: .top) { Rectangle().fill(NullSignStyle.hairline).frame(height: 1) }
+		.padding(.horizontal, 12)
+		.padding(.top, 8)
+		.background {
+			NBVariableBlurView()
+				.rotationEffect(.degrees(180))
+				.ignoresSafeArea(edges: .bottom)
+		}
+	}
+
+	private func _tabButton(for tab: TabEnum) -> some View {
+		let isSelected = selection == tab
+
+		return Button {
+			guard !isSelected else { return }
+			UISelectionFeedbackGenerator().selectionChanged()
+			withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+				selection = tab
+			}
+		} label: {
+			VStack(spacing: 3) {
+				ZStack {
+					if isSelected {
+						Capsule()
+							.fill(NullSignStyle.raisedPanel)
+							.frame(width: 44, height: 28)
+							.matchedGeometryEffect(id: "tabIndicator", in: _indicator)
+					}
+					Image(systemName: tab.icon)
+						.font(.system(size: 19, weight: isSelected ? .semibold : .regular))
+						.symbolVariant(isSelected ? .fill : .none)
+				}
+				.frame(height: 28)
+				Text(tab.title)
+					.font(.system(size: 10, weight: isSelected ? .semibold : .medium))
+			}
+			.foregroundStyle(isSelected ? NullSignStyle.accent : NullSignStyle.muted)
+			.frame(maxWidth: .infinity)
+			.padding(.vertical, 6)
+			.contentShape(Rectangle())
+		}
+		.buttonStyle(.plain)
+		.accessibilityLabel(tab.title)
+		.accessibilityAddTraits(isSelected ? .isSelected : [])
 	}
 }

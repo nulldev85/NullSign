@@ -1,8 +1,6 @@
 import SwiftUI
 import NimbleViews
 
-// Settings deliberately use a small set of native-looking building blocks. The
-// White and stepped grays preserve hierarchy on true OLED black.
 struct NullSignSettingsCard<Content: View>: View {
 	private let content: Content
 
@@ -15,12 +13,7 @@ struct NullSignSettingsCard<Content: View>: View {
 			content
 		}
 		.padding(14)
-		.background(NullSignStyle.panel)
-		.overlay {
-			RoundedRectangle(cornerRadius: 18, style: .continuous)
-				.stroke(NullSignStyle.hairline, lineWidth: 1)
-		}
-		.clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+		.nullSignSurface(cornerRadius: 18)
 	}
 }
 
