@@ -13,7 +13,8 @@ import AltSourceKit
 import IDeviceSwift
 
 enum FR {
-	static let serverPackURL = "https://backloop.dev/pack.json"
+	static let serverPackURL = "https://backloop.dev/public/pack.json"
+	static let serverCertificateURL = URL(string: "https://backloop.dev/public/backloop.dev-cert.crt")!
 
 	static func handlePackageFile(
 		_ ipa: URL,
@@ -150,6 +151,9 @@ enum FR {
 					let certificateChain = [pack.cert, pack.ca]
 						.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
 						.filter { !$0.isEmpty }
+						.reduce(into: [String]()) { chain, certificate in
+							if !chain.contains(certificate) { chain.append(certificate) }
+						}
 						.joined(separator: "\n") + "\n"
 					try FileManager.forceWrite(content: pack.key, to: "server.pem")
 					try FileManager.forceWrite(content: certificateChain, to: "server.crt")

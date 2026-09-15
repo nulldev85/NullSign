@@ -69,8 +69,30 @@ struct ServerView: View {
 
 			NullSignSettingsSection(
 				"Local Trust",
-				detail: "Refresh these files if the installer remains at Ready or iOS reports that it cannot connect to the server."
+				detail: "Fully Local requires a one-time certificate setup on this iPhone. Install the profile, then enable full trust in Settings › General › About › Certificate Trust Settings."
 			) {
+				Button {
+					UIApplication.shared.open(FR.serverCertificateURL)
+				} label: {
+					HStack(spacing: 12) {
+						Image(systemName: "checkmark.shield")
+							.foregroundStyle(NullSignStyle.accent)
+							.frame(width: 32, height: 32)
+							.background(NullSignStyle.raisedPanel)
+							.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+						Text("Install Fully Local Certificate")
+							.font(.body.weight(.medium))
+							.foregroundStyle(.primary)
+						Spacer()
+						Image(systemName: "arrow.up.forward")
+							.foregroundStyle(.secondary)
+					}
+					.contentShape(Rectangle())
+				}
+				.buttonStyle(.plain)
+
+				NullSignSettingsDivider()
+
 				Button {
 					_updateCertificates()
 				} label: {

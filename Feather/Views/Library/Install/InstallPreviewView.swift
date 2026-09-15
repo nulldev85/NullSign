@@ -176,6 +176,12 @@ struct InstallPreviewView: View {
 			)
 			return
 		}
+
+		if installer.getServerMethod() == 0,
+		   !UserDefaults.standard.bool(forKey: "NullSign.didConfirmLocalCertificateTrust") {
+			_showLocalCertificateSetup()
+			return
+		}
 				
 		Task.detached {
 			do {
@@ -250,6 +256,23 @@ struct InstallPreviewView: View {
 				}
 			}
 		}
+	}
+
+	private func _showLocalCertificateSetup() {
+		UIAlertController.showAlert(
+			title: "One-Time Fully Local Setup",
+			message: "Download the certificate, install the downloaded profile in Settings, then enable full trust in Settings › General › About › Certificate Trust Settings. Return here and choose ‘I Enabled Full Trust.’",
+			actions: [
+				UIAlertAction(title: "Download Certificate", style: .default) { _ in
+					UIApplication.shared.open(FR.serverCertificateURL)
+				},
+				UIAlertAction(title: "I Enabled Full Trust", style: .default) { _ in
+					UserDefaults.standard.set(true, forKey: "NullSign.didConfirmLocalCertificateTrust")
+					_install()
+				},
+				UIAlertAction(title: .localized("Cancel"), style: .cancel)
+			]
+		)
 	}
 	
 	private func startInstallProgressPolling(
