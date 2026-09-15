@@ -15,6 +15,7 @@ struct LibraryCellView: View {
 	@ObservedObject private var updateManager = UpdateManager.shared
 	@State private var _signedUpdateConfirmation: AppUpdate?
 	@State private var _isSignedUpdateConfirmationPresented = false
+	@State private var _isPeelingAway = false
 
 	var certInfo: Date.ExpirationInfo? {
 		Storage.shared.getCertificate(from: app)?.expiration?.expirationInfo()
@@ -75,6 +76,18 @@ struct LibraryCellView: View {
 		}
 		.nullSignPanel()
 		.background(_isSelected && isEditing ? NullSignStyle.accent.opacity(0.08) : Color.clear)
+		.rotation3DEffect(
+			.degrees(_isPeelingAway ? -82 : 0),
+			axis: (x: 0, y: 1, z: 0),
+			anchor: .trailing,
+			perspective: 0.72
+		)
+		.scaleEffect(x: _isPeelingAway ? 0.72 : 1, y: _isPeelingAway ? 0.96 : 1, anchor: .trailing)
+		.offset(x: _isPeelingAway ? -34 : 0)
+		.opacity(_isPeelingAway ? 0 : 1)
+		.shadow(color: .black.opacity(_isPeelingAway ? 0.42 : 0), radius: 18, x: 14, y: 3)
+		.animation(.timingCurve(0.22, 0.78, 0.28, 1, duration: 0.48), value: _isPeelingAway)
+		.allowsHitTesting(!_isPeelingAway)
 		.contentShape(Rectangle())
 		.onTapGesture {
 			if isEditing {
@@ -154,6 +167,16 @@ extension LibraryCellView {
 	@ViewBuilder
 	private func _actions(for app: AppInfoPresentable) -> some View {
 		Button(.localized("Delete"), systemImage: "trash", role: .destructive) {
+			_peelAndDelete(app)
+		}
+	}
+
+	private func _peelAndDelete(_ app: AppInfoPresentable) {
+		guard !_isPeelingAway else { return }
+		UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+		_isPeelingAway = true
+		Task { @MainActor in
+			try? await Task.sleep(for: .milliseconds(480))
 			Storage.shared.deleteApp(for: app)
 		}
 	}

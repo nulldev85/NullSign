@@ -57,7 +57,7 @@ struct NullSignSettingsRow: View {
 	var showsChevron = true
 
 	var body: some View {
-		HStack(spacing: 12) {
+		HStack(alignment: .top, spacing: 12) {
 			Image(systemName: systemImage)
 				.font(.system(size: 15, weight: .semibold))
 				.foregroundStyle(tint)
@@ -73,7 +73,7 @@ struct NullSignSettingsRow: View {
 					Text(detail)
 						.font(.caption)
 						.foregroundStyle(.secondary)
-						.lineLimit(2)
+						.fixedSize(horizontal: false, vertical: true)
 				}
 			}
 

@@ -49,7 +49,7 @@ final class FRAppIconLoader: ObservableObject {
 		task?.cancel()
 		task = Task {
 			let generated = await Task.detached(priority: .userInitiated) {
-				return iconTest(bundleURL)
+				return tvOSIcon(in: bundleURL) ?? iconTest(bundleURL)
 			}.value
 
 			guard !Task.isCancelled else { return }
@@ -64,6 +64,52 @@ final class FRAppIconLoader: ObservableObject {
 	func cancel() {
 		task?.cancel()
 	}
+}
+
+/// tvOS app icons are layered brand assets rather than the single iOS icon
+/// IconServices expects. Ask the imported bundle's asset catalog for the
+/// declared brand asset first, then fall back to any bundled square artwork.
+private func tvOSIcon(in bundleURL: URL) -> UIImage? {
+	guard let bundle = Bundle(url: bundleURL) else { return nil }
+	let families = bundle.object(forInfoDictionaryKey: "UIDeviceFamily") as? [Int] ?? []
+	let platforms = bundle.object(forInfoDictionaryKey: "CFBundleSupportedPlatforms") as? [String] ?? []
+	guard families.contains(3) || platforms.contains(where: { $0.localizedCaseInsensitiveContains("appletv") }) else {
+		return nil
+	}
+
+	var names: [String] = []
+	if let icons = bundle.object(forInfoDictionaryKey: "CFBundleIcons") as? [String: Any],
+	   let primary = icons["CFBundlePrimaryIcon"] as? [String: Any] {
+		if let name = primary["CFBundleIconName"] as? String { names.append(name) }
+		if let files = primary["CFBundleIconFiles"] as? [String] { names.append(contentsOf: files.reversed()) }
+	}
+	names.append(contentsOf: ["App Icon", "App Icon - Small", "AppIcon"])
+
+	for name in names where !name.isEmpty {
+		if let image = UIImage(named: name, in: bundle, compatibleWith: nil), image.size.width > 1 {
+			return image
+		}
+	}
+
+	let keys: [URLResourceKey] = [.isRegularFileKey, .fileSizeKey]
+	let candidates = (FileManager.default.enumerator(
+		at: bundleURL,
+		includingPropertiesForKeys: keys,
+		options: [.skipsHiddenFiles]
+	) as? FileManager.DirectoryEnumerator)?
+		.compactMap { $0 as? URL }
+		.filter {
+			$0.pathExtension.lowercased() == "png" &&
+			!$0.lastPathComponent.localizedCaseInsensitiveContains("top shelf") &&
+			!$0.lastPathComponent.localizedCaseInsensitiveContains("topshelf")
+		} ?? []
+
+	return candidates
+		.compactMap { url -> (UIImage, CGFloat)? in
+			guard let image = UIImage(contentsOfFile: url.path), image.size.width == image.size.height else { return nil }
+			return (image, image.size.width)
+		}
+		.max(by: { $0.1 < $1.1 })?.0
 }
 
 struct FRAppIconView: View {
