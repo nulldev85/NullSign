@@ -210,7 +210,11 @@ extension ResetView {
 	}
 
 	static func resetCertificates(resetAll: Bool = false) {
-		if !resetAll { UserDefaults.standard.set(0, forKey: "feather.selectedCert") }
+		if !resetAll {
+			UserDefaults.standard.set(0, forKey: "feather.selectedCert")
+			UserDefaults.standard.removeObject(forKey: "feather.selectedCert.iOS")
+			UserDefaults.standard.removeObject(forKey: "feather.selectedCert.tvOS")
+		}
 		Storage.shared.clearContext(request: CertificatePair.fetchRequest())
 		try? FileManager.default.removeFileIfNeeded(at: FileManager.default.certificates)
 	}

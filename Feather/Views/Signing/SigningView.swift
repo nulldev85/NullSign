@@ -32,14 +32,15 @@ struct SigningView: View {
 	
 	private func _selectedCert() -> CertificatePair? {
 		guard certificates.indices.contains(_temporaryCertificate) else { return nil }
-		return certificates[_temporaryCertificate]
+		let certificate = certificates[_temporaryCertificate]
+		return Storage.shared.certificate(certificate, supports: app.platform) ? certificate : nil
 	}
 	
 	var app: AppInfoPresentable
 	
 	init(app: AppInfoPresentable) {
 		self.app = app
-		let storedCert = UserDefaults.standard.integer(forKey: "feather.selectedCert")
+		let storedCert = Storage.shared.preferredCertificateIndex(for: app.platform) ?? -1
 		__temporaryCertificate = State(initialValue: storedCert)
 	}
 		
@@ -160,6 +161,11 @@ struct SigningView: View {
 				_temporaryOptions.appName = newName
 			}
 		}
+		.onChange(of: _temporaryCertificate) { _ in
+			if let certificate = _selectedCert() {
+				Storage.shared.rememberCertificate(certificate, for: app.platform)
+			}
+		}
 	}
 }
 
@@ -210,16 +216,18 @@ extension SigningView {
 		NBSection(.localized("Signing")) {
 			if let cert = _selectedCert() {
 				NavigationLink {
-					CertificatesView(selectedCert: $_temporaryCertificate)
+					CertificatesView(selectedCert: $_temporaryCertificate, platform: app.platform)
 				} label: {
 					CertificatesCellView(
 						cert: cert
 					)
 				}
 			} else {
-				Text(.localized("No Certificate"))
-					.font(.footnote)
-					.foregroundColor(.disabled())
+				NavigationLink {
+					CertificatesView(selectedCert: $_temporaryCertificate, platform: app.platform)
+				} label: {
+					Label(.localized("Choose Certificate"), systemImage: "checkmark.seal")
+				}
 			}
 		}
 	}
@@ -310,6 +318,9 @@ extension SigningView {
 
 		let generator = UIImpactFeedbackGenerator(style: .light)
 		generator.impactOccurred()
+		if let certificate = _selectedCert() {
+			Storage.shared.rememberCertificate(certificate, for: app.platform)
+		}
 		_isSigning = true
 		
 		FR.signPackageFile(

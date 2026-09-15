@@ -11,6 +11,42 @@ import ZsignSwift
 
 // MARK: - Class extension: certificate
 extension Storage {
+	func certificate(_ cert: CertificatePair, supports platform: AppPlatform) -> Bool {
+		guard let profile = getProvisionFileDecoded(for: cert) else { return false }
+		let platforms = profile.Platform.map { $0.lowercased() }
+		switch platform {
+		case .iOS:
+			return platforms.contains { $0.contains("ios") || $0.contains("iphone") }
+		case .tvOS:
+			return platforms.contains { $0.contains("tvos") || $0.contains("appletv") }
+		}
+	}
+
+	func preferredCertificateIndex(for platform: AppPlatform) -> Int? {
+		let certificates = getAllCertificates()
+		let defaults = UserDefaults.standard
+		let key = "feather.selectedCert.\(platform.rawValue)"
+
+		if let uuid = defaults.string(forKey: key),
+		   let index = certificates.firstIndex(where: { $0.uuid == uuid && certificate($0, supports: platform) }) {
+			return index
+		}
+
+		if platform == .iOS {
+			let legacyIndex = defaults.integer(forKey: "feather.selectedCert")
+			if certificates.indices.contains(legacyIndex), certificate(certificates[legacyIndex], supports: platform) {
+				return legacyIndex
+			}
+		}
+
+		return certificates.firstIndex { certificate($0, supports: platform) }
+	}
+
+	func rememberCertificate(_ cert: CertificatePair, for platform: AppPlatform) {
+		guard certificate(cert, supports: platform), let uuid = cert.uuid else { return }
+		UserDefaults.standard.set(uuid, forKey: "feather.selectedCert.\(platform.rawValue)")
+	}
+
 	func addCertificate(
 		uuid: String,
 		password: String? = nil,

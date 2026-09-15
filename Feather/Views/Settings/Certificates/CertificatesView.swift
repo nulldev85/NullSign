@@ -17,12 +17,14 @@ struct CertificatesView: View {
 	) private var _certificates: FetchedResults<CertificatePair>
 
 	private var _bindingSelectedCert: Binding<Int>?
+	private var _platform: AppPlatform?
 	private var _selectedCertBinding: Binding<Int> {
 		_bindingSelectedCert ?? $_storedSelectedCert
 	}
 
-	init(selectedCert: Binding<Int>? = nil) {
+	init(selectedCert: Binding<Int>? = nil, platform: AppPlatform? = nil) {
 		self._bindingSelectedCert = selectedCert
+		self._platform = platform
 	}
 
 	var body: some View {
@@ -123,10 +125,13 @@ extension CertificatesView {
 	@ViewBuilder
 	private func _cellButton(for cert: CertificatePair, at index: Int) -> some View {
 		let isSelected = _selectedCertBinding.wrappedValue == index
+		let isCompatible = _platform.map { Storage.shared.certificate(cert, supports: $0) } ?? true
 
 		HStack(spacing: 0) {
 			Button {
-				_selectedCertBinding.wrappedValue = index
+				if isCompatible {
+					_selectedCertBinding.wrappedValue = index
+				}
 			} label: {
 				CertificatesCellView(cert: cert, isSelected: isSelected)
 					.padding(.vertical, 14)
@@ -134,6 +139,8 @@ extension CertificatesView {
 					.frame(maxWidth: .infinity, alignment: .leading)
 			}
 			.buttonStyle(.plain)
+			.disabled(!isCompatible)
+			.opacity(isCompatible ? 1 : 0.45)
 
 			Menu {
 				_contextActions(for: cert)

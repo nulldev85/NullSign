@@ -16,7 +16,6 @@ struct InstallPreviewView: View {
 
 	@AppStorage("Feather.useShareSheetForArchiving") private var _useShareSheet: Bool = false
 	@AppStorage("Feather.installationMethod") private var _installationMethod: Int = 0
-	@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 0
 	@State private var _isWebviewPresenting = false
 	@State private var progressTask: Task<Void, Never>?
 	@State private var installAttempt = 0
@@ -77,14 +76,13 @@ struct InstallPreviewView: View {
 		.onReceive(viewModel.$status) { newStatus in
 			if _installationMethod == 0 || app.platform == .iOS {
 				if case .ready = newStatus {
-					if _serverMethod == 0 {
-						UIApplication.shared.open(URL(string: installer.iTunesLink)!)
-					} else if _serverMethod == 1 {
-						_isWebviewPresenting = true
-					}
+					// iOS can silently reject a direct itms-services open. Entering
+					// through the local page gives WebKit a user-visible navigation
+					// context while keeping Fully Local's manifest on this device.
+					_isWebviewPresenting = true
 				}
 				
-				if case .sendingPayload = newStatus, _serverMethod == 1 {
+				if case .sendingPayload = newStatus {
 					_isWebviewPresenting = false
 				}
 				

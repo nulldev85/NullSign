@@ -25,15 +25,13 @@ struct PlatformBadge: View {
 	let platform: AppPlatform
 
 	var body: some View {
-		if platform == .tvOS {
-			Text("tvOS")
-				.font(.system(size: 9, weight: .bold, design: .rounded))
-				.foregroundStyle(.white)
-				.padding(.horizontal, 6)
-				.frame(height: 17)
-				.background(NullSignStyle.crimson)
-				.clipShape(Capsule())
-				.accessibilityLabel("Apple TV app")
-		}
+		Text(platform.rawValue)
+			.font(.system(size: 9, weight: .bold, design: .rounded))
+			.foregroundStyle(.white)
+			.padding(.horizontal, 6)
+			.frame(height: 17)
+			.background(platform == .tvOS ? NullSignStyle.crimson : Color.green)
+			.clipShape(Capsule())
+			.accessibilityLabel(platform == .tvOS ? "Apple TV app" : "iPhone app")
 	}
 }
