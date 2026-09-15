@@ -12,6 +12,7 @@ import NimbleViews
 struct VariedTabbarView: View {
 	@State private var selectedTab: TabEnum = .signer
 	@State private var visitedTabs: Set<TabEnum> = [.signer]
+	@State private var rootGeneration: [TabEnum: Int] = [:]
 
 	init() {}
 	
@@ -19,6 +20,7 @@ struct VariedTabbarView: View {
 		ZStack {
 			ForEach(TabEnum.defaultTabs.filter { visitedTabs.contains($0) }, id: \.self) { tab in
 				TabEnum.view(for: tab)
+					.id("\(tab.rawValue)-\(rootGeneration[tab, default: 0])")
 					.opacity(selectedTab == tab ? 1 : 0)
 					.allowsHitTesting(selectedTab == tab)
 					.accessibilityHidden(selectedTab != tab)
@@ -26,20 +28,31 @@ struct VariedTabbarView: View {
 		}
 		.background(Color.black)
 		.safeAreaInset(edge: .bottom, spacing: 0) {
-			NullSignTabBar(selection: Binding(
-				get: { selectedTab },
-				set: { tab in
-					visitedTabs.insert(tab)
-					selectedTab = tab
+			NullSignTabBar(
+				selection: Binding(
+					get: { selectedTab },
+					set: { tab in
+						visitedTabs.insert(tab)
+						selectedTab = tab
+						UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+					}
+				),
+				onReselect: { tab in
 					UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+					var transaction = Transaction()
+					transaction.disablesAnimations = true
+					withTransaction(transaction) {
+						rootGeneration[tab, default: 0] += 1
+					}
 				}
-			))
+			)
 		}
 	}
 }
 
 private struct NullSignTabBar: View {
 	@Binding var selection: TabEnum
+	let onReselect: (TabEnum) -> Void
 	@Namespace private var _indicator
 
 	var body: some View {
@@ -61,7 +74,11 @@ private struct NullSignTabBar: View {
 		let isSelected = selection == tab
 
 		return Button {
-			guard !isSelected else { return }
+			if isSelected {
+				UIImpactFeedbackGenerator(style: .light).impactOccurred()
+				onReselect(tab)
+				return
+			}
 			UISelectionFeedbackGenerator().selectionChanged()
 			withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
 				selection = tab
