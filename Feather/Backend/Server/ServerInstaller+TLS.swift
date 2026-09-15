@@ -51,8 +51,22 @@ extension ServerInstaller {
 				? (Self.getLocalAddress() ?? localhost)
 				: localhost
 		} else {
-			return readCommonName() ?? localhost
+			return certificateHostname() ?? localhost
 		}
+	}
+
+	/// Returns a concrete hostname covered by the downloaded certificate.
+	/// A wildcard is a certificate pattern, not a valid address to navigate to.
+	func certificateHostname() -> String? {
+		guard let commonName = readCommonName(), !commonName.isEmpty else {
+			return nil
+		}
+
+		if commonName.hasPrefix("*.") {
+			return "nullsign." + String(commonName.dropFirst(2))
+		}
+
+		return commonName
 	}
 	
 	func tls() throws -> TLSConfiguration? {
