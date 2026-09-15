@@ -166,9 +166,13 @@ extension LibraryCellView {
 	
 	@ViewBuilder
 	private func _actions(for app: AppInfoPresentable) -> some View {
-		Button(.localized("Delete"), systemImage: "trash", role: .destructive) {
+		Button(role: .destructive) {
 			_peelAndDelete(app)
+		} label: {
+			Label(.localized("Delete"), systemImage: "externaldrive.badge.xmark")
+				.symbolRenderingMode(.hierarchical)
 		}
+		.tint(NullSignStyle.accent)
 	}
 
 	private func _peelAndDelete(_ app: AppInfoPresentable) {

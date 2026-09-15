@@ -156,7 +156,14 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 		_createDocumentsDirectories()
 		ResetView.clearWorkCache()
 		_addDefaultCertificates()
+		_refreshServerCertificates()
 		return true
+	}
+
+	private func _refreshServerCertificates() {
+		// Certificate packs rotate regularly. Refreshing on launch also repairs
+		// older installs that saved only the leaf certificate without its chain.
+		FR.downloadSSLCertificates(from: FR.serverPackURL) { _ in }
 	}
 	
 	private func _createPipeline() {

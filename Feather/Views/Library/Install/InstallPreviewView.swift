@@ -181,6 +181,15 @@ struct InstallPreviewView: View {
 			do {
 				let targetPlatform = await app.platform
 				let sharing = await isSharing
+				let serverMethod = await MainActor.run { installer.getServerMethod() }
+				if targetPlatform == .iOS && !sharing && serverMethod == 0 {
+					guard await FR.refreshSSLCertificates() else {
+						throw CocoaError(.fileReadUnknown, userInfo: [
+							NSLocalizedDescriptionKey: "Unable to refresh the local HTTPS certificate. Check your connection and try again."
+						])
+					}
+					try await MainActor.run { try installer.restart() }
+				}
 				if targetPlatform == .tvOS && !sharing {
 					try await AppleTVManager.shared.prepareForInstall()
 				}

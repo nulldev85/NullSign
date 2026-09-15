@@ -13,6 +13,8 @@ import AltSourceKit
 import IDeviceSwift
 
 enum FR {
+	static let serverPackURL = "https://backloop.dev/pack.json"
+
 	static func handlePackageFile(
 		_ ipa: URL,
 		download: Download? = nil,
@@ -145,8 +147,12 @@ enum FR {
 			switch result {
 			case .success(let pack):
 				do {
+					let certificateChain = [pack.cert, pack.ca]
+						.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+						.filter { !$0.isEmpty }
+						.joined(separator: "\n") + "\n"
 					try FileManager.forceWrite(content: pack.key, to: "server.pem")
-					try FileManager.forceWrite(content: pack.cert, to: "server.crt")
+					try FileManager.forceWrite(content: certificateChain, to: "server.crt")
 					try FileManager.forceWrite(content: pack.info.domains.commonName, to: "commonName.txt")
 					generator.notificationOccurred(.success)
 					completion(true)
@@ -155,6 +161,14 @@ enum FR {
 				}
 			case .failure(_):
 				completion(false)
+			}
+		}
+	}
+
+	static func refreshSSLCertificates() async -> Bool {
+		await withCheckedContinuation { continuation in
+			downloadSSLCertificates(from: serverPackURL) { success in
+				continuation.resume(returning: success)
 			}
 		}
 	}

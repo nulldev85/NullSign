@@ -37,6 +37,14 @@ class ServerInstaller: Identifiable, ObservableObject {
 	deinit {
 		_shutdownServer()
 	}
+
+	func restart() throws {
+		_shutdownServer()
+		try _setup()
+		try _configureRoutes()
+		try _server?.server.start()
+		_needsShutdown = true
+	}
 	
 	private func _setup() throws {
 		self._server = try? setupApp(port: port)

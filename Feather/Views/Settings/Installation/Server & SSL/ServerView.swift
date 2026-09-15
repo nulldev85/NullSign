@@ -38,8 +38,6 @@ struct ServerView: View {
 	@AppStorage("Feather.serverMethod") private var _serverMethod = 0
 	@State private var _isUpdatingCertificates = false
 
-	private let _serverPackURL = "https://backloop.dev/pack.json"
-
 	var body: some View {
 		VStack(spacing: 22) {
 			NullSignSettingsSection(
@@ -103,7 +101,7 @@ struct ServerView: View {
 
 	private func _updateCertificates() {
 		_isUpdatingCertificates = true
-		FR.downloadSSLCertificates(from: _serverPackURL) { success in
+		FR.downloadSSLCertificates(from: FR.serverPackURL) { success in
 			DispatchQueue.main.async {
 				_isUpdatingCertificates = false
 				UIAlertController.showAlertWithOk(
