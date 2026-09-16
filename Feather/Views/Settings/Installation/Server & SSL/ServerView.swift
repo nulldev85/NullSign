@@ -36,21 +36,18 @@ extension ServerView {
 struct ServerView: View {
 	@AppStorage("Feather.ipFix") private var _ipFix = false
 	@AppStorage("Feather.serverMethod") private var _serverMethod = 0
-	@State private var _isUpdatingCertificates = false
 
 	var body: some View {
 		VStack(spacing: 22) {
 			NullSignSettingsSection(
 				"Server Setup",
-				detail: _serverMethod == 0
-					? "Fully Local keeps the install route on your network. If installation stalls, try Semi Local."
-					: "Semi Local can be more tolerant of network restrictions but relies on an external service."
+				detail: "Semi Local is currently required because the certificate service used by Fully Local was retired."
 			) {
-				Picker("Server type", selection: $_serverMethod) {
-					Text("Fully Local").tag(0)
-					Text("Semi Local").tag(1)
+				HStack {
+					Text("Server type")
+					Spacer()
+					Text("Semi Local").foregroundStyle(.secondary)
 				}
-				.pickerStyle(.segmented)
 
 				NullSignSettingsDivider()
 
@@ -68,71 +65,12 @@ struct ServerView: View {
 			}
 
 			NullSignSettingsSection(
-				"Local Trust",
-				detail: "Fully Local requires a one-time certificate setup on this iPhone. Install the profile, then enable full trust in Settings › General › About › Certificate Trust Settings."
-			) {
-				Button {
-					UIApplication.shared.open(FR.serverCertificateURL)
-				} label: {
-					HStack(spacing: 12) {
-						Image(systemName: "checkmark.shield")
-							.foregroundStyle(NullSignStyle.accent)
-							.frame(width: 32, height: 32)
-							.background(NullSignStyle.raisedPanel)
-							.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-						Text("Install Fully Local Certificate")
-							.font(.body.weight(.medium))
-							.foregroundStyle(.primary)
-						Spacer()
-						Image(systemName: "arrow.up.forward")
-							.foregroundStyle(.secondary)
-					}
-					.contentShape(Rectangle())
-				}
-				.buttonStyle(.plain)
-
-				NullSignSettingsDivider()
-
-				Button {
-					_updateCertificates()
-				} label: {
-					HStack(spacing: 12) {
-						Image(systemName: "lock.rotation")
-							.foregroundStyle(NullSignStyle.accent)
-							.frame(width: 32, height: 32)
-							.background(NullSignStyle.raisedPanel)
-							.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-						Text(_isUpdatingCertificates ? "Updating certificates…" : "Update SSL Certificates")
-							.font(.body.weight(.medium))
-							.foregroundStyle(.primary)
-						Spacer()
-						if _isUpdatingCertificates {
-							ProgressView().tint(NullSignStyle.accent)
-						} else {
-							Image(systemName: "arrow.down")
-								.foregroundStyle(.secondary)
-						}
-					}
-					.contentShape(Rectangle())
-				}
-				.buttonStyle(.plain)
-				.disabled(_isUpdatingCertificates)
-			}
+				"Fully Local",
+				detail: "Temporarily unavailable. NullSign will not open a local HTTPS page that Safari cannot verify."
+			) { EmptyView() }
 		}
-	}
-
-	private func _updateCertificates() {
-		_isUpdatingCertificates = true
-		FR.downloadSSLCertificates(from: FR.serverPackURL) { success in
-			DispatchQueue.main.async {
-				_isUpdatingCertificates = false
-				UIAlertController.showAlertWithOk(
-					title: "SSL Certificates",
-					message: success
-						? "Certificates updated successfully."
-						: "The update failed. Check your connection and try again."
-				)
-			}
+		.onAppear {
+			if _serverMethod == 0 { _serverMethod = 1 }
 		}
 	}
 }

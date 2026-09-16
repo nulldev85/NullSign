@@ -169,6 +169,20 @@ struct InstallPreviewView: View {
 	}
 	
 	private func _install() {
+		// backloop.dev retired the certificate Fully Local depended on. Migrate
+		// existing selections before starting the server so Safari is never sent
+		// to an HTTPS endpoint with a revoked or mismatched certificate.
+		if installer.getServerMethod() == 0 {
+			UserDefaults.standard.set(1, forKey: "Feather.serverMethod")
+			do { try installer.restart() }
+			catch {
+				UIAlertController.showAlertWithOk(
+					title: .localized("Install"),
+					message: "Unable to switch to the safe Semi Local installer. Please try again."
+				)
+				return
+			}
+		}
 		guard isSharing || app.identifier != Bundle.main.bundleIdentifier! || _installationMethod == 1 else {
 			UIAlertController.showAlertWithOk(
 				title: .localized("Install"),
@@ -177,12 +191,7 @@ struct InstallPreviewView: View {
 			return
 		}
 
-		if installer.getServerMethod() == 0,
-		   !UserDefaults.standard.bool(forKey: "NullSign.didConfirmLocalCertificateTrust") {
-			_showLocalCertificateSetup()
-			return
-		}
-				
+
 		Task.detached {
 			do {
 				let targetPlatform = await app.platform
@@ -258,23 +267,6 @@ struct InstallPreviewView: View {
 		}
 	}
 
-	private func _showLocalCertificateSetup() {
-		UIAlertController.showAlert(
-			title: "One-Time Fully Local Setup",
-			message: "Download the certificate, install the downloaded profile in Settings, then enable full trust in Settings › General › About › Certificate Trust Settings. Return here and choose ‘I Enabled Full Trust.’",
-			actions: [
-				UIAlertAction(title: "Download Certificate", style: .default) { _ in
-					UIApplication.shared.open(FR.serverCertificateURL)
-				},
-				UIAlertAction(title: "I Enabled Full Trust", style: .default) { _ in
-					UserDefaults.standard.set(true, forKey: "NullSign.didConfirmLocalCertificateTrust")
-					_install()
-				},
-				UIAlertAction(title: .localized("Cancel"), style: .cancel)
-			]
-		)
-	}
-	
 	private func startInstallProgressPolling(
 		bundleID: String,
 		viewModel: InstallerStatusViewModel
