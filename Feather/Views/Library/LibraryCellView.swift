@@ -12,7 +12,11 @@ import NimbleViews
 // MARK: - View
 struct LibraryCellView: View {
 	@Environment(\.editMode) private var editMode
-	@ObservedObject private var updateManager = UpdateManager.shared
+	// Not @ObservedObject: UpdateManager also publishes isChecking/lastCheckedDate,
+	// which would re-render every visible row on every check start/finish even
+	// though only the per-app update entry below is ever read from it.
+	private let updateManager = UpdateManager.shared
+	@State private var _update: AppUpdate?
 	@State private var _signedUpdateConfirmation: AppUpdate?
 	@State private var _isSignedUpdateConfirmationPresented = false
 	@State private var _isPeelingAway = false
@@ -127,6 +131,9 @@ struct LibraryCellView: View {
 				Text("\(update.appName) \(update.remoteVersion)")
 			}
 		}
+		.onReceive(updateManager.$updates) { updates in
+			_update = app.uuid.flatMap { updates[$0] }
+		}
 	}
 	
 	private var _desc: String {
@@ -148,7 +155,7 @@ extension LibraryCellView {
 					.offset(x: 5, y: 4)
 			}
 			.overlay(alignment: .topTrailing) {
-				if updateManager.update(for: app) != nil {
+				if _update != nil {
 					Image(systemName: "arrow.down.circle.fill")
 						.font(.system(size: 18, weight: .semibold))
 						.symbolRenderingMode(.palette)
@@ -194,7 +201,7 @@ extension LibraryCellView {
 	
 	@ViewBuilder
 	private func _contextActionsExtra(for app: AppInfoPresentable) -> some View {
-		if let update = updateManager.update(for: app) {
+		if let update = _update {
 			Button(.localized("Update"), systemImage: "arrow.down.circle") {
 				if app.isSigned {
 					_signedUpdateConfirmation = update
@@ -233,7 +240,7 @@ extension LibraryCellView {
 	@ViewBuilder
 	private func _buttonActions(for app: AppInfoPresentable) -> some View {
 		Group {
-			if let update = updateManager.update(for: app) {
+			if let update = _update {
 				if app.isSigned {
 					Button {
 						_signedUpdateConfirmation = update

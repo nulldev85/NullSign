@@ -53,11 +53,14 @@ struct LibraryView: View {
 		!_signedApps.isEmpty || !_importedApps.isEmpty
 	}
 
-	private var _visibleAppsEmpty: Bool {
+	// Takes the already-filtered arrays rather than recomputing them, so
+	// body only runs the search filter over the full app lists once per
+	// render instead of once per call site.
+	private func _visibleAppsEmpty(signed: [Signed], imported: [Imported]) -> Bool {
 		switch _selectedScope {
-		case .all: return _filteredSignedApps.isEmpty && _filteredImportedApps.isEmpty
-		case .signed: return _filteredSignedApps.isEmpty
-		case .imported: return _filteredImportedApps.isEmpty
+		case .all: return signed.isEmpty && imported.isEmpty
+		case .signed: return signed.isEmpty
+		case .imported: return imported.isEmpty
 		}
 	}
 	
@@ -87,6 +90,12 @@ struct LibraryView: View {
 	
 	// MARK: Body
 	var body: some View {
+		// Computed once per render (instead of once per call site below) so
+		// the search filter doesn't re-scan the full signed/imported lists
+		// several times on every keystroke or unrelated state change.
+		let filteredSignedApps = _filteredSignedApps
+		let filteredImportedApps = _filteredImportedApps
+
 		NBNavigationView("Signer") {
 			Group {
 				if _hasApps {
@@ -99,11 +108,11 @@ struct LibraryView: View {
 						_libraryTools
 
 						if
-							!_filteredSignedApps.isEmpty,
+							!filteredSignedApps.isEmpty,
 							_selectedScope == .all || _selectedScope == .signed
 						{
-							NBSection(.localized("Signed"), secondary: _filteredSignedApps.count.description) {
-								ForEach(_filteredSignedApps, id: \.uuid) { app in
+							NBSection(.localized("Signed"), secondary: filteredSignedApps.count.description) {
+								ForEach(filteredSignedApps, id: \.uuid) { app in
 									LibraryCellView(
 										app: app,
 										selectedInfoAppPresenting: $_selectedInfoAppPresenting,
@@ -117,11 +126,11 @@ struct LibraryView: View {
 						}
 
 						if
-							!_filteredImportedApps.isEmpty,
+							!filteredImportedApps.isEmpty,
 							_selectedScope == .all || _selectedScope == .imported
 						{
-							NBSection(.localized("Imported"), secondary: _filteredImportedApps.count.description) {
-								ForEach(_filteredImportedApps, id: \.uuid) { app in
+							NBSection(.localized("Imported"), secondary: filteredImportedApps.count.description) {
+								ForEach(filteredImportedApps, id: \.uuid) { app in
 									LibraryCellView(
 										app: app,
 										selectedInfoAppPresenting: $_selectedInfoAppPresenting,
@@ -134,7 +143,7 @@ struct LibraryView: View {
 							}
 						}
 
-						if _visibleAppsEmpty {
+						if _visibleAppsEmpty(signed: filteredSignedApps, imported: filteredImportedApps) {
 							VStack(spacing: 8) {
 								Image(systemName: "line.3.horizontal.decrease.circle")
 									.font(.system(size: 24, weight: .light))
