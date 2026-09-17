@@ -54,6 +54,7 @@ private struct NullSignTabBar: View {
 	@Binding var selection: TabEnum
 	let onReselect: (TabEnum) -> Void
 	@Namespace private var _indicator
+	@Environment(\.accessibilityReduceMotion) private var _reduceMotion
 
 	var body: some View {
 		HStack(spacing: 0) {
@@ -80,7 +81,7 @@ private struct NullSignTabBar: View {
 				return
 			}
 			UISelectionFeedbackGenerator().selectionChanged()
-			withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+			withAnimation(_reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.8)) {
 				selection = tab
 			}
 		} label: {

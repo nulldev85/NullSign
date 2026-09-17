@@ -29,7 +29,6 @@ struct NullSignApp: App {
 					.onOpenURL(perform: _handleURL)
 					.transition(.move(edge: .top).combined(with: .opacity))
 			}
-			.animation(.smooth, value: downloadManager.manualDownloads.description)
 			.preferredColorScheme(.dark)
 			.tint(.white)
 			.onReceive(NotificationCenter.default.publisher(for: .heartbeatInvalidHost)) { _ in

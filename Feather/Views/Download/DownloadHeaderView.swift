@@ -11,7 +11,8 @@ import NimbleExtensions
 
 struct DownloadHeaderView: View {
 	@ObservedObject var downloadManager: DownloadManager
-	
+	@Environment(\.accessibilityReduceMotion) private var _reduceMotion
+
 	var body: some View {
 		ZStack {
 			if !downloadManager.manualDownloads.isEmpty {
@@ -38,10 +39,10 @@ struct DownloadHeaderView: View {
 						}
 					}
 				}
-				.transition(.move(edge: .top).combined(with: .opacity))
+				.transition(_reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
 			}
 		}
-		.animation(.spring(), value: downloadManager.manualDownloads.count)
+		.animation(_reduceMotion ? nil : .spring(), value: downloadManager.manualDownloads.count)
 	}
 }
 
