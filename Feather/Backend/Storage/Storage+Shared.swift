@@ -22,19 +22,16 @@ extension Storage {
 	}
 	
 	func deleteApp(for app: AppInfoPresentable) {
-		// The on-disk payload can be large (an unpacked .app bundle), so it's
-		// removed off the main thread; the Core Data side is cheap and stays
-		// on the caller's (main) queue since it owns the viewContext.
-		if let url = getUuidDirectory(for: app) {
-			DispatchQueue.global(qos: .utility).async {
+		do {
+			if let url = getUuidDirectory(for: app) {
 				try? FileManager.default.removeItem(at: url)
 			}
+			deleteSourceMetadata(for: app.uuid)
+			if let object = app as? NSManagedObject {
+				context.delete(object)
+			}
+			saveContext()
 		}
-		deleteSourceMetadata(for: app.uuid)
-		if let object = app as? NSManagedObject {
-			context.delete(object)
-		}
-		saveContext()
 	}
 	
 	func getCertificate(from app: AppInfoPresentable) -> CertificatePair? {

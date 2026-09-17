@@ -50,7 +50,14 @@ extension Storage {
 			new.icon = appIcon
 			new.version = appVersion
 
-			try? backgroundContext.save()
+			do {
+				try backgroundContext.save()
+			} catch {
+				DispatchQueue.main.async {
+					completion(error)
+				}
+				return
+			}
 
 			DispatchQueue.main.async {
 				generator.impactOccurred()

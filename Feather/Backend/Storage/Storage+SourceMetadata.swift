@@ -122,19 +122,22 @@ extension Storage {
 	func copySourceMetadata(
 		from sourceAppUUID: String?,
 		to destinationAppUUID: String,
-		kind: SourceLinkedAppKind
+		kind: SourceLinkedAppKind,
+		completion: ((Error?) -> Void)? = nil
 	) {
 		guard
 			let sourceAppUUID
 		else {
+			completion?(nil)
 			return
 		}
 
-		// Signing finishes off the main thread, and this runs right after
-		// addSigned() in that same continuation, so it uses its own
-		// background context too rather than the main-queue viewContext
-		// (avoids another forced main-thread save right before the signing
-		// sheet dismisses).
+		// Signing finishes off the main thread, and the signing flow awaits
+		// this via its completion handler (it must not report success, or
+		// let the original app be deleted, off the back of a metadata copy
+		// that silently failed). It still uses its own background context
+		// rather than the main-queue viewContext, to avoid a forced
+		// main-thread save right before the signing sheet dismisses.
 		container.performBackgroundTask { backgroundContext in
 			let sourceRequest: NSFetchRequest<AppSourceMetadata> = AppSourceMetadata.fetchRequest()
 			sourceRequest.fetchLimit = 1
@@ -147,6 +150,10 @@ extension Storage {
 				let appIdentifier = source.sourceAppIdentifier,
 				let versionID = source.sourceVersionID
 			else {
+				// Nothing to copy (app wasn't linked to a source) — not a failure.
+				DispatchQueue.main.async {
+					completion?(nil)
+				}
 				return
 			}
 
@@ -172,7 +179,16 @@ extension Storage {
 			metadata.sourceVersionID = versionID
 			metadata.updatedAt = now
 
-			try? backgroundContext.save()
+			do {
+				try backgroundContext.save()
+				DispatchQueue.main.async {
+					completion?(nil)
+				}
+			} catch {
+				DispatchQueue.main.async {
+					completion?(error)
+				}
+			}
 		}
 	}
 	

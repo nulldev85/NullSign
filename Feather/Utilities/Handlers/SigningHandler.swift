@@ -159,9 +159,9 @@ final class SigningHandler: NSObject {
 			return
 		}
 		
-		await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+		try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
 			let bundle = Bundle(url: appUrl)
-			
+
 			Storage.shared.addSigned(
 				uuid: _uuid,
 				source: _app.source,
@@ -170,17 +170,32 @@ final class SigningHandler: NSObject {
 				appIdentifier: bundle?.bundleIdentifier,
 				appVersion: bundle?.version,
 				appIcon: bundle?.iconFileName
-			) { _ in
+			) { error in
+				if let error {
+					continuation.resume(throwing: error)
+					return
+				}
 				Logger.signing.info("[\(self._uuid)] Added to database")
 				continuation.resume()
 			}
 		}
-		
-		Storage.shared.copySourceMetadata(
-			from: _app.uuid,
-			to: _uuid,
-			kind: .signed
-		)
+
+		// Awaited (not fire-and-forget): if this fails, addToDatabase() must
+		// throw so the caller never reports success or deletes the original
+		// app off the back of an incomplete database write.
+		try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+			Storage.shared.copySourceMetadata(
+				from: _app.uuid,
+				to: _uuid,
+				kind: .signed
+			) { error in
+				if let error {
+					continuation.resume(throwing: error)
+				} else {
+					continuation.resume()
+				}
+			}
+		}
 	}
 	
 	private func _directory() async throws -> URL {
