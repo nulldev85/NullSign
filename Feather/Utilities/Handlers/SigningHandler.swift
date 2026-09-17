@@ -180,20 +180,22 @@ final class SigningHandler: NSObject {
 			}
 		}
 
-		// Awaited (not fire-and-forget): if this fails, addToDatabase() must
-		// throw so the caller never reports success or deletes the original
-		// app off the back of an incomplete database write.
-		try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+		// Awaited (not fire-and-forget) so success is never reported, and the
+		// original app never deleted, before this has actually finished. It's
+		// still best-effort, though: it only links the signed app back to its
+		// download source for update-checking, so a failure here is logged
+		// rather than failing the whole sign — the Signed row above is the
+		// part that actually matters, and it already committed successfully.
+		await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
 			Storage.shared.copySourceMetadata(
 				from: _app.uuid,
 				to: _uuid,
 				kind: .signed
 			) { error in
 				if let error {
-					continuation.resume(throwing: error)
-				} else {
-					continuation.resume()
+					Logger.signing.error("[\(self._uuid)] Failed to copy source metadata: \(error.localizedDescription)")
 				}
+				continuation.resume()
 			}
 		}
 	}
