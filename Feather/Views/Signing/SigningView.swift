@@ -12,6 +12,7 @@ import NimbleViews
 // MARK: - View
 struct SigningView: View {
 	@Environment(\.dismiss) var dismiss
+	@Environment(\.accessibilityReduceMotion) private var _reduceMotion
 	@StateObject private var _optionsManager = OptionsManager.shared
 	
 	@State private var _temporaryOptions: Options = OptionsManager.shared.options
@@ -78,10 +79,15 @@ struct SigningView: View {
 							} label: {
 								HStack {
 									Image(systemName: "checkmark.seal")
-									Text("Sign App")
+									Text(_isSigning ? .localized("Signing…") : .localized("Sign App"))
 										.font(.system(size: 15, weight: .semibold))
 									Spacer()
-									Image(systemName: "arrow.right")
+									if _isSigning {
+										ProgressView()
+											.tint(.black)
+									} else {
+										Image(systemName: "arrow.right")
+									}
 								}
 								.foregroundStyle(.black)
 								.padding(.horizontal, 17)
@@ -91,6 +97,7 @@ struct SigningView: View {
 								.padding(.horizontal, 16)
 							}
 							.buttonStyle(.plain)
+							.animation(_reduceMotion ? nil : .easeInOut(duration: 0.2), value: _isSigning)
 							.offset(y: UIDevice.current.userInterfaceIdiom == .pad ? -20 : -40)
 						}
 				}

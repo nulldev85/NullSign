@@ -129,38 +129,51 @@ extension Storage {
 		else {
 			return
 		}
-		
-		guard let source = sourceMetadata(for: sourceAppUUID) else {
-			return
+
+		// Signing finishes off the main thread, and this runs right after
+		// addSigned() in that same continuation, so it uses its own
+		// background context too rather than the main-queue viewContext
+		// (avoids another forced main-thread save right before the signing
+		// sheet dismisses).
+		container.performBackgroundTask { backgroundContext in
+			let sourceRequest: NSFetchRequest<AppSourceMetadata> = AppSourceMetadata.fetchRequest()
+			sourceRequest.fetchLimit = 1
+			sourceRequest.predicate = NSPredicate(format: "appUUID == %@", sourceAppUUID)
+			sourceRequest.sortDescriptors = [NSSortDescriptor(key: "updatedAt", ascending: false)]
+
+			guard
+				let source = try? backgroundContext.fetch(sourceRequest).first,
+				let repositoryURL = source.sourceRepositoryURL,
+				let appIdentifier = source.sourceAppIdentifier,
+				let versionID = source.sourceVersionID
+			else {
+				return
+			}
+
+			let destinationRequest: NSFetchRequest<AppSourceMetadata> = AppSourceMetadata.fetchRequest()
+			destinationRequest.fetchLimit = 1
+			destinationRequest.predicate = NSPredicate(format: "appUUID == %@", destinationAppUUID)
+
+			let metadata = (try? backgroundContext.fetch(destinationRequest).first) ?? AppSourceMetadata(context: backgroundContext)
+			let now = Date()
+			if metadata.createdAt == nil {
+				metadata.createdAt = now
+			}
+			metadata.appUUID = destinationAppUUID
+			metadata.appKind = kind.rawValue
+			metadata.sourceRepositoryURL = repositoryURL
+			metadata.sourceRepositoryIdentifier = source.sourceRepositoryIdentifier
+			metadata.sourceRepositoryName = source.sourceRepositoryName
+			metadata.sourceAppIdentifier = appIdentifier
+			metadata.sourceAppName = source.sourceAppName
+			metadata.sourceAppVersion = source.sourceAppVersion
+			metadata.sourceAppVersionDate = source.sourceAppVersionDate
+			metadata.sourceAppDownloadURL = source.sourceAppDownloadURL
+			metadata.sourceVersionID = versionID
+			metadata.updatedAt = now
+
+			try? backgroundContext.save()
 		}
-		
-		guard
-			let repositoryURL = source.sourceRepositoryURL,
-			let appIdentifier = source.sourceAppIdentifier,
-			let versionID = source.sourceVersionID
-		else {
-			return
-		}
-		
-		let metadata = sourceMetadata(for: destinationAppUUID) ?? AppSourceMetadata(context: context)
-		let now = Date()
-		if metadata.createdAt == nil {
-			metadata.createdAt = now
-		}
-		metadata.appUUID = destinationAppUUID
-		metadata.appKind = kind.rawValue
-		metadata.sourceRepositoryURL = repositoryURL
-		metadata.sourceRepositoryIdentifier = source.sourceRepositoryIdentifier
-		metadata.sourceRepositoryName = source.sourceRepositoryName
-		metadata.sourceAppIdentifier = appIdentifier
-		metadata.sourceAppName = source.sourceAppName
-		metadata.sourceAppVersion = source.sourceAppVersion
-		metadata.sourceAppVersionDate = source.sourceAppVersionDate
-		metadata.sourceAppDownloadURL = source.sourceAppDownloadURL
-		metadata.sourceVersionID = versionID
-		metadata.updatedAt = now
-		
-		saveContext()
 	}
 	
 	func deleteSourceMetadata(for appUUID: String?) {
