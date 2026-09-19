@@ -39,20 +39,25 @@ final class FRIconCache {
 final class FRAppIconLoader: ObservableObject {
 	@Published var image: UIImage?
 	private var task: Task<Void, Never>?
+	private var representedRequest: String?
 
 	func load(bundleURL: URL, appearance: FRIconAppearance, tint: String, isTinted: Bool, dynamic: Bool) {
+		let request = "\(bundleURL.path)#\(appearance.rawValue)#\(tint)#\(isTinted)#\(dynamic)"
+		task?.cancel()
+		representedRequest = request
+
 		if let cached = FRIconCache.shared.image(for: bundleURL, appearance: appearance, tint: tint, isTinted: isTinted, dynamic: dynamic) {
 			self.image = cached
 			return
 		}
 
-		task?.cancel()
+		image = nil
 		task = Task {
 			let generated = await Task.detached(priority: .userInitiated) {
 				return tvOSIcon(in: bundleURL) ?? iconTest(bundleURL)
 			}.value
 
-			guard !Task.isCancelled else { return }
+			guard !Task.isCancelled, representedRequest == request else { return }
 
 			if let generated {
 				FRIconCache.shared.insert(generated, for: bundleURL, appearance: appearance, tint: tint, isTinted: isTinted, dynamic: dynamic)

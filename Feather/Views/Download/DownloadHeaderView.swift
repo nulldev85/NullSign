@@ -14,10 +14,12 @@ struct DownloadHeaderView: View {
 	@Environment(\.accessibilityReduceMotion) private var _reduceMotion
 
 	var body: some View {
+		let manualDownloads = downloadManager.manualDownloads
+
 		ZStack {
-			if !downloadManager.manualDownloads.isEmpty {
+			if !manualDownloads.isEmpty {
 				VStack(spacing: 0) {
-					if let firstDownload = downloadManager.manualDownloads.first {
+					if let firstDownload = manualDownloads.first {
 						HStack(spacing: 12) {
 							Image(systemName: "arrow.down")
 								.font(.system(size: 13, weight: .bold))
@@ -26,8 +28,8 @@ struct DownloadHeaderView: View {
 								.background(NullSignStyle.accent)
 								.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 							DownloadItemView(download: firstDownload)
-							if downloadManager.manualDownloads.count > 1 {
-								Text(verbatim: "+\(downloadManager.manualDownloads.count - 1)")
+							if manualDownloads.count > 1 {
+								Text(verbatim: "+\(manualDownloads.count - 1)")
 									.font(.caption.weight(.semibold))
 									.foregroundStyle(NullSignStyle.accent)
 							}
@@ -47,11 +49,7 @@ struct DownloadHeaderView: View {
 }
 
 struct DownloadItemView: View {
-	let download: Download
-	@State private var progress: Double = 0
-	@State private var bytesDownloaded: Int64 = 0
-	@State private var totalBytes: Int64 = 0
-	@State private var unpackageProgress: Double = 0
+	@ObservedObject var download: Download
 	
 	var body: some View {
 		VStack(alignment: .leading, spacing: 5) {
@@ -67,8 +65,8 @@ struct DownloadItemView: View {
 				Text(verbatim: "\(Int(overallProgress * 100))%")
 					.contentTransition(.numericText())
 				Spacer()
-				if totalBytes > 0 {
-					Text(verbatim: "\($bytesDownloaded.wrappedValue.formattedByteCount) / \(totalBytes.formattedByteCount)")
+				if download.totalBytes > 0 {
+					Text(verbatim: "\(download.bytesDownloaded.formattedByteCount) / \(download.totalBytes.formattedByteCount)")
 						.contentTransition(.numericText())
 				}
 			}
@@ -76,15 +74,10 @@ struct DownloadItemView: View {
 			.foregroundColor(.secondary)
 		}
 		.frame(maxWidth: .infinity)
-		.onReceive(download.$progress) { self.progress = $0 }
-		.onReceive(download.$bytesDownloaded) { self.bytesDownloaded = $0 }
-		.onReceive(download.$totalBytes) { self.totalBytes = $0 }
-		.onReceive(download.$unpackageProgress) { self.unpackageProgress = $0 }
+		.accessibilityValue("\(Int(overallProgress * 100)) percent")
 	}
 	
 	private var overallProgress: Double {
-		download.onlyArchiving
-			? unpackageProgress
-			: (0.3 * unpackageProgress) + (0.7 * progress)
+		min(max(download.overallProgress, 0), 1)
 	}
 }

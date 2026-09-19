@@ -22,6 +22,9 @@ struct LibraryView: View {
 	@State private var _alertDownloadString: String = "" // for _isDownloadingPresenting
 	@State private var _updateCheckRotation = 0.0
 	@State private var _isUpdateCheckCompleteVisible = false
+
+	// Automatic re-checks are throttled so opening the tab doesn't hammer every added source.
+	private let _autoUpdateCheckInterval: TimeInterval = 6 * 60 * 60
 	
 	// MARK: Selection State
 	@State private var _selectedAppUUIDs: Set<String> = []
@@ -268,6 +271,9 @@ struct LibraryView: View {
 			.onChange(of: updateManager.isChecking) { isChecking in
 				_handleUpdateCheckStateChange(isChecking)
 			}
+			.task {
+				await _autoCheckForUpdatesIfNeeded()
+			}
 		}
 	}
 }
@@ -371,6 +377,19 @@ extension LibraryView {
 			sources: Array(_sources),
 			localApps: localApps
 		)
+	}
+
+	/// Runs the same check as the manual refresh button, but only when the tab appears and
+	/// there's something to check, and no more often than `_autoUpdateCheckInterval`.
+	private func _autoCheckForUpdatesIfNeeded() async {
+		guard _hasApps, !_sources.isEmpty, !updateManager.isChecking else { return }
+
+		if let lastChecked = updateManager.lastCheckedDate,
+		   Date().timeIntervalSince(lastChecked) < _autoUpdateCheckInterval {
+			return
+		}
+
+		await _checkForUpdates()
 	}
 	
 	private func _handleUpdateCheckStateChange(_ isChecking: Bool) {

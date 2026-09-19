@@ -1,7 +1,24 @@
 import SwiftUI
 import NimbleViews
+import NimbleJSON
+import AltSourceKit
 
 struct AboutView: View {
+	private static let _selfUpdateSourceURL = URL(string: "https://raw.githubusercontent.com/nulldev85/NullSign/main/app-repo.json")!
+
+	private enum SelfUpdateState: Equatable {
+		case idle
+		case checking
+		case upToDate
+		case available(version: String)
+		case downloading
+		case failed
+	}
+
+	@State private var _selfUpdateState: SelfUpdateState = .idle
+	@State private var _pendingUpdateDownloadURL: URL?
+	@State private var _pendingUpdateProvenance: SourceAppProvenance?
+
 	private var _build: String {
 		Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
 	}
@@ -20,6 +37,26 @@ struct AboutView: View {
 				}
 				.frame(maxWidth: .infinity)
 				.padding(.vertical, 8)
+
+				NullSignSettingsSection("App Updates", detail: _selfUpdateDetail) {
+					Button {
+						if case .available = _selfUpdateState {
+							_startSelfUpdateDownload()
+						} else {
+							Task { await _checkForAppUpdate() }
+						}
+					} label: {
+						NullSignSettingsRow(
+							title: _selfUpdateTitle,
+							detail: nil,
+							systemImage: _selfUpdateIcon,
+							showsChevron: false,
+							isBusy: _selfUpdateState == .checking || _selfUpdateState == .downloading
+						)
+					}
+					.buttonStyle(.plain)
+					.disabled(_selfUpdateState == .checking || _selfUpdateState == .downloading)
+				}
 
 				NullSignSettingsSection("Project") {
 					_linkRow(
@@ -89,6 +126,96 @@ struct AboutView: View {
 		.background(Color.black.ignoresSafeArea())
 		.navigationTitle("About")
 		.navigationBarTitleDisplayMode(.inline)
+		.task {
+			if _selfUpdateState == .idle {
+				await _checkForAppUpdate()
+			}
+		}
+	}
+
+	private var _selfUpdateTitle: String {
+		switch _selfUpdateState {
+		case .idle, .checking: return "Checking for Updates…"
+		case .upToDate: return "You're on the Latest Version"
+		case .available(let version): return "Download NullSign \(version)"
+		case .downloading: return "Downloading…"
+		case .failed: return "Couldn't Check for Updates — Tap to Retry"
+		}
+	}
+
+	private var _selfUpdateIcon: String {
+		switch _selfUpdateState {
+		case .idle, .checking, .downloading: return "arrow.triangle.2.circlepath"
+		case .upToDate: return "checkmark.circle"
+		case .available: return "arrow.down.circle"
+		case .failed: return "exclamationmark.triangle"
+		}
+	}
+
+	private var _selfUpdateDetail: String {
+		switch _selfUpdateState {
+		case .available:
+			return "The download is added to your Library like any other app. Sign it with your certificate, then install it using Semi Local — Fully Local can't replace an app while it's running."
+		default:
+			return "Checks NullSign's own release feed for a newer build."
+		}
+	}
+
+	private func _checkForAppUpdate() async {
+		_selfUpdateState = .checking
+
+		let repository: ASRepository? = await withCheckedContinuation { continuation in
+			NBFetchService().fetch(from: Self._selfUpdateSourceURL) { (result: Result<ASRepository, Error>) in
+				switch result {
+				case .success(let repository): continuation.resume(returning: repository)
+				case .failure: continuation.resume(returning: nil)
+				}
+			}
+		}
+
+		guard
+			let repository,
+			let bundleIdentifier = Bundle.main.bundleIdentifier,
+			let remoteApp = repository.apps.first(where: { $0.id == bundleIdentifier })
+		else {
+			_selfUpdateState = .failed
+			return
+		}
+
+		guard
+			let remoteVersion = remoteApp.currentVersion, !remoteVersion.isEmpty,
+			remoteVersion.compare(
+				Bundle.main.version,
+				options: [.numeric, .caseInsensitive]
+			) == .orderedDescending,
+			let downloadURL = remoteApp.currentDownloadUrl,
+			let provenance = SourceAppProvenance(
+				sourceURL: Self._selfUpdateSourceURL,
+				repository: repository,
+				app: remoteApp
+			)
+		else {
+			_selfUpdateState = .upToDate
+			return
+		}
+
+		_pendingUpdateDownloadURL = downloadURL
+		_pendingUpdateProvenance = provenance
+		_selfUpdateState = .available(version: remoteVersion)
+	}
+
+	private func _startSelfUpdateDownload() {
+		guard let downloadURL = _pendingUpdateDownloadURL else { return }
+		_ = DownloadManager.shared.startDownload(
+			from: downloadURL,
+			id: "FeatherManualDownload_AppUpdate_\(UUID().uuidString)",
+			sourceProvenance: _pendingUpdateProvenance
+		)
+		_selfUpdateState = .downloading
+		UIAlertController.showAlertWithOk(
+			title: .localized("Downloading Update"),
+			message: .localized("NullSign is downloading to your Library. Once it finishes, sign it with your certificate and install it using Semi Local (Settings → Installation → iPhone → Semi Local).")
+		)
 	}
 
 	private func _linkRow(

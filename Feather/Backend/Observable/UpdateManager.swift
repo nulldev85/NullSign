@@ -58,21 +58,38 @@ final class UpdateManager: ObservableObject {
 	}
 	
 	private func _fetchRepositories(from sources: [AltSource]) async -> [(AltSource, ASRepository)] {
-		var repositories: [(AltSource, ASRepository)] = []
-		
-		for source in sources {
-			guard let url = source.sourceURL else {
-				continue
-			}
-			
-			guard let repository = await _fetchRepository(from: url) else {
-				continue
-			}
-			
-			repositories.append((source, repository))
+		let requests = sources.enumerated().compactMap { index, source in
+			source.sourceURL.map { (index, $0) }
 		}
-		
-		return repositories
+		var fetched: [(Int, ASRepository?)] = []
+
+		// Keep checks quick without opening an unbounded number of connections for
+		// users who have a large catalog list.
+		for startIndex in stride(from: 0, to: requests.count, by: 4) {
+			let endIndex = min(startIndex + 4, requests.count)
+			let batch = requests[startIndex..<endIndex]
+			let batchResults = await withTaskGroup(of: (Int, ASRepository?).self) { group in
+				for (index, url) in batch {
+					group.addTask {
+						(index, await self._fetchRepository(from: url))
+					}
+				}
+
+				var results: [(Int, ASRepository?)] = []
+				for await result in group {
+					results.append(result)
+				}
+				return results
+			}
+			fetched.append(contentsOf: batchResults)
+		}
+
+		return fetched
+			.sorted { $0.0 < $1.0 }
+			.compactMap { index, repository in
+				guard let repository else { return nil }
+				return (sources[index], repository)
+			}
 	}
 	
 	private func _fetchRepository(from url: URL) async -> ASRepository? {
@@ -173,7 +190,10 @@ final class UpdateManager: ObservableObject {
 					continue
 				}
 				
-				guard remoteVersion != sourceAppVersion else {
+				guard
+					let installedVersion = sourceAppVersion ?? localApp.version,
+					_isVersion(remoteVersion, newerThan: installedVersion)
+				else {
 					continue
 				}
 				
@@ -225,6 +245,10 @@ final class UpdateManager: ObservableObject {
 		let normalized = components?.url ?? url
 		let absoluteString = normalized.absoluteString
 		return absoluteString.hasSuffix("/") ? String(absoluteString.dropLast()) : absoluteString
+	}
+
+	private func _isVersion(_ candidate: String, newerThan installed: String) -> Bool {
+		candidate.compare(installed, options: [.numeric, .caseInsensitive]) == .orderedDescending
 	}
 	
 	private func _fallbackMetadataCandidate(

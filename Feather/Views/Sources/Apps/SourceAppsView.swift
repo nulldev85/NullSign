@@ -153,13 +153,21 @@ struct SourceAppsView: View {
 	struct SourceRepositoryContext: Equatable {
 		let sourceURL: URL?
 		let repository: ASRepository
+		private let appRevision: [String]
+
+		init(sourceURL: URL?, repository: ASRepository) {
+			self.sourceURL = sourceURL
+			self.repository = repository
+			self.appRevision = repository.apps.map {
+				"\($0.currentUniqueId)|\($0.currentVersion ?? "")"
+			}
+		}
 
 		static func == (lhs: Self, rhs: Self) -> Bool {
 			lhs.sourceURL == rhs.sourceURL &&
 			lhs.repository.id == rhs.repository.id &&
 			lhs.repository.name == rhs.repository.name &&
-			lhs.repository.apps.map { "\($0.currentUniqueId)|\($0.currentVersion ?? "")" } ==
-			rhs.repository.apps.map { "\($0.currentUniqueId)|\($0.currentVersion ?? "")" }
+			lhs.appRevision == rhs.appRevision
 		}
 	}
 

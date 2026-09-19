@@ -12,6 +12,7 @@ import NimbleViews
 // MARK: - View
 struct LibraryCellView: View {
 	@Environment(\.editMode) private var editMode
+	@Environment(\.accessibilityReduceMotion) private var reduceMotion
 	// Not @ObservedObject: UpdateManager also publishes isChecking/lastCheckedDate,
 	// which would re-render every visible row on every check start/finish even
 	// though only the per-app update entry below is ever read from it.
@@ -81,16 +82,21 @@ struct LibraryCellView: View {
 		.nullSignPanel()
 		.background(_isSelected && isEditing ? NullSignStyle.accent.opacity(0.08) : Color.clear)
 		.rotation3DEffect(
-			.degrees(_isPeelingAway ? -82 : 0),
+			.degrees(_isPeelingAway && !reduceMotion ? -82 : 0),
 			axis: (x: 0, y: 1, z: 0),
 			anchor: .trailing,
 			perspective: 0.72
 		)
-		.scaleEffect(x: _isPeelingAway ? 0.72 : 1, y: _isPeelingAway ? 0.96 : 1, anchor: .trailing)
-		.offset(x: _isPeelingAway ? -34 : 0)
+		.scaleEffect(x: _isPeelingAway && !reduceMotion ? 0.72 : 1, y: _isPeelingAway && !reduceMotion ? 0.96 : 1, anchor: .trailing)
+		.offset(x: _isPeelingAway && !reduceMotion ? -34 : 0)
 		.opacity(_isPeelingAway ? 0 : 1)
 		.shadow(color: .black.opacity(_isPeelingAway ? 0.42 : 0), radius: 18, x: 14, y: 3)
-		.animation(.timingCurve(0.22, 0.78, 0.28, 1, duration: 0.48), value: _isPeelingAway)
+		.animation(
+			reduceMotion
+				? .easeOut(duration: 0.15)
+				: .timingCurve(0.22, 0.78, 0.28, 1, duration: 0.48),
+			value: _isPeelingAway
+		)
 		.allowsHitTesting(!_isPeelingAway)
 		.contentShape(Rectangle())
 		.onTapGesture {
@@ -187,7 +193,7 @@ extension LibraryCellView {
 		UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 		_isPeelingAway = true
 		Task { @MainActor in
-			try? await Task.sleep(for: .milliseconds(480))
+			try? await Task.sleep(for: .milliseconds(reduceMotion ? 150 : 480))
 			Storage.shared.deleteApp(for: app)
 		}
 	}

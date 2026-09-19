@@ -55,15 +55,24 @@ struct NullSignSettingsRow: View {
 	var value: String? = nil
 	var tint: Color = NullSignStyle.accent
 	var showsChevron = true
+	var isBusy = false
 
 	var body: some View {
 		HStack(alignment: .top, spacing: 12) {
-			Image(systemName: systemImage)
-				.font(.system(size: 15, weight: .semibold))
-				.foregroundStyle(tint)
-				.frame(width: 32, height: 32)
-				.background(NullSignStyle.raisedPanel)
-				.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+			Group {
+				if isBusy {
+					ProgressView()
+						.controlSize(.small)
+						.tint(tint)
+				} else {
+					Image(systemName: systemImage)
+						.font(.system(size: 15, weight: .semibold))
+						.foregroundStyle(tint)
+				}
+			}
+			.frame(width: 32, height: 32)
+			.background(NullSignStyle.raisedPanel)
+			.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 
 			VStack(alignment: .leading, spacing: detail == nil ? 0 : 2) {
 				Text(title)
@@ -90,6 +99,7 @@ struct NullSignSettingsRow: View {
 					.foregroundStyle(.tertiary)
 			}
 		}
+		.frame(minHeight: 44)
 		.contentShape(Rectangle())
 	}
 }

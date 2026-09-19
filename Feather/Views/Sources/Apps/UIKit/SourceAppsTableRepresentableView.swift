@@ -40,20 +40,12 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 			context.coordinator.headerController = header
 			header.view.translatesAutoresizingMaskIntoConstraints = true
 			header.view.backgroundColor = .clear
+			header.view.autoresizingMask = [.flexibleWidth]
 			let fixedHeight: CGFloat = 178
 			let width = UIScreen.main.bounds.width
 			header.view.frame = CGRect(origin: .zero, size: CGSize(width: width, height: fixedHeight))
-
-			DispatchQueue.main.async {
-				tableView.tableHeaderView = header.view
-			}
+			tableView.tableHeaderView = header.view
 		}
-		
-		tableView.alpha = 0
-		
-		UIView.transition(with: tableView,  duration: 0.5, options: [.transitionCrossDissolve], animations: {
-			tableView.alpha = 1
-		}, completion: nil)
 		
 		return tableView
 	}
@@ -72,7 +64,9 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 		context.coordinator.sortAscending = sortAscending
 		
 		if sourcesChanged || searchChanged || sortOptionChanged || sortDirectionChanged {
-			context.coordinator.invalidateCache()
+			context.coordinator.invalidateCache(
+				animated: !searchChanged && (sortOptionChanged || sortDirectionChanged)
+			)
 		}
 	}
 	
@@ -100,6 +94,7 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 	private var _sortedSectionTitles: [String] = []
 	
 	private var _cachedSortedApps: [SourceAppEntry] = []
+	private var _isCacheValid = false
 	weak var uiTableView: UITableView?
 	var headerController: UIViewController?
 	
@@ -116,10 +111,11 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 	}
 	
 	private var _sortedApps: [SourceAppEntry] {
-		if !_cachedSortedApps.isEmpty {
+		if _isCacheValid {
 			return _cachedSortedApps
 		}
 		_cachedSortedApps = _calculateSortedApps()
+		_isCacheValid = true
 		return _cachedSortedApps
 	}
 	
@@ -137,9 +133,7 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 		self.onSelect = onSelect
 		super.init()
 		
-		if sortOption != .default {
-			invalidateCache()
-		}
+		invalidateCache()
 	}
 	
 	private func _calculateSortedApps() -> [SourceAppEntry] {
@@ -172,7 +166,7 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 				$0.app.currentDate?.date.stripTime() ?? .distantPast
 			}
 			
-			let sortedDates = grouped.keys.sorted(by: { sortAscending ? $0 > $1 : $0 < $1 })
+			let sortedDates = grouped.keys.sorted(by: { sortAscending ? $0 < $1 : $0 > $1 })
 			
 			_groupedAppsByDate = grouped.reduce(into: [:]) { result, pair in
 				let key = formatter.string(from: pair.key)
@@ -185,8 +179,8 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 			let sorted = filtered.sorted {
 				let n1 = $0.app.name ?? ""
 				let n2 = $1.app.name ?? ""
-				let comparison = n1.localizedCaseInsensitiveCompare(n2) == .orderedAscending
-				return sortAscending ? comparison : !comparison
+				let comparison = n1.localizedCaseInsensitiveCompare(n2)
+				return sortAscending ? comparison == .orderedAscending : comparison == .orderedDescending
 			}
 			_groupedAppsByNameFirstLetter = Dictionary(grouping: sorted) {
 				let first = $0.app.name?.trimmingCharacters(in: .whitespacesAndNewlines).first?.uppercased() ?? "#"
@@ -201,12 +195,21 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 		}
 	}
 	
-	func invalidateCache() {
+	func invalidateCache(animated: Bool = false) {
+		_isCacheValid = false
 		_cachedSortedApps = _calculateSortedApps()
+		_isCacheValid = true
 		if let tableView = uiTableView {
-			UIView.transition(with: tableView, duration: 0.3, options: [.transitionCrossDissolve], animations: {
-				tableView.reloadData()
-			})
+			if animated && !UIAccessibility.isReduceMotionEnabled {
+				UIView.transition(
+					with: tableView,
+					duration: 0.18,
+					options: [.transitionCrossDissolve, .beginFromCurrentState],
+					animations: tableView.reloadData
+				)
+			} else {
+				UIView.performWithoutAnimation(tableView.reloadData)
+			}
 		}
 	}
 	
