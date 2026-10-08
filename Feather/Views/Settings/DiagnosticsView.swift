@@ -69,25 +69,20 @@ struct DiagnosticsView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 28)
 		}
-		.background(Color.black.ignoresSafeArea())
+		.background(NullSignBackdrop(intensity: 0.8))
 		.navigationTitle("Diagnostics")
 		.onAppear(perform: _refresh)
 	}
 
 	private func _check(_ title: String, systemImage: String) -> some View {
 		HStack(spacing: 12) {
-			Image(systemName: systemImage)
-				.font(.system(size: 15, weight: .semibold))
-				.foregroundStyle(NullSignStyle.accent)
-				.frame(width: 32, height: 32)
-				.background(NullSignStyle.raisedPanel)
-				.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+			NullSignIconTile(systemImage: systemImage, size: 34)
 			Text(title)
-				.font(.body.weight(.medium))
+				.font(.system(size: 15, weight: .semibold))
 			Spacer()
 			Image(systemName: "checkmark")
 				.font(.caption.weight(.bold))
-				.foregroundStyle(NullSignStyle.accent)
+				.foregroundStyle(NullSignStyle.success)
 		}
 	}
 

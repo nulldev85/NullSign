@@ -25,12 +25,7 @@ struct SourceNewsCardView: View {
 			.frame(width: 128, alignment: .leading)
 		}
 		.frame(width: 230, height: 112)
-		.background(NullSignStyle.panel)
-		.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-		.overlay {
-			RoundedRectangle(cornerRadius: 14, style: .continuous)
-				.stroke(NullSignStyle.hairline, lineWidth: 1)
-		}
+		.nullSignSurface(cornerRadius: 20)
 	}
 
 	@ViewBuilder

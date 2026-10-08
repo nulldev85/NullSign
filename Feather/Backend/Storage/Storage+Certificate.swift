@@ -47,6 +47,8 @@ extension Storage {
 		UserDefaults.standard.set(uuid, forKey: "feather.selectedCert.\(platform.rawValue)")
 	}
 
+	/// Certificate imports finish on a background task, so the insert is
+	/// moved onto the main context's own queue.
 	func addCertificate(
 		uuid: String,
 		password: String? = nil,
@@ -56,27 +58,31 @@ extension Storage {
 		isDefault: Bool = false,
 		completion: @escaping (Error?) -> Void
 	) {
-		let generator = UIImpactFeedbackGenerator(style: .light)
-		
-		let new = CertificatePair(context: context)
-		new.uuid = uuid
-		new.date = Date()
-		new.password = password
-		new.ppQCheck = ppq
-		new.expiration = expiration
-		new.nickname = nickname
-		new.isDefault = isDefault
-		saveContext()
-		generator.impactOccurred()
-		completion(nil)
-	}
-	
-	func deleteCertificate(for cert: CertificatePair) {
-		if let url = getUuidDirectory(for: cert) {
-			try? FileManager.default.removeItem(at: url)
+		context.perform {
+			let generator = UIImpactFeedbackGenerator(style: .light)
+
+			let new = CertificatePair(context: self.context)
+			new.uuid = uuid
+			new.date = Date()
+			new.password = password
+			new.ppQCheck = ppq
+			new.expiration = expiration
+			new.nickname = nickname
+			new.isDefault = isDefault
+			self.saveContextNow()
+			generator.impactOccurred()
+			completion(nil)
 		}
+	}
+
+	/// Must be called on the main queue.
+	func deleteCertificate(for cert: CertificatePair) {
+		guard cert.managedObjectContext === context, !cert.isDeleted else { return }
+
+		let directory = getUuidDirectory(for: cert)
 		context.delete(cert)
-		saveContext()
+		saveContextNow()
+		FileManager.default.removeItemsInBackground(directory.map { [$0] } ?? [])
 	}
 	
 	func getCertificate(for index: Int) -> CertificatePair? {
@@ -103,8 +109,10 @@ extension Storage {
 		) { (status, _, _) in
 			if status == 1 {
 				DispatchQueue.main.async {
+					// The check is slow; the certificate may have been deleted meanwhile.
+					guard cert.managedObjectContext === self.context, !cert.isDeleted else { return }
 					cert.revoked = true
-					self.saveContext()
+					self.saveContextNow()
 				}
 			}
 		}

@@ -1,4 +1,5 @@
 import SwiftUI
+import NukeUI
 
 /// Small, source-specific pieces reused throughout the Apps tab.
 struct SourceSectionLabel: View {
@@ -6,17 +7,7 @@ struct SourceSectionLabel: View {
 	var count: Int? = nil
 
 	var body: some View {
-		HStack(alignment: .firstTextBaseline) {
-			Text(title)
-				.font(.headline)
-			Spacer()
-			if let count {
-				Text(count.formatted())
-					.font(.caption.weight(.semibold))
-					.foregroundStyle(.secondary)
-			}
-		}
-		.textCase(nil)
+		NullSignSectionLabel(title: title, count: count)
 	}
 }
 
@@ -28,50 +19,26 @@ struct SourceEmptyState: View {
 	var action: (() -> Void)? = nil
 
 	var body: some View {
-		VStack(spacing: 14) {
-			ZStack {
-				RoundedRectangle(cornerRadius: 18, style: .continuous)
-					.fill(NullSignStyle.raisedPanel)
-					.frame(width: 64, height: 64)
-				Image(systemName: icon)
-					.font(.system(size: 25, weight: .medium))
-					.foregroundStyle(NullSignStyle.accent)
-			}
-
-			VStack(spacing: 5) {
-				Text(title)
-					.font(.title3.weight(.semibold))
-				Text(message)
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
-					.multilineTextAlignment(.center)
-					.fixedSize(horizontal: false, vertical: true)
-			}
-
+		NullSignEmptyState(systemImage: icon, title: title, message: message) {
 			if let actionTitle, let action {
 				Button(action: action) {
 					Text(actionTitle)
-						.font(.subheadline.weight(.semibold))
-						.foregroundStyle(.black)
-						.padding(.horizontal, 18)
-						.frame(height: 38)
-						.background(NullSignStyle.accent)
-						.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+						.frame(minWidth: 160)
 				}
-				.buttonStyle(.plain)
+				.buttonStyle(NullSignPrimaryButtonStyle(height: 46))
+				.padding(.top, 4)
 			}
 		}
-		.frame(maxWidth: 330)
-		.padding(24)
 	}
 }
+
 struct SourcePanelModifier: ViewModifier {
 	var padding: CGFloat = 14
 
 	func body(content: Content) -> some View {
 		content
 			.padding(padding)
-			.nullSignSurface(cornerRadius: 16)
+			.nullSignSurface(cornerRadius: 20)
 	}
 }
 
@@ -85,13 +52,99 @@ struct SourceLoadingState: View {
 	var label: String = "Loading apps"
 
 	var body: some View {
-		VStack(spacing: 13) {
+		VStack(spacing: 14) {
 			ProgressView()
 				.tint(NullSignStyle.accent)
-			Text(label)
-				.font(.subheadline)
-				.foregroundStyle(.secondary)
+				.controlSize(.large)
+			Text(label.uppercased())
+				.font(NullSignStyle.mono(11, weight: .semibold))
+				.tracking(1.2)
+				.foregroundStyle(NullSignStyle.muted)
 		}
 		.padding(24)
+	}
+}
+
+/// Overlapping repository icons, used to preview a catalog at a glance.
+struct SourceIconStack: View {
+	let urls: [URL]
+	var size: CGFloat = 34
+
+	var body: some View {
+		HStack(spacing: -size * 0.32) {
+			ForEach(Array(urls.prefix(4).enumerated()), id: \.offset) { index, url in
+				SourceRemoteIcon(url: url, size: size)
+					.overlay(
+						RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
+							.strokeBorder(Color.black, lineWidth: 2)
+					)
+					.zIndex(Double(4 - index))
+			}
+		}
+	}
+}
+
+/// A remote icon in NullSign's app-icon shape with a quiet placeholder.
+struct SourceRemoteIcon: View {
+	let url: URL?
+	var size: CGFloat = 50
+	var placeholderSystemImage: String = "shippingbox"
+
+	var body: some View {
+		Group {
+			if let url {
+				LazyImageIcon(url: url, size: size, placeholderSystemImage: placeholderSystemImage)
+			} else {
+				_placeholder
+			}
+		}
+		.frame(width: size, height: size)
+	}
+
+	private var _placeholder: some View {
+		SourceIconPlaceholder(size: size, systemImage: placeholderSystemImage)
+	}
+}
+
+struct SourceIconPlaceholder: View {
+	let size: CGFloat
+	var systemImage: String = "shippingbox"
+
+	var body: some View {
+		ZStack {
+			RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
+				.fill(
+					LinearGradient(
+						colors: [Color.white.opacity(0.12), Color.white.opacity(0.04)],
+						startPoint: .topLeading,
+						endPoint: .bottomTrailing
+					)
+				)
+			Image(systemName: systemImage)
+				.font(.system(size: size * 0.38, weight: .semibold))
+				.foregroundStyle(NullSignStyle.muted)
+		}
+		.overlay(
+			RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
+				.strokeBorder(NullSignStyle.hairline, lineWidth: 1)
+		)
+		.frame(width: size, height: size)
+	}
+}
+
+/// A remote image loaded through Nuke, shaped like an app icon.
+struct LazyImageIcon: View {
+	let url: URL
+	let size: CGFloat
+	var placeholderSystemImage: String = "shippingbox"
+
+	var body: some View {
+		LazyImage(url: url) { state in
+			if let image = state.image {
+				image.appIconStyle(size: size, isCircle: false, background: NullSignStyle.raisedPanel)
+			} else {
+				SourceIconPlaceholder(size: size, systemImage: placeholderSystemImage)
+			}
+		}
 	}
 }

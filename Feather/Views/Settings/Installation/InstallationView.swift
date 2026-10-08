@@ -38,7 +38,7 @@ struct InstallationView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 28)
 		}
-		.background(Color.black.ignoresSafeArea())
+		.background(NullSignBackdrop(intensity: 0.8))
 		.navigationTitle("Installation")
 		.onChange(of: _installationMethod) { newValue in
 			guard newValue == 1 else { return }

@@ -24,15 +24,19 @@ class BackgroundTaskManager: ObservableObject {
 		let taskIdentifier = "\(baseId).\(downloadId.md5)"
 		
 		if !registeredTasks.contains(taskIdentifier) {
-			BGTaskScheduler.shared.register(forTaskWithIdentifier: taskIdentifier, using: nil) { task in
+			// The launch handler runs on main so `activeTasks` is only ever
+			// touched from one thread (progress updates arrive on main too).
+			BGTaskScheduler.shared.register(forTaskWithIdentifier: taskIdentifier, using: .main) { task in
 				guard let task = task as? BGContinuedProcessingTask else { return }
 				self.activeTasks[task.identifier] = task
-				
+
 				task.expirationHandler = {
-					if let download = DownloadManager.shared.getDownload(by: downloadId) {
-						DownloadManager.shared.cancelDownload(download)
+					DispatchQueue.main.async {
+						if let download = DownloadManager.shared.getDownload(by: downloadId) {
+							DownloadManager.shared.cancelDownload(download)
+						}
+						self.activeTasks.removeValue(forKey: task.identifier)
 					}
-					self.activeTasks.removeValue(forKey: task.identifier)
 				}
 			}
 			self.registeredTasks.insert(taskIdentifier)

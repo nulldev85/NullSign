@@ -91,32 +91,36 @@ extension Storage {
 		}
 	}
 	
+	/// Called from background import tasks, so the work is moved onto the
+	/// main context's own queue.
 	func addSourceMetadata(
 		for appUUID: String,
 		kind: SourceLinkedAppKind,
 		provenance: SourceAppProvenance
 	) {
-		let metadata = sourceMetadata(for: appUUID) ?? AppSourceMetadata(context: context)
-		let now = Date()
-		
-		if metadata.createdAt == nil {
-			metadata.createdAt = now
+		context.perform {
+			let metadata = self.sourceMetadata(for: appUUID) ?? AppSourceMetadata(context: self.context)
+			let now = Date()
+
+			if metadata.createdAt == nil {
+				metadata.createdAt = now
+			}
+
+			metadata.appUUID = appUUID
+			metadata.appKind = kind.rawValue
+			metadata.sourceRepositoryURL = provenance.sourceRepositoryURL
+			metadata.sourceRepositoryIdentifier = provenance.sourceRepositoryIdentifier
+			metadata.sourceRepositoryName = provenance.sourceRepositoryName
+			metadata.sourceAppIdentifier = provenance.sourceAppIdentifier
+			metadata.sourceAppName = provenance.sourceAppName
+			metadata.sourceAppVersion = provenance.sourceAppVersion
+			metadata.sourceAppVersionDate = provenance.sourceAppVersionDate
+			metadata.sourceAppDownloadURL = provenance.sourceAppDownloadURL
+			metadata.sourceVersionID = provenance.sourceVersionID
+			metadata.updatedAt = now
+
+			self.saveContextNow()
 		}
-		
-		metadata.appUUID = appUUID
-		metadata.appKind = kind.rawValue
-		metadata.sourceRepositoryURL = provenance.sourceRepositoryURL
-		metadata.sourceRepositoryIdentifier = provenance.sourceRepositoryIdentifier
-		metadata.sourceRepositoryName = provenance.sourceRepositoryName
-		metadata.sourceAppIdentifier = provenance.sourceAppIdentifier
-		metadata.sourceAppName = provenance.sourceAppName
-		metadata.sourceAppVersion = provenance.sourceAppVersion
-		metadata.sourceAppVersionDate = provenance.sourceAppVersionDate
-		metadata.sourceAppDownloadURL = provenance.sourceAppDownloadURL
-		metadata.sourceVersionID = provenance.sourceVersionID
-		metadata.updatedAt = now
-		
-		saveContext()
 	}
 	
 	func copySourceMetadata(
@@ -192,30 +196,30 @@ extension Storage {
 		}
 	}
 	
-	func deleteSourceMetadata(for appUUID: String?) {
+	/// Must be called on the main queue.
+	func deleteSourceMetadata(for appUUID: String?, save: Bool = true) {
 		guard let appUUID else {
 			return
 		}
-		
+
 		let request: NSFetchRequest<AppSourceMetadata> = AppSourceMetadata.fetchRequest()
 		request.predicate = NSPredicate(format: "appUUID == %@", appUUID)
-		
-		do {
-			let metadata = try context.fetch(request)
-			metadata.forEach(context.delete)
-			saveContext()
-		} catch {
+		request.includesPropertyValues = false
+
+		guard let metadata = try? context.fetch(request), !metadata.isEmpty else {
+			return
+		}
+
+		metadata.forEach(context.delete)
+		if save {
+			saveContextNow()
 		}
 	}
-	
+
+	/// Must be called on the main queue.
 	func deleteSourceMetadata(kind: SourceLinkedAppKind) {
 		let request: NSFetchRequest<AppSourceMetadata> = AppSourceMetadata.fetchRequest()
 		request.predicate = NSPredicate(format: "appKind == %@", kind.rawValue)
-		
-		do {
-			let deleteRequest = NSBatchDeleteRequest(fetchRequest: request as! NSFetchRequest<NSFetchRequestResult>)
-			try context.execute(deleteRequest)
-		} catch {
-		}
+		clearContext(request: request)
 	}
 }

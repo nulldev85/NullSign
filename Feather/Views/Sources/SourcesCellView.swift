@@ -9,27 +9,33 @@ struct SourcesCellView: View {
 	let didFail: Bool
 
 	var body: some View {
-		HStack(spacing: 13) {
-			_sourceIcon
+		HStack(spacing: 14) {
+			SourceRemoteIcon(url: source.iconURL ?? repository?.currentIconURL, size: 50)
 
 			VStack(alignment: .leading, spacing: 5) {
 				Text(source.name ?? repository?.name ?? .localized("Unknown"))
-					.font(.body.weight(.semibold))
-					.foregroundStyle(.primary)
+					.font(.system(size: 16, weight: .semibold))
+					.foregroundStyle(.white)
 					.lineLimit(1)
 
 				Text(_displayHost)
-					.font(.caption)
-					.foregroundStyle(.secondary)
+					.font(NullSignStyle.mono(11, weight: .medium))
+					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
 
 				_status
 			}
 
 			Spacer(minLength: 8)
+
+			Image(systemName: "chevron.right")
+				.font(.system(size: 13, weight: .bold))
+				.foregroundStyle(NullSignStyle.faint)
 		}
-		.padding(.vertical, 9)
-		.contentShape(Rectangle())
+		.padding(12)
+		.nullSignSurface(cornerRadius: 22)
+		.contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 22, style: .continuous))
 		.swipeActions {
 			_actions(for: source)
 			_contextActions(for: source)
@@ -42,72 +48,29 @@ struct SourcesCellView: View {
 	}
 
 	@ViewBuilder
-	private var _sourceIcon: some View {
-		if let iconURL = source.iconURL ?? repository?.currentIconURL {
-			LazyImage(url: iconURL) { state in
-				if let image = state.image {
-					image.appIconStyle(size: 50, isCircle: false, background: NullSignStyle.raisedPanel)
-				} else {
-					_placeholderIcon
-				}
-			}
-		} else {
-			_placeholderIcon
-		}
-	}
-
-	private var _placeholderIcon: some View {
-		ZStack {
-			RoundedRectangle(cornerRadius: 12, style: .continuous)
-				.fill(NullSignStyle.raisedPanel)
-			Image(systemName: "shippingbox")
-				.font(.system(size: 20, weight: .medium))
-				.foregroundStyle(NullSignStyle.accent)
-		}
-		.frame(width: 50, height: 50)
-		.overlay {
-			RoundedRectangle(cornerRadius: 12, style: .continuous)
-				.stroke(NullSignStyle.hairline, lineWidth: 1)
-		}
-	}
-
-	@ViewBuilder
 	private var _status: some View {
 		if let repository {
-			HStack(spacing: 5) {
-				if isFetching && !didFail {
-					ProgressView().controlSize(.mini).tint(NullSignStyle.accent)
-				} else {
-					Circle()
-						.fill(didFail ? NullSignStyle.warning : NullSignStyle.accent)
-						.frame(width: 5, height: 5)
-				}
-				Text(_loadedStatus(repository.apps.count))
+			if isFetching && !didFail {
+				NullSignChip(text: "\(repository.apps.count) apps · updating", systemImage: "arrow.triangle.2.circlepath", tint: NullSignStyle.muted)
+			} else if didFail {
+				NullSignChip(text: "\(repository.apps.count) cached · offline", systemImage: "exclamationmark", tint: NullSignStyle.warning)
+			} else {
+				NullSignChip(text: .localized("%lld Apps", arguments: repository.apps.count), systemImage: "checkmark", tint: NullSignStyle.success)
 			}
-			.font(.caption2.weight(.medium))
-			.foregroundStyle(didFail ? NullSignStyle.warning : Color.secondary)
 		} else if isFetching && !didFail {
 			HStack(spacing: 6) {
-				ProgressView().controlSize(.mini).tint(NullSignStyle.accent)
-				Text("Updating")
+				ProgressView()
+					.controlSize(.mini)
+					.tint(NullSignStyle.accent)
+				Text("UPDATING")
+					.font(NullSignStyle.mono(9.5, weight: .bold))
+					.foregroundStyle(NullSignStyle.muted)
 			}
-			.font(.caption2)
-			.foregroundStyle(.secondary)
 		} else if didFail {
-			Label("Unavailable — pull to retry", systemImage: "exclamationmark.circle")
-				.font(.caption2)
-				.foregroundStyle(NullSignStyle.warning)
+			NullSignChip(text: "Unavailable · pull to retry", systemImage: "exclamationmark", tint: NullSignStyle.danger)
 		} else {
-			Text("Waiting to update")
-				.font(.caption2)
-				.foregroundStyle(.secondary)
+			NullSignChip(text: "Waiting", tint: NullSignStyle.muted)
 		}
-	}
-
-	private func _loadedStatus(_ count: Int) -> String {
-		if didFail { return "\(count.formatted()) apps cached — update failed" }
-		if isFetching { return "\(count.formatted()) apps — updating" }
-		return .localized("%lld Apps", arguments: count)
 	}
 
 	private var _displayHost: String {

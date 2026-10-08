@@ -34,19 +34,14 @@ struct SourceNewsCardInfoView: View {
 					if let url = new.url {
 						Button { UIApplication.shared.open(url) } label: {
 							Label(.localized("Open Link"), systemImage: "arrow.up.right")
-								.font(.subheadline.weight(.semibold))
-								.foregroundStyle(.black)
 								.frame(maxWidth: .infinity)
-								.frame(height: 42)
-								.background(NullSignStyle.accent)
-								.clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
 						}
-						.buttonStyle(.plain)
+						.buttonStyle(NullSignPrimaryButtonStyle(height: 46))
 					}
 				}
 				.padding(16)
 			}
-			.background(Color.black)
+			.background(NullSignBackdrop(intensity: 0.6))
 			.toolbar { NBToolbarButton(role: .close) }
 		}
 		.tint(NullSignStyle.accent)

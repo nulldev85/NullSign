@@ -78,7 +78,7 @@ struct SigningEntitlementsView: View {
 		}
 		.listStyle(.plain)
 		.scrollContentBackground(.hidden)
-		.background(Color.black)
+		.background(NullSignBackdrop(intensity: 0.6))
 		.navigationTitle(.localized("Entitlements"))
 		.tint(NullSignStyle.accent)
 		.sheet(isPresented: $_isAddingPresenting) {

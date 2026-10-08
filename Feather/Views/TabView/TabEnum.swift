@@ -12,7 +12,7 @@ enum TabEnum: String, CaseIterable, Hashable {
 	case signer
 	case apps
 	case settings
-	
+
 	var title: String {
 		switch self {
 		case .signer:     	return "Signer"
@@ -20,15 +20,15 @@ enum TabEnum: String, CaseIterable, Hashable {
 		case .settings: 	return .localized("Settings")
 		}
 	}
-	
+
 	var icon: String {
 		switch self {
 		case .signer: 		return "signature"
-		case .apps: 		return "square.stack.3d.up"
-		case .settings: 	return "slider.horizontal.3"
+		case .apps: 		return "square.grid.2x2"
+		case .settings: 	return "gearshape"
 		}
 	}
-	
+
 	@ViewBuilder
 	static func view(for tab: TabEnum) -> some View {
 		switch tab {
@@ -37,7 +37,7 @@ enum TabEnum: String, CaseIterable, Hashable {
 		case .settings: SettingsView()
 		}
 	}
-	
+
 	static var defaultTabs: [TabEnum] {
 		return [
 			.apps,
@@ -45,7 +45,7 @@ enum TabEnum: String, CaseIterable, Hashable {
 			.settings
 		]
 	}
-	
+
 	static var customizableTabs: [TabEnum] {
 		return []
 	}

@@ -168,7 +168,7 @@ struct ConfigurationView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 28)
 		}
-		.background(Color.black.ignoresSafeArea())
+		.background(NullSignBackdrop(intensity: 0.8))
 		.navigationTitle("Signing Defaults")
 		.toolbar {
 			NBToolbarMenu(
@@ -211,14 +211,9 @@ extension ConfigurationView {
 		values: [T]
 	) -> some View {
 		HStack(spacing: 12) {
-			Image(systemName: systemImage)
-				.font(.system(size: 15, weight: .semibold))
-				.foregroundStyle(NullSignStyle.accent)
-				.frame(width: 32, height: 32)
-				.background(NullSignStyle.raisedPanel)
-				.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+			NullSignIconTile(systemImage: systemImage, size: 34)
 			Text(title)
-				.font(.body.weight(.medium))
+				.font(.system(size: 16, weight: .semibold))
 			Spacer()
 			Picker(title, selection: selection) {
 				ForEach(values, id: \.self) { value in
@@ -238,19 +233,14 @@ extension ConfigurationView {
 	) -> some View {
 		Toggle(isOn: isOn) {
 			HStack(spacing: 12) {
-				Image(systemName: systemImage)
-					.font(.system(size: 15, weight: .semibold))
-					.foregroundStyle(NullSignStyle.accent)
-					.frame(width: 32, height: 32)
-					.background(NullSignStyle.raisedPanel)
-					.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+				NullSignIconTile(systemImage: systemImage, size: 34)
 				VStack(alignment: .leading, spacing: detail == nil ? 0 : 2) {
 					Text(title)
-						.font(.body.weight(.medium))
+						.font(.system(size: 16, weight: .semibold))
 					if let detail {
 						Text(detail)
 							.font(.caption)
-							.foregroundStyle(.secondary)
+							.foregroundStyle(NullSignStyle.muted)
 					}
 				}
 			}

@@ -15,65 +15,64 @@ struct CertificatesCellView: View {
 	}
 
 	var body: some View {
-		HStack(spacing: 12) {
-			Image(systemName: cert.revoked ? "xmark.shield.fill" : "checkmark.shield.fill")
-				.font(.system(size: 18, weight: .medium))
-				.foregroundStyle(cert.revoked ? NullSignStyle.warning : NullSignStyle.accent)
-				.frame(width: 38, height: 38)
-				.background(NullSignStyle.raisedPanel)
-				.clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+		let validity = NullSignValidity(certificate: cert, profile: data)
 
-			VStack(alignment: .leading, spacing: 3) {
+		HStack(spacing: 14) {
+			ZStack {
+				NullSignRing(
+					progress: validity.progress,
+					size: 44,
+					lineWidth: 4.5,
+					tint: validity.tint,
+					showsSignalDot: isSelected
+				)
+				Image(systemName: cert.revoked ? "xmark" : "checkmark.seal.fill")
+					.font(.system(size: 14, weight: .bold))
+					.foregroundStyle(cert.revoked ? NullSignStyle.danger : Color.white)
+			}
+
+			VStack(alignment: .leading, spacing: 4) {
 				Text(title)
-					.font(.body.weight(.semibold))
-					.foregroundStyle(.primary)
+					.font(.system(size: 16, weight: .semibold))
+					.foregroundStyle(.white)
 					.lineLimit(1)
 				Text(subtitle)
-					.font(.caption)
-					.foregroundStyle(.secondary)
+					.font(NullSignStyle.mono(11, weight: .medium))
+					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
-				_status
+				_status(validity)
 			}
 
 			Spacer(minLength: 4)
 
 			if isSelected {
-				Image(systemName: "checkmark.circle.fill")
-					.font(.body)
-					.foregroundStyle(NullSignStyle.accent)
+				NullSignChip(text: "Active", systemImage: "checkmark", tint: NullSignStyle.accent, filled: true)
 					.accessibilityLabel("Selected")
 			}
 		}
 		.contentTransition(.opacity)
-		.onAppear {
-			data = Storage.shared.getProvisionFileDecoded(for: cert)
+		.task(id: cert.objectID) {
+			data = await ProvisioningProfileCache.shared.profile(for: cert)
 		}
 	}
 
 	@ViewBuilder
-	private var _status: some View {
-		HStack(spacing: 8) {
+	private func _status(_ validity: NullSignValidity) -> some View {
+		HStack(spacing: 5) {
 			if cert.revoked {
-				_statusText("Revoked", color: NullSignStyle.warning)
+				NullSignChip(text: "Revoked", systemImage: "xmark", tint: NullSignStyle.danger)
 			} else if let expiration = cert.expiration {
-				let info = expiration.expirationInfo()
-				_statusText(info.formatted, color: info.color)
+				let label = NullSignValidity.shortLabel(for: expiration)
+				NullSignChip(text: label.text, systemImage: "clock", tint: label.tint)
 			}
 
 			if cert.ppQCheck == true {
-				_statusText("PPQ", color: NullSignStyle.muted)
+				NullSignChip(text: "PPQ", tint: NullSignStyle.muted)
+			}
+
+			if let platforms = data?.Platform, platforms.contains(where: { $0.localizedCaseInsensitiveContains("tvos") }) {
+				NullSignChip(text: "tvOS", systemImage: "appletv.fill", tint: NullSignStyle.crimson, uppercased: false)
 			}
 		}
-	}
-
-	private func _statusText(_ text: String, color: Color) -> some View {
-		HStack(spacing: 4) {
-			Circle()
-				.fill(color)
-				.frame(width: 5, height: 5)
-			Text(text)
-		}
-		.font(.caption2.weight(.medium))
-		.foregroundStyle(.secondary)
 	}
 }

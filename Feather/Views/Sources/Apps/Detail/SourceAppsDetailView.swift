@@ -13,8 +13,8 @@ struct SourceAppsDetailView: View {
 
 	var body: some View {
 		ScrollView {
-			LazyVStack(alignment: .leading, spacing: 22) {
-				_identity
+			LazyVStack(alignment: .leading, spacing: 24) {
+				_hero
 
 				if let screenshots = app.screenshotURLs, !screenshots.isEmpty {
 					_detailSection(.localized("Screenshots")) {
@@ -26,7 +26,7 @@ struct SourceAppsDetailView: View {
 				   let notes = app.currentAppVersion?.localizedDescription,
 				   !notes.isEmpty {
 					_detailSection(.localized("What's New")) {
-						VStack(alignment: .leading, spacing: 13) {
+						VStack(alignment: .leading, spacing: 14) {
 							AppVersionInfo(version: version, date: app.currentDate?.date, description: notes)
 							if let versions = app.versions, versions.count > 1 {
 								NavigationLink {
@@ -37,55 +37,52 @@ struct SourceAppsDetailView: View {
 									HStack {
 										Text(.localized("Version History"))
 										Spacer()
-										Image(systemName: "chevron.right")
-											.font(.caption.weight(.semibold))
+										Image(systemName: "arrow.right")
+											.font(.caption.weight(.bold))
 									}
-									.font(.subheadline.weight(.semibold))
-									.foregroundStyle(NullSignStyle.accent)
+									.font(.system(size: 14, weight: .bold))
+									.foregroundStyle(NullSignStyle.accentHighlight)
 								}
 								.buttonStyle(.plain)
 							}
 						}
-						.sourcePanel()
+						.sourcePanel(padding: 16)
 					}
 				}
 
 				if let description = app.localizedDescription, !description.isEmpty {
 					_detailSection(.localized("About")) {
 						ExpandableText(text: description, lineLimit: 5)
-							.font(.body)
-							.foregroundStyle(.secondary)
+							.font(.subheadline)
+							.foregroundStyle(NullSignStyle.muted)
 							.frame(maxWidth: .infinity, alignment: .leading)
-							.sourcePanel()
+							.sourcePanel(padding: 16)
 					}
 				}
 
 				_detailSection(.localized("Information")) {
-					VStack(spacing: 0) {
-						_infoRows
-					}
-					.sourcePanel(padding: 0)
+					_infoGrid
 				}
 
 				if let permissions = app.appPermissions {
 					_detailSection(.localized("Permissions")) {
 						_permissions(permissions)
-							.sourcePanel()
+							.sourcePanel(padding: 16)
 					}
 				}
 			}
 			.padding(.horizontal, 16)
-			.padding(.top, 10)
+			.padding(.top, 6)
 			.padding(.bottom, 36)
 		}
-		.background(Color.black)
+		.background(NullSignBackdrop(intensity: 0.7))
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {
 			NBToolbarButton(systemImage: "square.and.arrow.up", placement: .topBarTrailing) {
 				_share()
 			}
 		}
-		.tint(NullSignStyle.accent)
+		.tint(.white)
 		.fullScreenCover(isPresented: $_isScreenshotPreviewPresented) {
 			if let screenshots = app.screenshotURLs {
 				ScreenshotPreviewView(screenshotURLs: screenshots, initialIndex: _selectedScreenshotIndex)
@@ -93,85 +90,110 @@ struct SourceAppsDetailView: View {
 		}
 	}
 
-	private var _identity: some View {
-		VStack(alignment: .leading, spacing: 16) {
-			HStack(alignment: .top, spacing: 15) {
-				_appIcon
+	/// Centered identity lit by a blurred wash of the app's own icon.
+	private var _hero: some View {
+		VStack(spacing: 16) {
+			SourceRemoteIcon(url: app.iconURL, size: 104, placeholderSystemImage: "app.dashed")
+				.shadow(color: .black.opacity(0.5), radius: 18, y: 10)
 
-				VStack(alignment: .leading, spacing: 5) {
-					Text(app.currentName)
-						.font(.title2.weight(.bold))
-						.lineLimit(2)
+			VStack(spacing: 6) {
+				Text(app.currentName)
+					.font(NullSignStyle.display(24, weight: .bold))
+					.multilineTextAlignment(.center)
+					.lineLimit(2)
 
-					if let developer = app.developer, !developer.isEmpty {
-						Text(developer)
-							.font(.subheadline.weight(.medium))
-							.foregroundStyle(NullSignStyle.accent)
-					}
-
-					if let summary = app.subtitle ?? app.description, !summary.isEmpty {
-						Text(summary)
-							.font(.caption)
-							.foregroundStyle(.secondary)
-							.lineLimit(2)
-					}
+				if let developer = app.developer, !developer.isEmpty {
+					Text(developer)
+						.font(.system(size: 14, weight: .semibold))
+						.foregroundStyle(NullSignStyle.accentHighlight)
 				}
 
-				Spacer(minLength: 4)
+				if let summary = app.subtitle ?? app.description, !summary.isEmpty {
+					Text(summary)
+						.font(.subheadline)
+						.foregroundStyle(NullSignStyle.muted)
+						.multilineTextAlignment(.center)
+						.lineLimit(2)
+						.padding(.horizontal, 8)
+				}
 			}
 
-			HStack(spacing: 8) {
+			HStack(spacing: 6) {
 				if let version = app.currentVersion {
-					_metadata(icon: "tag", value: version)
+					NullSignChip(text: "v\(version)", systemImage: "tag.fill", uppercased: false)
 				}
 				if let size = app.size {
-					_metadata(icon: "archivebox", value: size.formattedByteCount)
+					NullSignChip(text: size.formattedByteCount, systemImage: "archivebox.fill", uppercased: false)
 				}
-				Spacer()
-				DownloadButtonView(sourceURL: sourceURL, source: source, app: app)
-			}
-		}
-		.sourcePanel(padding: 15)
-	}
-
-	@ViewBuilder
-	private var _appIcon: some View {
-		if let iconURL = app.iconURL {
-			LazyImage(url: iconURL) { state in
-				if let image = state.image {
-					image.appIconStyle(size: 86, isCircle: false, background: NullSignStyle.raisedPanel)
-				} else {
-					Image("App_Unknown").appIconStyle(size: 86, isCircle: false)
+				if let category = app.category {
+					NullSignChip(text: category.capitalized, tint: NullSignStyle.violet, uppercased: false)
 				}
 			}
-		} else {
-			Image("App_Unknown").appIconStyle(size: 86, isCircle: false)
-		}
-	}
 
-	private func _metadata(icon: String, value: String) -> some View {
-		Label(value, systemImage: icon)
-			.font(.caption.weight(.medium))
-			.foregroundStyle(.secondary)
-			.padding(.horizontal, 9)
-			.frame(height: 30)
-			.background(NullSignStyle.raisedPanel)
-			.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+			DownloadButtonView(sourceURL: sourceURL, source: source, app: app)
+				.scaleEffect(1.15)
+				.padding(.top, 2)
+		}
+		.frame(maxWidth: .infinity)
+		.padding(.vertical, 26)
+		.padding(.horizontal, 16)
+		.background {
+			ZStack {
+				if let iconURL = app.iconURL {
+					LazyImage(url: iconURL) { state in
+						if let image = state.image {
+							image
+								.resizable()
+								.scaledToFill()
+								.blur(radius: 46)
+								.opacity(0.55)
+						} else {
+							Color.clear
+						}
+					}
+				}
+				LinearGradient(
+					colors: [Color.black.opacity(0.1), Color.black.opacity(0.65)],
+					startPoint: .top,
+					endPoint: .bottom
+				)
+			}
+		}
+		.nullSignSurface(cornerRadius: 30)
 	}
 
 	@ViewBuilder
 	private func _detailSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
 		VStack(alignment: .leading, spacing: 10) {
 			SourceSectionLabel(title: title)
+				.padding(.horizontal, 6)
 			content()
 		}
 	}
 
-	@ViewBuilder
-	private var _infoRows: some View {
-		ForEach(_informationItems.indices, id: \.self) { index in
-			let item = _informationItems[index]
-			_infoRow(item.title, item.value, isLast: index == _informationItems.count - 1)
+	private var _infoGrid: some View {
+		LazyVGrid(
+			columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
+			spacing: 10
+		) {
+			ForEach(_informationItems.indices, id: \.self) { index in
+				let item = _informationItems[index]
+				VStack(alignment: .leading, spacing: 5) {
+					Text(item.title.uppercased())
+						.font(NullSignStyle.mono(9.5, weight: .bold))
+						.tracking(0.8)
+						.foregroundStyle(NullSignStyle.faint)
+					Text(item.value)
+						.font(.system(size: 14, weight: .semibold))
+						.foregroundStyle(.white)
+						.lineLimit(2)
+						.minimumScaleFactor(0.8)
+						.textSelection(.enabled)
+				}
+				.frame(maxWidth: .infinity, minHeight: 58, alignment: .topLeading)
+				.padding(13)
+				.nullSignSurface(cornerRadius: 18)
+			}
 		}
 	}
 
@@ -187,26 +209,6 @@ struct SourceAppsDetailView: View {
 		}
 		if let bundleID = app.id { items.append((.localized("Identifier"), bundleID)) }
 		return items
-	}
-
-	private func _infoRow(_ title: String, _ value: String, isLast: Bool = false) -> some View {
-		VStack(spacing: 0) {
-			HStack(alignment: .firstTextBaseline, spacing: 14) {
-				Text(title)
-					.font(.subheadline)
-				Spacer()
-				Text(value)
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
-					.multilineTextAlignment(.trailing)
-					.textSelection(.enabled)
-			}
-			.padding(.horizontal, 14)
-			.padding(.vertical, 12)
-			if !isLast {
-				Divider().overlay(NullSignStyle.hairline).padding(.leading, 14)
-			}
-		}
 	}
 
 	private func _permissions(_ permissions: ASRepository.AppPermissions) -> some View {
@@ -228,22 +230,19 @@ struct SourceAppsDetailView: View {
 			if permissions.entitlements?.isEmpty != false && permissions.privacy?.isEmpty != false {
 				Text(.localized("No permissions are listed by this source."))
 					.font(.subheadline)
-					.foregroundStyle(.secondary)
+					.foregroundStyle(NullSignStyle.muted)
 			}
 		}
 	}
 
 	private func _permissionGroup(icon: String, title: String, value: String) -> some View {
-		HStack(alignment: .top, spacing: 11) {
-			Image(systemName: icon)
-				.font(.subheadline.weight(.medium))
-				.foregroundStyle(NullSignStyle.accent)
-				.frame(width: 21)
+		HStack(alignment: .top, spacing: 12) {
+			NullSignIconTile(systemImage: icon, size: 30)
 			VStack(alignment: .leading, spacing: 3) {
-				Text(title).font(.subheadline.weight(.semibold))
+				Text(title).font(.system(size: 14, weight: .semibold))
 				Text(value)
 					.font(.caption)
-					.foregroundStyle(.secondary)
+					.foregroundStyle(NullSignStyle.muted)
 					.fixedSize(horizontal: false, vertical: true)
 			}
 		}
@@ -251,28 +250,29 @@ struct SourceAppsDetailView: View {
 
 	private func _screenshots(_ urls: [URL]) -> some View {
 		ScrollView(.horizontal, showsIndicators: false) {
-			LazyHStack(spacing: 10) {
+			LazyHStack(spacing: 12) {
 				ForEach(urls.indices, id: \.self) { index in
 					LazyImage(url: urls[index]) { state in
 						if let image = state.image {
 							image
 								.resizable()
 								.aspectRatio(contentMode: .fit)
-								.frame(maxWidth: 250, maxHeight: 390)
+								.frame(maxWidth: 250, maxHeight: 400)
 								.background(NullSignStyle.panel)
-								.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+								.clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 								.overlay {
-									RoundedRectangle(cornerRadius: 14, style: .continuous)
-										.stroke(NullSignStyle.hairline, lineWidth: 1)
+									RoundedRectangle(cornerRadius: 20, style: .continuous)
+										.strokeBorder(NullSignStyle.edge, lineWidth: 1)
 								}
 								.onTapGesture {
 									_selectedScreenshotIndex = index
 									_isScreenshotPreviewPresented = true
 								}
 						} else {
-							NullSignStyle.panel
-								.frame(width: 210, height: 360)
-								.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+							RoundedRectangle(cornerRadius: 20, style: .continuous)
+								.fill(NullSignStyle.panel)
+								.frame(width: 210, height: 380)
+								.overlay(ProgressView().tint(NullSignStyle.accent))
 						}
 					}
 				}

@@ -49,7 +49,9 @@ struct SigningView: View {
 	var body: some View {
 		NBNavigationView("", displayMode: .inline) {
 			Form {
-				NullSignSigningHeader(app: app)
+				NullSignSigningHeader(app: app) {
+					_iconMenu(for: app)
+				}
 				_customizationOptions(for: app)
 					.listRowBackground(NullSignStyle.panel)
 				_cert()
@@ -58,50 +60,42 @@ struct SigningView: View {
 					.listRowBackground(NullSignStyle.panel)
 				_customizationProperties(for: app)
 					.listRowBackground(NullSignStyle.panel)
-				
-				// horrible
-				Rectangle()
-					.foregroundStyle(.clear)
-					.frame(height: 30)
-					.listRowBackground(EmptyView())
 			}
 			.scrollContentBackground(.hidden)
-			.background(Color.black)
-			.overlay {
-				VStack(spacing: 0) {
-					Spacer()
-					NBVariableBlurView()
-						.frame(height: UIDevice.current.userInterfaceIdiom == .pad ? 60 : 80)
-						.rotationEffect(.degrees(180))
-						.overlay {
-							Button {
-								_start()
-							} label: {
-								HStack {
-									Image(systemName: "checkmark.seal")
-									Text(_isSigning ? .localized("Signing…") : .localized("Sign App"))
-										.font(.system(size: 15, weight: .semibold))
-									Spacer()
-									if _isSigning {
-										ProgressView()
-											.tint(.black)
-									} else {
-										Image(systemName: "arrow.right")
-									}
-								}
-								.foregroundStyle(.black)
-								.padding(.horizontal, 17)
-								.frame(height: 50)
-								.background(NullSignStyle.accent)
-								.clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-								.padding(.horizontal, 16)
-							}
-							.buttonStyle(.plain)
-							.animation(_reduceMotion ? nil : .easeInOut(duration: 0.2), value: _isSigning)
-							.offset(y: UIDevice.current.userInterfaceIdiom == .pad ? -20 : -40)
+			.background(NullSignBackdrop())
+			.tint(NullSignStyle.accent)
+			.safeAreaInset(edge: .bottom, spacing: 0) {
+				Button {
+					_start()
+				} label: {
+					HStack(spacing: 10) {
+						Image(systemName: "signature")
+							.font(.system(size: 16, weight: .bold))
+						Text(_isSigning ? .localized("Signing…") : .localized("Sign App"))
+						Spacer()
+						if _isSigning {
+							ProgressView()
+								.tint(.white)
+						} else {
+							Image(systemName: "arrow.right")
+								.font(.system(size: 15, weight: .bold))
 						}
+					}
+					.padding(.horizontal, 4)
 				}
-				.ignoresSafeArea(edges: .bottom)
+				.buttonStyle(NullSignPrimaryButtonStyle(height: 56, dimsWhenDisabled: false))
+				.animation(_reduceMotion ? nil : .easeInOut(duration: 0.2), value: _isSigning)
+				.padding(.horizontal, 16)
+				.padding(.top, 14)
+				.padding(.bottom, 8)
+				.background(
+					LinearGradient(
+						colors: [Color.black.opacity(0), Color.black.opacity(0.85), Color.black],
+						startPoint: .top,
+						endPoint: .bottom
+					)
+					.ignoresSafeArea()
+				)
 			}
 
 			.toolbar {
@@ -178,22 +172,37 @@ struct SigningView: View {
 
 // MARK: - Extension: View
 extension SigningView {
-	@ViewBuilder
-	private func _customizationOptions(for app: AppInfoPresentable) -> some View {
-		NBSection(.localized("Customization")) {
-			Menu {
-				Button(.localized("Select Alternative Icon"), systemImage: "app.dashed") { _isAltPickerPresenting = true }
-				Button(.localized("Choose from Files"), systemImage: "folder") { _isFilePickerPresenting = true }
-				Button(.localized("Choose from Photos"), systemImage: "photo") { _isImagePickerPresenting = true }
-			} label: {
+	/// The header icon doubles as the icon picker.
+	private func _iconMenu(for app: AppInfoPresentable) -> some View {
+		Menu {
+			Button(.localized("Select Alternative Icon"), systemImage: "app.dashed") { _isAltPickerPresenting = true }
+			Button(.localized("Choose from Files"), systemImage: "folder") { _isFilePickerPresenting = true }
+			Button(.localized("Choose from Photos"), systemImage: "photo") { _isImagePickerPresenting = true }
+		} label: {
+			Group {
 				if let icon = appIcon {
 					Image(uiImage: icon)
-						.appIconStyle()
+						.appIconStyle(size: 88)
 				} else {
-					FRAppIconView(app: app, size: 56)
+					FRAppIconView(app: app, size: 88, glow: true)
 				}
 			}
-			
+			.overlay(alignment: .bottomTrailing) {
+				Image(systemName: "pencil")
+					.font(.system(size: 11, weight: .heavy))
+					.foregroundStyle(.white)
+					.frame(width: 26, height: 26)
+					.background(Circle().fill(NullSignStyle.signal))
+					.overlay(Circle().strokeBorder(Color.black, lineWidth: 2))
+					.offset(x: 6, y: 6)
+			}
+		}
+		.accessibilityLabel("Change app icon")
+	}
+
+	@ViewBuilder
+	private func _customizationOptions(for app: AppInfoPresentable) -> some View {
+		Section {
 			_infoCell(.localized("Name"), desc: _temporaryOptions.appName ?? app.name) {
 				SigningPropertiesView(
 					title: .localized("Name"),
@@ -215,12 +224,14 @@ extension SigningView {
 					bindingValue: $_temporaryOptions.appVersion
 				)
 			}
+		} header: {
+			SigningSectionHeader(title: .localized("Customization"))
 		}
 	}
-	
+
 	@ViewBuilder
 	private func _cert() -> some View {
-		NBSection(.localized("Signing")) {
+		Section {
 			if let cert = _selectedCert() {
 				NavigationLink {
 					CertificatesView(selectedCert: $_temporaryCertificate, platform: app.platform)
@@ -233,37 +244,61 @@ extension SigningView {
 				NavigationLink {
 					CertificatesView(selectedCert: $_temporaryCertificate, platform: app.platform)
 				} label: {
-					Label(.localized("Choose Certificate"), systemImage: "checkmark.seal")
+					HStack(spacing: 12) {
+						SigningRowIcon(systemImage: "checkmark.seal", tint: NullSignStyle.warning)
+						VStack(alignment: .leading, spacing: 2) {
+							Text(.localized("Choose Certificate"))
+								.font(.system(size: 16, weight: .semibold))
+							Text("No compatible certificate selected")
+								.font(.caption)
+								.foregroundStyle(NullSignStyle.muted)
+						}
+					}
 				}
 			}
+		} header: {
+			SigningSectionHeader(title: .localized("Signing"))
 		}
 	}
 
 	@ViewBuilder
 	private func _tweaks() -> some View {
-		NBSection("Tweaks & Injection") {
+		Section {
 			NavigationLink {
 				SigningTweaksView(options: $_temporaryOptions)
 			} label: {
 				LabeledContent {
 					Text(_temporaryOptions.injectionFiles.count.description)
-						.foregroundStyle(.secondary)
+						.font(NullSignStyle.mono(14, weight: .bold))
+						.foregroundStyle(NullSignStyle.muted)
 				} label: {
-					Label("Add .deb or .dylib", systemImage: "shippingbox.and.arrow.backward")
+					HStack(spacing: 12) {
+						SigningRowIcon(systemImage: "shippingbox.and.arrow.backward")
+						Text("Add .deb or .dylib")
+							.font(.system(size: 16, weight: .semibold))
+					}
 				}
 			}
 
 			Toggle(isOn: $_temporaryOptions.experiment_replaceSubstrateWithEllekit) {
-				Label("Replace Substrate with ElleKit", systemImage: "arrow.triangle.2.circlepath")
+				HStack(spacing: 12) {
+					SigningRowIcon(systemImage: "arrow.triangle.2.circlepath")
+					Text("Replace Substrate with ElleKit")
+						.font(.system(size: 16, weight: .semibold))
+				}
 			}
+		} header: {
+			SigningSectionHeader(title: "Tweaks & Injection")
 		} footer: {
 			Text("NullSign adds ElleKit when an imported tweak needs a hooking runtime. Enable replacement only when the app already contains Cydia Substrate and you want to swap it for ElleKit.")
+				.font(.caption)
+				.foregroundStyle(NullSignStyle.muted)
 		}
 	}
-	
+
 	@ViewBuilder
 	private func _customizationProperties(for app: AppInfoPresentable) -> some View {
-		NBSection(.localized("Advanced")) {
+		Section {
 			DisclosureGroup(.localized("Modify")) {
 				NavigationLink(.localized("Existing Dylibs")) {
 					SigningDylibView(
@@ -292,18 +327,29 @@ extension SigningView {
 					options: $_temporaryOptions,
 					temporaryOptions: _optionsManager.options
 				)}
+				.scrollContentBackground(.hidden)
+				.background(NullSignBackdrop(intensity: 0.6))
 				.navigationTitle(.localized("Properties"))
 			}
+		} header: {
+			SigningSectionHeader(title: .localized("Advanced"))
 		}
 	}
-	
+
 	@ViewBuilder
 	private func _infoCell<V: View>(_ title: String, desc: String?, @ViewBuilder destination: () -> V) -> some View {
 		NavigationLink {
 			destination()
 		} label: {
-			LabeledContent(title) {
+			LabeledContent {
 				Text(desc ?? .localized("Unknown"))
+					.font(NullSignStyle.mono(13, weight: .medium))
+					.foregroundStyle(NullSignStyle.muted)
+					.lineLimit(1)
+					.truncationMode(.middle)
+			} label: {
+				Text(title)
+					.font(.system(size: 16, weight: .semibold))
 			}
 		}
 	}

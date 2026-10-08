@@ -50,7 +50,7 @@ struct InstallPreviewView: View {
 				VStack(alignment: .leading, spacing: 6) {
 					HStack(spacing: 7) {
 						Text(app.name ?? "App")
-							.font(.system(size: 18, weight: .semibold, design: .rounded))
+							.font(NullSignStyle.display(16, weight: .bold))
 							.lineLimit(1)
 						PlatformBadge(platform: app.platform)
 					}
@@ -67,8 +67,23 @@ struct InstallPreviewView: View {
 		}
 		.padding(20)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-		.background(Color(red: 0.110, green: 0.110, blue: 0.118))
-		.cornerRadius(cornerRadius)
+		.background {
+			RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+				.fill(Color(white: 0.055))
+				.overlay(
+					RadialGradient(
+						colors: [NullSignStyle.accent.opacity(0.22), .clear],
+						center: .topLeading,
+						startRadius: 2,
+						endRadius: 240
+					)
+				)
+				.overlay(
+					RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+						.strokeBorder(NullSignStyle.edge, lineWidth: 1)
+				)
+		}
+		.clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
 		.padding()
 		.sheet(isPresented: $_isWebviewPresenting) {
 			SafariRepresentableView(url: installer.pageEndpoint).ignoresSafeArea()
@@ -129,8 +144,8 @@ struct InstallPreviewView: View {
 	@ViewBuilder
 	private func _status() -> some View {
 		Label(viewModel.statusLabel, systemImage: viewModel.statusImage)
-			.font(.system(size: 12, weight: .semibold))
-			.foregroundStyle(viewModel.isCompleted ? NullSignStyle.accent : NullSignStyle.muted)
+			.font(NullSignStyle.mono(11, weight: .semibold))
+			.foregroundStyle(viewModel.isCompleted ? NullSignStyle.success : NullSignStyle.muted)
 			.animation(.smooth, value: viewModel.statusImage)
 	}
 	
@@ -158,14 +173,8 @@ struct InstallPreviewView: View {
 	private func _actionButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
 		Button(action: action) {
 			Label(title, systemImage: icon)
-				.font(.system(size: 12, weight: .semibold))
-				.padding(.horizontal, 12)
-				.frame(height: 34)
-				.foregroundStyle(.black)
-				.background(NullSignStyle.accent)
-				.clipShape(Capsule())
 		}
-		.buttonStyle(.plain)
+		.buttonStyle(NullSignPrimaryButtonStyle(height: 34))
 	}
 	
 	private func _install() {

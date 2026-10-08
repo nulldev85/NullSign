@@ -14,7 +14,7 @@ struct LibraryInfoView: View {
 	@State private var _isStorageErrorPresented = false
 
 	var app: AppInfoPresentable
-	
+
 	// MARK: Body
 	var body: some View {
 		NBNavigationView(app.name ?? "", displayMode: .inline) {
@@ -36,12 +36,12 @@ struct LibraryInfoView: View {
 									.font(.body.weight(.medium))
 								Text("View this app's working directory")
 									.font(.caption)
-									.foregroundStyle(.secondary)
+									.foregroundStyle(NullSignStyle.muted)
 							}
 							Spacer()
 							Image(systemName: "arrow.up.forward")
-								.font(.caption.weight(.semibold))
-								.foregroundStyle(.secondary)
+								.font(.caption.weight(.bold))
+								.foregroundStyle(NullSignStyle.faint)
 						}
 					}
 					.buttonStyle(.plain)
@@ -52,7 +52,7 @@ struct LibraryInfoView: View {
 			}
 			.listStyle(.plain)
 			.scrollContentBackground(.hidden)
-			.background(Color.black)
+			.background(NullSignBackdrop(intensity: 0.7))
 			.tint(NullSignStyle.accent)
 			.toolbar {
 				NBToolbarButton(role: .close)
@@ -69,31 +69,35 @@ struct LibraryInfoView: View {
 // MARK: - Extension: View
 extension LibraryInfoView {
 	private var _summary: some View {
-		SigningSummaryCard {
-			HStack(spacing: 14) {
-				FRAppIconView(app: app, size: 68)
-				VStack(alignment: .leading, spacing: 4) {
-					Text(app.name ?? .localized("Unknown App"))
-						.font(.title3.weight(.semibold))
+		VStack(spacing: 14) {
+			FRAppIconView(app: app, size: 88, glow: true)
+			VStack(spacing: 7) {
+				Text(app.name ?? .localized("Unknown App"))
+					.font(NullSignStyle.display(21, weight: .bold))
+					.multilineTextAlignment(.center)
+					.lineLimit(2)
+				if let identifier = app.identifier {
+					Text(identifier)
+						.font(NullSignStyle.mono(11, weight: .medium))
+						.foregroundStyle(NullSignStyle.muted)
 						.lineLimit(1)
-					if let identifier = app.identifier {
-						Text(identifier)
-							.font(.caption.monospaced())
-							.foregroundStyle(.secondary)
-							.lineLimit(1)
-					}
-					HStack(spacing: 6) {
-						Circle()
-							.fill(app.isSigned ? NullSignStyle.accent : NullSignStyle.warning)
-							.frame(width: 6, height: 6)
-						Text(app.isSigned ? "Signed package" : "Imported package")
-							.font(.caption.weight(.medium))
-							.foregroundStyle(.secondary)
-					}
+						.truncationMode(.middle)
 				}
-				Spacer(minLength: 0)
+				HStack(spacing: 6) {
+					PlatformBadge(platform: app.platform)
+					if let version = app.version, !version.isEmpty {
+						NullSignChip(text: "v\(version)", uppercased: false)
+					}
+					NullSignChip(
+						text: app.isSigned ? "Signed" : "Imported",
+						systemImage: app.isSigned ? "checkmark.seal.fill" : "shippingbox",
+						tint: app.isSigned ? NullSignStyle.success : NullSignStyle.warning
+					)
+				}
 			}
 		}
+		.frame(maxWidth: .infinity)
+		.padding(.vertical, 10)
 		.signingSummaryRow()
 	}
 
@@ -103,15 +107,15 @@ extension LibraryInfoView {
 			if let name = app.name {
 				_infoCell(.localized("Name"), desc: name, systemImage: "textformat")
 			}
-			
+
 			if let ver = app.version {
 				_infoCell(.localized("Version"), desc: ver, systemImage: "number")
 			}
-			
+
 			if let id = app.identifier {
 				_infoCell(.localized("Identifier"), desc: id, systemImage: "app.badge")
 			}
-			
+
 			if let date = app.date {
 				_infoCell(.localized("Date Added"), desc: date.formatted(), systemImage: "calendar")
 			}
@@ -119,7 +123,7 @@ extension LibraryInfoView {
 			SigningSectionHeader(title: .localized("App"), detail: "Tap and hold a value to copy it.")
 		}
 	}
-	
+
 	@ViewBuilder
 	private func _certSection(for app: AppInfoPresentable) -> some View {
 		if let cert = Storage.shared.getCertificate(from: app) {
@@ -131,7 +135,7 @@ extension LibraryInfoView {
 			}
 		}
 	}
-	
+
 	@ViewBuilder
 	private func _bundleSection(for app: AppInfoPresentable) -> some View {
 		Section {
@@ -160,7 +164,7 @@ extension LibraryInfoView {
 			SigningSectionHeader(title: .localized("Bundle Contents"))
 		}
 	}
-	
+
 	@ViewBuilder
 	private func _executableSection(for app: AppInfoPresentable) -> some View {
 		Section {
@@ -178,7 +182,7 @@ extension LibraryInfoView {
 			SigningSectionHeader(title: .localized("Executable"))
 		}
 	}
-	
+
 	@ViewBuilder
 	private func _infoCell(_ title: String, desc: String, systemImage: String) -> some View {
 		HStack(spacing: 12) {
@@ -187,8 +191,8 @@ extension LibraryInfoView {
 				.font(.body.weight(.medium))
 			Spacer(minLength: 12)
 			Text(desc)
-				.font(.subheadline)
-				.foregroundStyle(.secondary)
+				.font(NullSignStyle.mono(13, weight: .medium))
+				.foregroundStyle(NullSignStyle.muted)
 				.multilineTextAlignment(.trailing)
 				.lineLimit(2)
 		}
@@ -204,7 +208,7 @@ extension LibraryInfoView {
 					.font(.body.weight(.medium))
 				Text(detail)
 					.font(.caption)
-					.foregroundStyle(.secondary)
+					.foregroundStyle(NullSignStyle.muted)
 			}
 		}
 	}

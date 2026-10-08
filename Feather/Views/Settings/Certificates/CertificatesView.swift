@@ -33,9 +33,27 @@ struct CertificatesView: View {
 				_header
 
 				if _certificates.isEmpty {
-					_emptyState
+					NullSignEmptyState(
+						systemImage: "checkmark.seal",
+						title: "No certificates yet",
+						message: "Import your .p12 and its provisioning profile. Certificate files and passwords never leave this device."
+					) {
+						Button {
+							_isAddingPresenting = true
+						} label: {
+							Label("Import Certificate", systemImage: "plus")
+								.frame(maxWidth: .infinity)
+						}
+						.buttonStyle(NullSignPrimaryButtonStyle())
+						.padding(.top, 4)
+					}
+					.padding(.top, 20)
 				} else {
-					ForEach(Array(_certificates.enumerated()), id: \.element.uuid) { index, cert in
+					NullSignSectionLabel(title: "Identities", count: _certificates.count)
+						.padding(.horizontal, 6)
+						.padding(.top, 8)
+
+					ForEach(Array(_certificates.enumerated()), id: \.element.objectID) { index, cert in
 						_cellButton(for: cert, at: index)
 					}
 				}
@@ -44,8 +62,19 @@ struct CertificatesView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 24)
 		}
-		.background(Color.black.ignoresSafeArea())
+		.background(NullSignBackdrop(intensity: 0.8))
 		.navigationTitle("Certificates")
+		.navigationBarTitleDisplayMode(.inline)
+		.toolbar {
+			ToolbarItem(placement: .topBarTrailing) {
+				Button {
+					_isAddingPresenting = true
+				} label: {
+					Image(systemName: "plus")
+				}
+				.accessibilityLabel("Import Certificate")
+			}
+		}
 		.sheet(item: $_isSelectedInfoPresenting) { cert in
 			CertificatesInfoView(cert: cert)
 		}
@@ -57,6 +86,7 @@ struct CertificatesView: View {
 			TextField("Nickname", text: $_newNickname)
 			Button("Cancel", role: .cancel) { }
 			Button("Save") {
+				guard cert.managedObjectContext != nil, !cert.isDeleted else { return }
 				cert.nickname = _newNickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 					? nil
 					: _newNickname.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -68,79 +98,38 @@ struct CertificatesView: View {
 
 extension CertificatesView {
 	private var _header: some View {
-		NullSignSettingsCard {
-			HStack(spacing: 14) {
-				VStack(alignment: .leading, spacing: 4) {
-					Text("Signing identities")
-						.font(.headline)
-					Text(_certificates.isEmpty
-						 ? "A .p12 and matching provisioning profile are required."
-						 : "\(_certificates.count) saved on this iPhone")
-						.font(.subheadline)
-						.foregroundStyle(.secondary)
-						.fixedSize(horizontal: false, vertical: true)
-				}
-
-				Spacer(minLength: 8)
-
-				Button {
-					_isAddingPresenting = true
-				} label: {
-					Label("Import", systemImage: "plus")
-						.font(.subheadline.weight(.semibold))
-						.foregroundStyle(.black)
-						.padding(.horizontal, 12)
-						.frame(height: 36)
-						.background(NullSignStyle.accent)
-						.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-				}
-				.buttonStyle(.plain)
-			}
-		}
-	}
-
-	private var _emptyState: some View {
-		VStack(spacing: 11) {
-			Image(systemName: "checkmark.seal")
-				.font(.system(size: 25, weight: .medium))
-				.foregroundStyle(NullSignStyle.accent)
-			Text("No certificates yet")
-				.font(.headline)
-			Text("Use Import above to add your signing identity. Certificate files and passwords remain on this device.")
-				.font(.subheadline)
-				.foregroundStyle(.secondary)
-				.multilineTextAlignment(.center)
-		}
-		.frame(maxWidth: .infinity)
-		.padding(.vertical, 38)
-		.padding(.horizontal, 24)
-		.background(NullSignStyle.panel)
-		.overlay {
-			RoundedRectangle(cornerRadius: 18, style: .continuous)
-				.stroke(NullSignStyle.hairline, lineWidth: 1)
-		}
-		.clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+		NullSignSettingsIntro(
+			systemImage: "person.badge.key.fill",
+			title: "Signing identities",
+			detail: _platform == .tvOS
+				? "Choose a certificate whose profile includes tvOS."
+				: "A .p12 and its matching provisioning profile sign every app on this device.",
+			status: _certificates.isEmpty ? "Setup needed" : "\(_certificates.count) saved",
+			statusColor: _certificates.isEmpty ? NullSignStyle.warning : NullSignStyle.success
+		)
 	}
 
 	@ViewBuilder
 	private func _cellButton(for cert: CertificatePair, at index: Int) -> some View {
 		let isSelected = _selectedCertBinding.wrappedValue == index
 		let isCompatible = _platform.map { Storage.shared.certificate(cert, supports: $0) } ?? true
+		let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
 
 		HStack(spacing: 0) {
 			Button {
 				if isCompatible {
+					UISelectionFeedbackGenerator().selectionChanged()
 					_selectedCertBinding.wrappedValue = index
 				}
 			} label: {
 				CertificatesCellView(cert: cert, isSelected: isSelected)
 					.padding(.vertical, 14)
-					.padding(.leading, 16)
+					.padding(.leading, 14)
 					.frame(maxWidth: .infinity, alignment: .leading)
 			}
 			.buttonStyle(.plain)
 			.disabled(!isCompatible)
-			.opacity(isCompatible ? 1 : 0.45)
+			.opacity(isCompatible ? 1 : 0.4)
 
 			Menu {
 				_contextActions(for: cert)
@@ -150,25 +139,27 @@ extension CertificatesView {
 				}
 			} label: {
 				Image(systemName: "ellipsis")
-					.font(.body.weight(.semibold))
-					.foregroundStyle(.secondary)
-					.frame(width: 48, height: 48)
+					.font(.system(size: 15, weight: .bold))
+					.foregroundStyle(NullSignStyle.muted)
+					.frame(width: 46, height: 52)
 					.contentShape(Rectangle())
 			}
 			.accessibilityLabel("Certificate actions")
 		}
-		.background(NullSignStyle.panel)
-		.overlay(alignment: .leading) {
-			Capsule()
-				.fill(isSelected ? NullSignStyle.accent : Color.clear)
-				.frame(width: 3)
-				.padding(.vertical, 12)
-		}
+		.background(
+			RadialGradient(
+				colors: [NullSignStyle.accent.opacity(isSelected ? 0.2 : 0), .clear],
+				center: .leading,
+				startRadius: 2,
+				endRadius: 200
+			)
+		)
+		.nullSignSurface(cornerRadius: 22)
 		.overlay {
-			RoundedRectangle(cornerRadius: 18, style: .continuous)
-				.stroke(isSelected ? NullSignStyle.accent.opacity(0.5) : NullSignStyle.hairline, lineWidth: 1)
+			if isSelected {
+				shape.strokeBorder(NullSignStyle.accent.opacity(0.75), lineWidth: 1.5)
+			}
 		}
-		.clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 		.transaction { $0.animation = nil }
 	}
 
@@ -200,12 +191,13 @@ extension CertificatesView {
 		let selectedUUID = _certificates.indices.contains(selectedIndex)
 			? _certificates[selectedIndex].uuid
 			: nil
+		let deletedUUID = cert.uuid
 
 		Storage.shared.deleteCertificate(for: cert)
 		let remaining = Storage.shared.getAllCertificates()
 
 		if let selectedUUID,
-		   selectedUUID != cert.uuid,
+		   selectedUUID != deletedUUID,
 		   let preservedIndex = remaining.firstIndex(where: { $0.uuid == selectedUUID }) {
 			_selectedCertBinding.wrappedValue = preservedIndex
 		} else {

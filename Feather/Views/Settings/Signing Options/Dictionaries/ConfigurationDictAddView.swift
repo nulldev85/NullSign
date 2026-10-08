@@ -57,7 +57,7 @@ struct ConfigurationDictAddView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 28)
 		}
-		.background(Color.black.ignoresSafeArea())
+		.background(NullSignBackdrop(intensity: 0.8))
 		.navigationTitle("New Rule")
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {

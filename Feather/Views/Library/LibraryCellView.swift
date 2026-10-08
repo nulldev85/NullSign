@@ -11,8 +11,6 @@ import NimbleViews
 
 // MARK: - View
 struct LibraryCellView: View {
-	@Environment(\.editMode) private var editMode
-	@Environment(\.accessibilityReduceMotion) private var reduceMotion
 	// Not @ObservedObject: UpdateManager also publishes isChecking/lastCheckedDate,
 	// which would re-render every visible row on every check start/finish even
 	// though only the per-app update entry below is ever read from it.
@@ -20,102 +18,104 @@ struct LibraryCellView: View {
 	@State private var _update: AppUpdate?
 	@State private var _signedUpdateConfirmation: AppUpdate?
 	@State private var _isSignedUpdateConfirmationPresented = false
-	@State private var _isPeelingAway = false
 
-	var certInfo: Date.ExpirationInfo? {
-		Storage.shared.getCertificate(from: app)?.expiration?.expirationInfo()
-	}
-	
-	var certRevoked: Bool {
-		Storage.shared.getCertificate(from: app)?.revoked == true
-	}
-	
 	var app: AppInfoPresentable
+	var isSelecting: Bool
 	@Binding var selectedInfoAppPresenting: AnyApp?
 	@Binding var selectedSigningAppPresenting: AnyApp?
 	@Binding var selectedInstallAppPresenting: AnyApp?
 	@Binding var selectedAppUUIDs: Set<String>
-	
+
+	private let _cardShape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+
 	// MARK: Selections
 	private var _isSelected: Bool {
 		guard let uuid = app.uuid else { return false }
 		return selectedAppUUIDs.contains(uuid)
 	}
-	
+
 	private func _toggleSelection() {
 		guard let uuid = app.uuid else { return }
+		UISelectionFeedbackGenerator().selectionChanged()
 		if selectedAppUUIDs.contains(uuid) {
 			selectedAppUUIDs.remove(uuid)
 		} else {
 			selectedAppUUIDs.insert(uuid)
 		}
 	}
-	
+
 	// MARK: Body
 	var body: some View {
-		let isEditing = editMode?.wrappedValue == .active
-		
-		HStack(spacing: 18) {
-			if isEditing {
-				Button {
-					_toggleSelection()
-				} label: {
-					Image(systemName: _isSelected ? "checkmark.circle.fill" : "circle")
-						.foregroundColor(_isSelected ? .accentColor : .secondary)
-						.font(.title2)
+		HStack(spacing: 14) {
+			if isSelecting {
+				_selectionIndicator
+					.transition(.move(edge: .leading).combined(with: .opacity))
+			}
+
+			_appIcon
+
+			VStack(alignment: .leading, spacing: 5) {
+				Text(app.name ?? .localized("Unknown"))
+					.font(.system(size: 16, weight: .semibold))
+					.foregroundStyle(.white)
+					.lineLimit(1)
+				Text(_meta)
+					.font(NullSignStyle.mono(11, weight: .medium))
+					.foregroundStyle(NullSignStyle.muted)
+					.lineLimit(1)
+					.truncationMode(.middle)
+				HStack(spacing: 5) {
+					PlatformBadge(platform: app.platform)
+					_statusChip
 				}
-				.buttonStyle(.borderless)
 			}
-			
-			_appIcon(for: app)
-			
-			NBTitleWithSubtitleView(
-				title: app.name ?? .localized("Unknown"),
-				subtitle: _desc,
-				linelimit: 0
-			)
-			
-			if !isEditing {
-				_buttonActions(for: app)
+
+			Spacer(minLength: 4)
+
+			if !isSelecting {
+				_primaryAction
 			}
 		}
-		.nullSignPanel()
-		.background(_isSelected && isEditing ? NullSignStyle.accent.opacity(0.08) : Color.clear)
-		.rotation3DEffect(
-			.degrees(_isPeelingAway && !reduceMotion ? -82 : 0),
-			axis: (x: 0, y: 1, z: 0),
-			anchor: .trailing,
-			perspective: 0.72
-		)
-		.scaleEffect(x: _isPeelingAway && !reduceMotion ? 0.72 : 1, y: _isPeelingAway && !reduceMotion ? 0.96 : 1, anchor: .trailing)
-		.offset(x: _isPeelingAway && !reduceMotion ? -34 : 0)
-		.opacity(_isPeelingAway ? 0 : 1)
-		.shadow(color: .black.opacity(_isPeelingAway ? 0.42 : 0), radius: 18, x: 14, y: 3)
-		.animation(
-			reduceMotion
-				? .easeOut(duration: 0.15)
-				: .timingCurve(0.22, 0.78, 0.28, 1, duration: 0.48),
-			value: _isPeelingAway
-		)
-		.allowsHitTesting(!_isPeelingAway)
-		.contentShape(Rectangle())
+		.padding(12)
+		.nullSignSurface(cornerRadius: 22)
+		.overlay {
+			if isSelecting && _isSelected {
+				_cardShape.strokeBorder(NullSignStyle.accent, lineWidth: 1.5)
+			}
+		}
+		.contentShape(_cardShape)
+		.contentShape(.contextMenuPreview, _cardShape)
 		.onTapGesture {
-			if isEditing {
+			if isSelecting {
 				_toggleSelection()
+			} else {
+				selectedInfoAppPresenting = AnyApp(base: app)
 			}
 		}
-		.swipeActions {
-			if !isEditing {
-				_actions(for: app)
+		.swipeActions(edge: .trailing, allowsFullSwipe: true) {
+			if !isSelecting {
+				Button(role: .destructive) {
+					_delete()
+				} label: {
+					Label(.localized("Delete"), systemImage: "trash")
+				}
+				.tint(NullSignStyle.accent)
 			}
 		}
 		.contextMenu {
-			if !isEditing {
+			if !isSelecting {
 				_contextActions(for: app)
 				Divider()
 				_contextActionsExtra(for: app)
 				Divider()
-				_actions(for: app)
+				Button(role: .destructive) {
+					// Let the menu finish dismissing before the row goes away.
+					DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+						_delete()
+					}
+				} label: {
+					Label(.localized("Delete"), systemImage: "trash")
+				}
 			}
 		}
 		.confirmationDialog(
@@ -140,13 +140,17 @@ struct LibraryCellView: View {
 		.onReceive(updateManager.$updates) { updates in
 			_update = app.uuid.flatMap { updates[$0] }
 		}
+		.accessibilityAddTraits(isSelecting && _isSelected ? .isSelected : [])
 	}
-	
-	private var _desc: String {
-		if let version = app.version, let id = app.identifier {
-			return "\(version) • \(id)"
-		} else {
-			return .localized("Unknown")
+
+	private var _meta: String {
+		let version = app.version.flatMap { $0.isEmpty ? nil : $0 }
+		let identifier = app.identifier.flatMap { $0.isEmpty ? nil : $0 }
+		switch (version, identifier) {
+		case let (version?, identifier?): return "\(version) · \(identifier)"
+		case let (version?, nil): return version
+		case let (nil, identifier?): return identifier
+		default: return .localized("Unknown")
 		}
 	}
 }
@@ -154,57 +158,102 @@ struct LibraryCellView: View {
 
 // MARK: - Extension: View
 extension LibraryCellView {
-	private func _appIcon(for app: AppInfoPresentable) -> some View {
-		FRAppIconView(app: app, size: 57)
-			.overlay(alignment: .bottomTrailing) {
-				PlatformBadge(platform: app.platform)
-					.offset(x: 5, y: 4)
-			}
+	private var _appIcon: some View {
+		FRAppIconView(app: app, size: 58, glow: true)
 			.overlay(alignment: .topTrailing) {
 				if _update != nil {
-					Image(systemName: "arrow.down.circle.fill")
-						.font(.system(size: 18, weight: .semibold))
-						.symbolRenderingMode(.palette)
-						.foregroundStyle(.white, NullSignStyle.muted)
-						.background(
-							Circle()
-								.fill(Color(.systemBackground))
-								.frame(width: 20, height: 20)
-						)
-						.offset(x: 5, y: -5)
+					Circle()
+						.fill(NullSignStyle.accent)
+						.frame(width: 13, height: 13)
+						.overlay(Circle().strokeBorder(Color.black, lineWidth: 2))
+						.shadow(color: NullSignStyle.accent.opacity(0.8), radius: 4)
+						.offset(x: 4, y: -4)
 						.accessibilityLabel(.localized("Update Available"))
 				}
 			}
 	}
-	
-	@ViewBuilder
-	private func _actions(for app: AppInfoPresentable) -> some View {
-		Button(role: .destructive) {
-			_peelAndDelete(app)
-		} label: {
-			Label(.localized("Delete"), systemImage: "externaldrive.badge.xmark")
-				.symbolRenderingMode(.hierarchical)
+
+	private var _selectionIndicator: some View {
+		ZStack {
+			Circle()
+				.strokeBorder(_isSelected ? Color.clear : NullSignStyle.faint, lineWidth: 1.5)
+			if _isSelected {
+				Circle()
+					.fill(NullSignStyle.signal)
+				Image(systemName: "checkmark")
+					.font(.system(size: 11, weight: .heavy))
+					.foregroundStyle(.white)
+			}
 		}
-		.tint(NullSignStyle.accent)
+		.frame(width: 24, height: 24)
+		.animation(.spring(response: 0.25, dampingFraction: 0.7), value: _isSelected)
 	}
 
-	private func _peelAndDelete(_ app: AppInfoPresentable) {
-		guard !_isPeelingAway else { return }
-		UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-		_isPeelingAway = true
-		Task { @MainActor in
-			try? await Task.sleep(for: .milliseconds(reduceMotion ? 150 : 480))
-			Storage.shared.deleteApp(for: app)
+	@ViewBuilder
+	private var _statusChip: some View {
+		if app.isSigned {
+			if let certificate = Storage.shared.getCertificate(from: app) {
+				if certificate.revoked {
+					NullSignChip(text: .localized("Revoked"), systemImage: "xmark", tint: NullSignStyle.danger)
+				} else if let expiration = certificate.expiration {
+					let label = NullSignValidity.shortLabel(for: expiration)
+					NullSignChip(text: label.text, systemImage: "clock", tint: label.tint)
+				}
+			} else {
+				NullSignChip(text: "Signed", systemImage: "checkmark", tint: NullSignStyle.success)
+			}
+		} else {
+			NullSignChip(text: "Unsigned", tint: NullSignStyle.muted)
 		}
 	}
-	
+
+	@ViewBuilder
+	private var _primaryAction: some View {
+		if let update = _update {
+			Button {
+				if app.isSigned {
+					_signedUpdateConfirmation = update
+					_isSignedUpdateConfirmationPresented = true
+				} else {
+					_startUpdateDownload(update)
+				}
+			} label: {
+				Text(.localized("Update"))
+			}
+			.buttonStyle(NullSignPrimaryButtonStyle(height: 32))
+		} else if app.isSigned {
+			Button {
+				selectedInstallAppPresenting = AnyApp(base: app)
+			} label: {
+				Text(.localized("Install"))
+			}
+			.buttonStyle(NullSignPrimaryButtonStyle(height: 32))
+		} else {
+			Button {
+				selectedSigningAppPresenting = AnyApp(base: app)
+			} label: {
+				Text(.localized("Sign"))
+			}
+			.buttonStyle(NullSignSecondaryButtonStyle(height: 32, tint: NullSignStyle.accentHighlight))
+		}
+	}
+
+	private func _delete() {
+		UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+		if let uuid = app.uuid {
+			selectedAppUUIDs.remove(uuid)
+		}
+		// Safe to call twice or on an app that is already gone.
+		Storage.shared.deleteApp(for: app)
+	}
+
 	@ViewBuilder
 	private func _contextActions(for app: AppInfoPresentable) -> some View {
 		Button(.localized("Get Info"), systemImage: "info.circle") {
 			selectedInfoAppPresenting = AnyApp(base: app)
 		}
 	}
-	
+
 	@ViewBuilder
 	private func _contextActionsExtra(for app: AppInfoPresentable) -> some View {
 		if let update = _update {
@@ -217,7 +266,7 @@ extension LibraryCellView {
 				}
 			}
 		}
-		
+
 		if app.isSigned {
 			if let id = app.identifier {
 				Button(.localized("Open"), systemImage: "app.badge.checkmark") {
@@ -242,58 +291,7 @@ extension LibraryCellView {
 			}
 		}
 	}
-	
-	@ViewBuilder
-	private func _buttonActions(for app: AppInfoPresentable) -> some View {
-		Group {
-			if let update = _update {
-				if app.isSigned {
-					Button {
-						_signedUpdateConfirmation = update
-						_isSignedUpdateConfirmationPresented = true
-					} label: {
-						FRExpirationPillView(
-							title: .localized("Install"),
-							revoked: certRevoked,
-							expiration: certInfo
-						)
-					}
-				} else {
-					Button {
-						_startUpdateDownload(update)
-					} label: {
-						FRExpirationPillView(
-							title: .localized("Update"),
-							revoked: false,
-							expiration: nil
-						)
-					}
-				}
-			} else if app.isSigned {
-				Button {
-					selectedInstallAppPresenting = AnyApp(base: app)
-				} label: {
-					FRExpirationPillView(
-						title: .localized("Install"),
-						revoked: certRevoked,
-						expiration: certInfo
-					)
-				}
-			} else {
-				Button {
-					selectedSigningAppPresenting = AnyApp(base: app)
-				} label: {
-					FRExpirationPillView(
-						title: .localized("Sign"),
-						revoked: false,
-						expiration: nil
-					)
-				}
-			}
-		}
-		.buttonStyle(.borderless)
-	}
-	
+
 	private func _startUpdateDownload(_ update: AppUpdate) {
 		_ = DownloadManager.shared.startDownload(
 			from: update.downloadURL,

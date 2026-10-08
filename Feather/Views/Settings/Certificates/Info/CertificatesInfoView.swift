@@ -20,7 +20,7 @@ struct CertificatesInfoView: View {
 						title: displayName,
 						detail: data?.TeamName ?? "Reading provisioning profile…",
 						status: cert.revoked ? "Revoked" : "Saved",
-						statusColor: cert.revoked ? NullSignStyle.warning : NullSignStyle.accent
+						statusColor: cert.revoked ? NullSignStyle.danger : NullSignStyle.success
 					)
 
 					if let data {
@@ -85,7 +85,7 @@ struct CertificatesInfoView: View {
 				.padding(.top, 12)
 				.padding(.bottom, 28)
 			}
-			.background(Color.black.ignoresSafeArea())
+			.background(NullSignBackdrop(intensity: 0.8))
 			.toolbar {
 				NBToolbarButton(role: .close)
 			}

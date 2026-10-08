@@ -1,6 +1,8 @@
 import SwiftUI
 import NimbleViews
 
+// MARK: - Shared Settings Components
+
 struct NullSignSettingsCard<Content: View>: View {
 	private let content: Content
 
@@ -13,7 +15,7 @@ struct NullSignSettingsCard<Content: View>: View {
 			content
 		}
 		.padding(14)
-		.nullSignSurface(cornerRadius: 18)
+		.nullSignSurface(cornerRadius: 22)
 	}
 }
 
@@ -29,22 +31,24 @@ struct NullSignSettingsSection<Content: View>: View {
 	}
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 9) {
-			Text(title)
-				.font(.caption.weight(.semibold))
-				.tracking(0.6)
-				.foregroundStyle(.secondary)
+		VStack(alignment: .leading, spacing: 10) {
+			NullSignSectionLabel(title: title)
+				.padding(.horizontal, 6)
 
-			NullSignSettingsCard { content }
+			// A section can be a note only (an empty body); skip the empty card.
+			if Content.self != EmptyView.self {
+				NullSignSettingsCard { content }
+			}
 
 			if let detail {
 				Text(detail)
 					.font(.footnote)
-					.foregroundStyle(.secondary)
+					.foregroundStyle(NullSignStyle.muted)
 					.fixedSize(horizontal: false, vertical: true)
-					.padding(.horizontal, 4)
+					.padding(.horizontal, 6)
 			}
 		}
+		.frame(maxWidth: .infinity, alignment: .leading)
 	}
 }
 
@@ -53,35 +57,35 @@ struct NullSignSettingsRow: View {
 	let detail: String?
 	let systemImage: String
 	var value: String? = nil
-	var tint: Color = NullSignStyle.accent
+	var tint: Color = .white
 	var showsChevron = true
 	var isBusy = false
 
 	var body: some View {
-		HStack(alignment: .top, spacing: 12) {
+		HStack(alignment: .center, spacing: 12) {
 			Group {
 				if isBusy {
 					ProgressView()
 						.controlSize(.small)
 						.tint(tint)
+						.frame(width: 34, height: 34)
+						.background(
+							RoundedRectangle(cornerRadius: 10.5, style: .continuous)
+								.fill(tint.opacity(0.12))
+						)
 				} else {
-					Image(systemName: systemImage)
-						.font(.system(size: 15, weight: .semibold))
-						.foregroundStyle(tint)
+					NullSignIconTile(systemImage: systemImage, tint: tint, size: 34)
 				}
 			}
-			.frame(width: 32, height: 32)
-			.background(NullSignStyle.raisedPanel)
-			.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 
 			VStack(alignment: .leading, spacing: detail == nil ? 0 : 2) {
 				Text(title)
-					.font(.body.weight(.medium))
-					.foregroundStyle(.primary)
+					.font(.system(size: 16, weight: .semibold))
+					.foregroundStyle(.white)
 				if let detail {
 					Text(detail)
 						.font(.caption)
-						.foregroundStyle(.secondary)
+						.foregroundStyle(NullSignStyle.muted)
 						.fixedSize(horizontal: false, vertical: true)
 				}
 			}
@@ -90,13 +94,13 @@ struct NullSignSettingsRow: View {
 
 			if let value {
 				Text(value)
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
+					.font(NullSignStyle.mono(13, weight: .semibold))
+					.foregroundStyle(NullSignStyle.muted)
 			}
 			if showsChevron {
 				Image(systemName: "chevron.right")
-					.font(.caption.weight(.semibold))
-					.foregroundStyle(.tertiary)
+					.font(.system(size: 12, weight: .bold))
+					.foregroundStyle(NullSignStyle.faint)
 			}
 		}
 		.frame(minHeight: 44)
@@ -106,9 +110,10 @@ struct NullSignSettingsRow: View {
 
 struct NullSignSettingsDivider: View {
 	var body: some View {
-		Divider()
-			.overlay(NullSignStyle.hairline)
-			.padding(.leading, 44)
+		Rectangle()
+			.fill(NullSignStyle.hairline)
+			.frame(height: 1)
+			.padding(.leading, 46)
 			.padding(.vertical, 10)
 	}
 }
@@ -121,38 +126,85 @@ struct NullSignSettingsIntro: View {
 	var statusColor: Color = NullSignStyle.accent
 
 	var body: some View {
-		NullSignSettingsCard {
-			HStack(alignment: .top, spacing: 14) {
-				Image(systemName: systemImage)
-					.font(.system(size: 22, weight: .medium))
-					.foregroundStyle(NullSignStyle.accent)
-					.frame(width: 42, height: 42)
-					.background(NullSignStyle.raisedPanel)
-					.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+		HStack(alignment: .top, spacing: 14) {
+			NullSignIconTile(systemImage: systemImage, tint: .white, size: 46)
 
-				VStack(alignment: .leading, spacing: 4) {
-					HStack(alignment: .firstTextBaseline) {
-						Text(title)
-							.font(.headline)
-						Spacer(minLength: 8)
-						if let status {
-							Text(status)
-								.font(.caption.weight(.semibold))
-								.foregroundStyle(statusColor)
-						}
+			VStack(alignment: .leading, spacing: 7) {
+				HStack(alignment: .firstTextBaseline, spacing: 8) {
+					Text(title)
+						.font(NullSignStyle.display(17, weight: .bold))
+						.lineLimit(2)
+					Spacer(minLength: 8)
+					if let status {
+						NullSignChip(text: status, tint: statusColor)
 					}
-					Text(detail)
-						.font(.subheadline)
-						.foregroundStyle(.secondary)
-						.fixedSize(horizontal: false, vertical: true)
 				}
+				Text(detail)
+					.font(.subheadline)
+					.foregroundStyle(NullSignStyle.muted)
+					.fixedSize(horizontal: false, vertical: true)
 			}
 		}
+		.padding(18)
+		.background(
+			RadialGradient(
+				colors: [NullSignStyle.accent.opacity(0.18), .clear],
+				center: .topLeading,
+				startRadius: 2,
+				endRadius: 260
+			)
+		)
+		.nullSignSurface(cornerRadius: 24)
 	}
 }
 
+/// A large launcher tile for the settings grid.
+private struct NullSignSettingsTile: View {
+	let systemImage: String
+	let title: String
+	let detail: String
+	let tint: Color
+
+	var body: some View {
+		VStack(alignment: .leading, spacing: 0) {
+			HStack(alignment: .top) {
+				NullSignIconTile(systemImage: systemImage, tint: tint, size: 40)
+				Spacer()
+				Image(systemName: "arrow.up.right")
+					.font(.system(size: 12, weight: .bold))
+					.foregroundStyle(NullSignStyle.faint)
+			}
+			Spacer(minLength: 20)
+			Text(title)
+				.font(.system(size: 16, weight: .bold))
+				.foregroundStyle(.white)
+				.lineLimit(1)
+			Text(detail)
+				.font(NullSignStyle.mono(10.5, weight: .medium))
+				.foregroundStyle(NullSignStyle.muted)
+				.lineLimit(1)
+				.padding(.top, 3)
+		}
+		.padding(15)
+		.frame(maxWidth: .infinity, minHeight: 128, alignment: .leading)
+		.background(
+			RadialGradient(
+				colors: [tint.opacity(0.17), .clear],
+				center: .topLeading,
+				startRadius: 2,
+				endRadius: 160
+			)
+		)
+		.nullSignSurface(cornerRadius: 22)
+		.contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+	}
+}
+
+// MARK: - Settings
+
 struct SettingsView: View {
-	@AppStorage("feather.selectedCert") private var selectedCertificateIndex = 0
+	@AppStorage("Feather.installationMethod") private var _installationMethod = 0
+	@State private var _isCertificatesPresenting = false
 
 	@FetchRequest(
 		entity: CertificatePair.entity(),
@@ -160,85 +212,81 @@ struct SettingsView: View {
 		animation: .snappy
 	) private var certificates: FetchedResults<CertificatePair>
 
-	private var selectedCertificate: CertificatePair? {
-		guard certificates.indices.contains(selectedCertificateIndex) else { return nil }
-		return certificates[selectedCertificateIndex]
-	}
-
-	private var identityTitle: String {
-		selectedCertificate?.nickname ?? (selectedCertificate == nil ? "No certificate selected" : "Signing certificate")
-	}
-
-	private var identityDetail: String {
-		guard let certificate = selectedCertificate else {
-			return "Import a certificate and provisioning profile before signing."
-		}
-		guard let expiration = certificate.expiration else { return "Ready for signing" }
-		return "Expires \(expiration.formatted(date: .abbreviated, time: .omitted))"
+	private var _build: String {
+		Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
 	}
 
 	private var versionLabel: String {
-		let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
-		return "Version \(Bundle.main.version) · Build \(build)"
+		"Version \(Bundle.main.version) · Build \(_build)"
 	}
 
+	private let _columns = [
+		GridItem(.flexible(), spacing: 12),
+		GridItem(.flexible(), spacing: 12)
+	]
+
 	var body: some View {
-		NBNavigationView("Settings") {
+		NBNavigationView("", displayMode: .inline) {
 			ScrollView {
-				LazyVStack(spacing: 24) {
-					NullSignSettingsIntro(
-						systemImage: selectedCertificate == nil ? "seal" : "checkmark.seal.fill",
-						title: identityTitle,
-						detail: identityDetail,
-						status: selectedCertificate == nil ? "Setup needed" : "Active",
-						statusColor: selectedCertificate == nil ? NullSignStyle.warning : NullSignStyle.accent
-					)
+				VStack(spacing: 22) {
+					NullSignTitle(title: "Settings", subtitle: "NullSign \(Bundle.main.version) · build \(_build)")
+						.padding(.horizontal, 4)
 
-					NullSignSettingsSection("Signing") {
-						NavigationLink(destination: CertificatesView()) {
-							NullSignSettingsRow(
+					NullSignIdentityCard(certificate: NullSignIdentity.activeCertificate(in: certificates)) {
+						_isCertificatesPresenting = true
+					}
+
+					LazyVGrid(columns: _columns, spacing: 12) {
+						NavigationLink {
+							CertificatesView()
+						} label: {
+							NullSignSettingsTile(
+								systemImage: "checkmark.seal.fill",
 								title: "Certificates",
-								detail: "Import, select, rename, and inspect identities",
-								systemImage: "checkmark.seal"
+								detail: certificates.count == 1 ? "1 identity" : "\(certificates.count) identities",
+								tint: NullSignStyle.accentHighlight
 							)
 						}
-						.buttonStyle(.plain)
+						.buttonStyle(NullSignPressableStyle())
 
-						NullSignSettingsDivider()
-
-						NavigationLink(destination: ConfigurationView()) {
-							NullSignSettingsRow(
-								title: "Signing Defaults",
-								detail: "Names, identifiers, injection, and post-signing behavior",
-								systemImage: "signature"
+						NavigationLink {
+							ConfigurationView()
+						} label: {
+							NullSignSettingsTile(
+								systemImage: "signature",
+								title: "Signing",
+								detail: "Defaults & rules",
+								tint: NullSignStyle.violet
 							)
 						}
-						.buttonStyle(.plain)
-					}
+						.buttonStyle(NullSignPressableStyle())
 
-					NullSignSettingsSection("Installation") {
-						NavigationLink(destination: InstallationView()) {
-							NullSignSettingsRow(
-								title: "Installation Method",
-								detail: "Choose the route used to deliver signed apps",
-								systemImage: "iphone.and.arrow.forward"
+						NavigationLink {
+							InstallationView()
+						} label: {
+							NullSignSettingsTile(
+								systemImage: _installationMethod == 0 ? "iphone.and.arrow.forward" : "appletv.fill",
+								title: "Install",
+								detail: _installationMethod == 0 ? "iPhone · local" : "Apple TV · tunnel",
+								tint: NullSignStyle.success
 							)
 						}
-						.buttonStyle(.plain)
-					}
+						.buttonStyle(NullSignPressableStyle())
 
-					NullSignSettingsSection("Maintenance") {
-						NavigationLink(destination: DiagnosticsView()) {
-							NullSignSettingsRow(
+						NavigationLink {
+							DiagnosticsView()
+						} label: {
+							NullSignSettingsTile(
+								systemImage: "waveform.path.ecg",
 								title: "Diagnostics",
-								detail: "Review checks and export the local signing log",
-								systemImage: "waveform.path.ecg"
+								detail: "Signing log",
+								tint: NullSignStyle.warning
 							)
 						}
-						.buttonStyle(.plain)
+						.buttonStyle(NullSignPressableStyle())
+					}
 
-						NullSignSettingsDivider()
-
+					NullSignSettingsSection("System") {
 						NavigationLink(destination: ResetView()) {
 							NullSignSettingsRow(
 								title: "Storage & Reset",
@@ -248,9 +296,9 @@ struct SettingsView: View {
 							)
 						}
 						.buttonStyle(.plain)
-					}
 
-					NullSignSettingsSection("NullSign") {
+						NullSignSettingsDivider()
+
 						NavigationLink(destination: AboutView()) {
 							NullSignSettingsRow(
 								title: "About NullSign",
@@ -261,17 +309,26 @@ struct SettingsView: View {
 						.buttonStyle(.plain)
 					}
 
-					Text("Signed on your device. Your keys stay here.")
-						.font(.caption)
-						.foregroundStyle(.secondary)
-						.padding(.top, 2)
-						.padding(.bottom, 18)
+					HStack(spacing: 7) {
+						Circle()
+							.fill(NullSignStyle.accent)
+							.frame(width: 5, height: 5)
+						Text("SIGNED ON YOUR DEVICE. YOUR KEYS STAY HERE.")
+							.font(NullSignStyle.mono(10, weight: .semibold))
+							.tracking(0.8)
+							.foregroundStyle(NullSignStyle.faint)
+					}
+					.padding(.top, 4)
+					.padding(.bottom, 12)
 				}
 				.padding(.horizontal, 16)
-				.padding(.top, 12)
+				.padding(.top, 4)
+				.padding(.bottom, 24)
 			}
-			.scrollContentBackground(.hidden)
-			.background(Color.black.ignoresSafeArea())
+			.background(NullSignBackdrop())
+			.navigationDestination(isPresented: $_isCertificatesPresenting) {
+				CertificatesView()
+			}
 		}
 	}
 }

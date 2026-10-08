@@ -4,6 +4,10 @@ import CoreData
 import NimbleViews
 
 struct ResetView: View {
+	/// Bumped after each action so the counts below re-read the store.
+	@State private var _refreshToken = 0
+	@State private var _cacheSize = "—"
+
 	var body: some View {
 		ScrollView {
 			VStack(spacing: 22) {
@@ -19,7 +23,7 @@ struct ResetView: View {
 						detail: "Temporary signing and extraction files",
 						systemImage: "shippingbox"
 					) {
-						Self.resetAlert(title: "Clear Work Cache") {
+						_confirm(title: "Clear Work Cache") {
 							Self.clearWorkCache()
 						}
 					}
@@ -28,10 +32,10 @@ struct ResetView: View {
 
 					_actionRow(
 						title: "Network & Image Cache",
-						detail: _cacheSize(),
+						detail: _cacheSize,
 						systemImage: "network"
 					) {
-						Self.resetAlert(title: "Clear Network Cache", message: _cacheSize()) {
+						_confirm(title: "Clear Network Cache", message: _cacheSize) {
 							Self.clearNetworkCache()
 						}
 					}
@@ -43,40 +47,40 @@ struct ResetView: View {
 				) {
 					_actionRow(
 						title: "Repositories",
-						detail: Storage.shared.countContent(for: AltSource.self),
+						detail: _count(AltSource.self),
 						systemImage: "tray.full"
 					) {
-						Self.resetAlert(title: "Reset Repositories", message: Storage.shared.countContent(for: AltSource.self)) {
+						_confirm(title: "Reset Repositories", message: _count(AltSource.self)) {
 							Self.resetSources()
 						}
 					}
 					NullSignSettingsDivider()
 					_actionRow(
 						title: "Signed Apps",
-						detail: Storage.shared.countContent(for: Signed.self),
+						detail: _count(Signed.self),
 						systemImage: "checkmark.seal"
 					) {
-						Self.resetAlert(title: "Reset Signed Apps", message: Storage.shared.countContent(for: Signed.self)) {
+						_confirm(title: "Reset Signed Apps", message: _count(Signed.self)) {
 							Self.deleteSignedApps()
 						}
 					}
 					NullSignSettingsDivider()
 					_actionRow(
 						title: "Imported Apps",
-						detail: Storage.shared.countContent(for: Imported.self),
+						detail: _count(Imported.self),
 						systemImage: "square.and.arrow.down"
 					) {
-						Self.resetAlert(title: "Reset Imported Apps", message: Storage.shared.countContent(for: Imported.self)) {
+						_confirm(title: "Reset Imported Apps", message: _count(Imported.self)) {
 							Self.deleteImportedApps()
 						}
 					}
 					NullSignSettingsDivider()
 					_actionRow(
 						title: "Certificates",
-						detail: Storage.shared.countContent(for: CertificatePair.self),
+						detail: _count(CertificatePair.self),
 						systemImage: "key"
 					) {
-						Self.resetAlert(title: "Reset Certificates", message: Storage.shared.countContent(for: CertificatePair.self)) {
+						_confirm(title: "Reset Certificates", message: _count(CertificatePair.self)) {
 							Self.resetCertificates()
 						}
 					}
@@ -84,15 +88,15 @@ struct ResetView: View {
 
 				NullSignSettingsSection(
 					"Danger Zone",
-					detail: "These actions cannot be undone. Export anything you need before continuing."
+					detail: "These actions cannot be undone, and NullSign restarts afterwards. Export anything you need before continuing."
 				) {
 					_actionRow(
 						title: "Reset Settings",
 						detail: "Restore every preference to its default",
 						systemImage: "slider.horizontal.3",
-						tint: NullSignStyle.warning
+						tint: NullSignStyle.danger
 					) {
-						Self.resetAlert(title: "Reset Settings") {
+						_confirm(title: "Reset Settings", restartsApp: true) {
 							Self.resetUserDefaults()
 						}
 					}
@@ -101,9 +105,9 @@ struct ResetView: View {
 						title: "Erase All NullSign Data",
 						detail: "Apps, certificates, repositories, caches, and settings",
 						systemImage: "trash",
-						tint: NullSignStyle.warning
+						tint: NullSignStyle.danger
 					) {
-						Self.resetAlert(title: "Erase All NullSign Data") {
+						_confirm(title: "Erase All NullSign Data", restartsApp: true) {
 							Self.resetAll()
 						}
 					}
@@ -112,16 +116,21 @@ struct ResetView: View {
 			.padding(.horizontal, 16)
 			.padding(.top, 12)
 			.padding(.bottom, 28)
+			.id(_refreshToken)
 		}
-		.background(Color.black.ignoresSafeArea())
+		.background(NullSignBackdrop(intensity: 0.8))
 		.navigationTitle("Storage & Reset")
+		.navigationBarTitleDisplayMode(.inline)
+		.task(id: _refreshToken) {
+			_cacheSize = await Self.cacheSize()
+		}
 	}
 
 	private func _actionRow(
 		title: String,
 		detail: String,
 		systemImage: String,
-		tint: Color = NullSignStyle.accent,
+		tint: Color = .white,
 		action: @escaping () -> Void
 	) -> some View {
 		Button(action: action) {
@@ -136,28 +145,35 @@ struct ResetView: View {
 		.buttonStyle(.plain)
 	}
 
-	private func _cacheSize() -> String {
-		var totalCacheSize = URLCache.shared.currentDiskUsage
-		if let nukeCache = ImagePipeline.shared.configuration.dataCache as? DataCache {
-			totalCacheSize += nukeCache.totalSize
-		}
-		return ByteCountFormatter.string(fromByteCount: Int64(totalCacheSize), countStyle: .file)
+	private func _count<T: NSManagedObject>(_ type: T.Type) -> String {
+		let count = Storage.shared.countContent(for: type)
+		return count == "1" ? "1 item" : "\(count) items"
 	}
 
-	static func resetAlert(
+	/// Library actions apply in place. Only resets that wipe preferences
+	/// relaunch NullSign, so every in-memory setting starts fresh — the
+	/// alert says so up front rather than the app vanishing unannounced.
+	private func _confirm(
 		title: String,
 		message: String = "",
+		restartsApp: Bool = false,
 		action: @escaping () -> Void
 	) {
-		let proceedAction = UIAlertAction(title: "Proceed", style: .destructive) { _ in
+		let proceedAction = UIAlertAction(title: restartsApp ? "Erase & Restart" : "Proceed", style: .destructive) { _ in
 			action()
-			UIApplication.shared.suspendAndReopen()
+			UINotificationFeedbackGenerator().notificationOccurred(.success)
+			if restartsApp {
+				UIApplication.shared.suspendAndReopen()
+			} else {
+				_refreshToken += 1
+			}
 		}
 
 		let style: UIAlertController.Style = UIDevice.current.userInterfaceIdiom == .pad ? .alert : .actionSheet
-		let detail = message.isEmpty
-			? "This action cannot be undone."
-			: "\(message)\n\nThis action cannot be undone."
+		var detail = message.isEmpty ? "This action cannot be undone." : "\(message)\n\nThis action cannot be undone."
+		if restartsApp {
+			detail += " NullSign will restart when it's done."
+		}
 
 		UIAlertController.showAlertWithCancel(
 			title: title,
@@ -169,15 +185,21 @@ struct ResetView: View {
 }
 
 extension ResetView {
+	/// Removes what is in the temporary directory right now; files created
+	/// afterwards (a new import, a signing session) are never touched.
 	static func clearWorkCache() {
-		let fileManager = FileManager.default
-		let temporaryDirectory = fileManager.temporaryDirectory
+		FileManager.default.removeContentsInBackground(of: FileManager.default.temporaryDirectory)
+	}
 
-		if let files = try? fileManager.contentsOfDirectory(atPath: temporaryDirectory.path()) {
-			for file in files {
-				try? fileManager.removeItem(atPath: temporaryDirectory.appendingPathComponent(file).path())
+	static func cacheSize() async -> String {
+		let size = await Task.detached(priority: .utility) { () -> Int in
+			var total = URLCache.shared.currentDiskUsage
+			if let nukeCache = ImagePipeline.shared.configuration.dataCache as? DataCache {
+				total += nukeCache.totalSize
 			}
-		}
+			return total
+		}.value
+		return ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
 	}
 
 	static func clearNetworkCache() {
@@ -200,13 +222,13 @@ extension ResetView {
 	static func deleteSignedApps() {
 		Storage.shared.deleteSourceMetadata(kind: .signed)
 		Storage.shared.clearContext(request: Signed.fetchRequest())
-		try? FileManager.default.removeFileIfNeeded(at: FileManager.default.signed)
+		FileManager.default.removeContentsInBackground(of: FileManager.default.signed)
 	}
 
 	static func deleteImportedApps() {
 		Storage.shared.deleteSourceMetadata(kind: .imported)
 		Storage.shared.clearContext(request: Imported.fetchRequest())
-		try? FileManager.default.removeFileIfNeeded(at: FileManager.default.unsigned)
+		FileManager.default.removeContentsInBackground(of: FileManager.default.unsigned)
 	}
 
 	static func resetCertificates(resetAll: Bool = false) {
@@ -216,7 +238,7 @@ extension ResetView {
 			UserDefaults.standard.removeObject(forKey: "feather.selectedCert.tvOS")
 		}
 		Storage.shared.clearContext(request: CertificatePair.fetchRequest())
-		try? FileManager.default.removeFileIfNeeded(at: FileManager.default.certificates)
+		FileManager.default.removeContentsInBackground(of: FileManager.default.certificates)
 	}
 
 	static func resetUserDefaults() {

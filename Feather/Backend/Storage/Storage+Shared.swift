@@ -15,25 +15,49 @@ extension Storage {
 			? FileManager.default.signed(uuid)
 			: FileManager.default.unsigned(uuid)
 	}
-	
+
 	func getAppDirectory(for app: AppInfoPresentable) -> URL? {
 		guard let url = getUuidDirectory(for: app) else { return nil }
 		return FileManager.default.getPath(in: url, for: "app")
 	}
-	
+
 	func deleteApp(for app: AppInfoPresentable) {
-		do {
-			if let url = getUuidDirectory(for: app) {
-				try? FileManager.default.removeItem(at: url)
+		deleteApps([app])
+	}
+
+	/// Deletes apps and their files. Must be called on the main queue.
+	///
+	/// The database rows go first and are saved immediately, so every list
+	/// drops the row before its bundle disappears from disk; the files are
+	/// then removed off the main thread. Apps that were already deleted (a
+	/// double tap, a stale row, a sheet still holding one) are skipped.
+	func deleteApps(_ apps: [AppInfoPresentable]) {
+		var directories: [URL] = []
+
+		for app in apps {
+			if let object = app as? NSManagedObject {
+				guard
+					object.managedObjectContext === context,
+					!object.isDeleted
+				else {
+					continue
+				}
 			}
-			deleteSourceMetadata(for: app.uuid)
+
+			if let url = getUuidDirectory(for: app) {
+				directories.append(url)
+			}
+			deleteSourceMetadata(for: app.uuid, save: false)
+
 			if let object = app as? NSManagedObject {
 				context.delete(object)
 			}
-			saveContext()
 		}
+
+		saveContextNow()
+		FileManager.default.removeItemsInBackground(directories)
 	}
-	
+
 	func getCertificate(from app: AppInfoPresentable) -> CertificatePair? {
 		if let signed = app as? Signed {
 			return signed.certificate
@@ -46,9 +70,16 @@ extension Storage {
 struct AnyApp: Identifiable {
 	let base: AppInfoPresentable
 	var archive: Bool = false
-	
-	var id: String {
-		base.uuid ?? UUID().uuidString
+	/// Captured once: a deleted app's uuid reads back as nil, and an id that
+	/// changes while a sheet is up makes SwiftUI tear the sheet down.
+	let id: String
+
+	init(base: AppInfoPresentable, archive: Bool = false) {
+		self.base = base
+		self.archive = archive
+		self.id = base.uuid
+			?? (base as? NSManagedObject)?.objectID.uriRepresentation().absoluteString
+			?? UUID().uuidString
 	}
 }
 
@@ -61,7 +92,7 @@ protocol AppInfoPresentable {
 	var uuid: String? { get }
 	var source: URL? { get }
 	var isSigned: Bool { get }
-	
+
 }
 
 extension Signed: AppInfoPresentable {

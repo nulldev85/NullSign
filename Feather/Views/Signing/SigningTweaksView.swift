@@ -88,7 +88,7 @@ struct SigningTweaksView: View {
 		}
 		.listStyle(.plain)
 		.scrollContentBackground(.hidden)
-		.background(Color.black)
+		.background(NullSignBackdrop(intensity: 0.6))
 		.navigationTitle(.localized("Tweaks"))
 		.tint(NullSignStyle.accent)
 		.toolbar {

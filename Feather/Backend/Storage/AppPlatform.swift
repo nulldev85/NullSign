@@ -58,13 +58,13 @@ struct PlatformBadge: View {
 	let platform: AppPlatform
 
 	var body: some View {
-		Text(platform.rawValue)
-			.font(.system(size: 9, weight: .bold, design: .rounded))
-			.foregroundStyle(.white)
-			.padding(.horizontal, 6)
-			.frame(height: 17)
-			.background(platform == .tvOS ? NullSignStyle.crimson : Color.green)
-			.clipShape(Capsule())
-			.accessibilityLabel(platform == .tvOS ? "Apple TV app" : "iPhone app")
+		NullSignChip(
+			text: platform.rawValue,
+			systemImage: platform == .tvOS ? "appletv.fill" : "iphone",
+			tint: platform == .tvOS ? NullSignStyle.crimson : Color.white,
+			filled: platform == .tvOS,
+			uppercased: false
+		)
+		.accessibilityLabel(platform == .tvOS ? "Apple TV app" : "iPhone app")
 	}
 }

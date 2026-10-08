@@ -23,14 +23,8 @@ struct ConfigurationDictView: View {
 							_isAddingPresenting = true
 						} label: {
 							Label("Add", systemImage: "plus")
-								.font(.subheadline.weight(.semibold))
-								.foregroundStyle(.black)
-								.padding(.horizontal, 12)
-								.frame(height: 36)
-								.background(NullSignStyle.accent)
-								.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 						}
-						.buttonStyle(.plain)
+						.buttonStyle(NullSignPrimaryButtonStyle(height: 36))
 					}
 				}
 
@@ -65,7 +59,7 @@ struct ConfigurationDictView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 28)
 		}
-		.background(Color.black.ignoresSafeArea())
+		.background(NullSignBackdrop(intensity: 0.8))
 		.navigationTitle(title)
 		.navigationDestination(isPresented: $_isAddingPresenting) {
 			ConfigurationDictAddView(dataDict: $dataDict)

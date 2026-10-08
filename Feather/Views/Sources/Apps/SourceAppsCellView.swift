@@ -10,68 +10,41 @@ struct SourceAppsCellView: View {
 	let app: ASRepository.App
 
 	var body: some View {
-		HStack(alignment: .top, spacing: 13) {
-			_appIcon
+		HStack(alignment: .center, spacing: 14) {
+			SourceRemoteIcon(url: app.iconURL, size: 58, placeholderSystemImage: "app.dashed")
 
 			VStack(alignment: .leading, spacing: 5) {
 				Text(app.currentName)
-					.font(.body.weight(.semibold))
+					.font(.system(size: 16, weight: .semibold))
+					.foregroundStyle(.white)
 					.lineLimit(1)
 
 				Text(Self.appDescription(app: app))
 					.font(.caption)
-					.foregroundStyle(.secondary)
+					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(_storeCellAppearance == 0 ? 1 : 2)
 
-				HStack(spacing: 6) {
+				HStack(spacing: 5) {
 					if let version = app.currentVersion, !version.isEmpty {
-						Text("v\(version)")
+						NullSignChip(text: "v\(version)", uppercased: false)
 					}
-					if app.currentVersion?.isEmpty == false, source.name?.isEmpty == false {
-						Circle().fill(Color.secondary.opacity(0.65)).frame(width: 3, height: 3)
-					}
-					if let sourceName = source.name {
+					if let sourceName = source.name, !sourceName.isEmpty {
 						Text(sourceName)
+							.font(NullSignStyle.mono(10, weight: .medium))
+							.foregroundStyle(NullSignStyle.faint)
+							.lineLimit(1)
 					}
 				}
-				.font(.caption2.weight(.medium))
-				.foregroundStyle(.secondary)
-				.lineLimit(1)
 			}
 
-			Spacer(minLength: 5)
+			Spacer(minLength: 6)
 
 			DownloadButtonView(sourceURL: sourceURL, source: source, app: app)
-				.padding(.top, 8)
 		}
+		.padding(12)
+		.nullSignSurface(cornerRadius: 22)
 		.padding(.horizontal, 16)
-		.padding(.vertical, 12)
-		.overlay(alignment: .bottom) {
-			Rectangle()
-				.fill(NullSignStyle.hairline)
-				.frame(height: 1)
-				.padding(.leading, 87)
-		}
-	}
-
-	@ViewBuilder
-	private var _appIcon: some View {
-		if let iconURL = app.iconURL {
-			LazyImage(url: iconURL) { state in
-				if let image = state.image {
-					image.appIconStyle(size: 58, isCircle: false, background: NullSignStyle.raisedPanel)
-				} else {
-					_placeholderIcon
-				}
-			}
-		} else {
-			_placeholderIcon
-		}
-	}
-
-	private var _placeholderIcon: some View {
-		Image("App_Unknown")
-			.appIconStyle(size: 58, isCircle: false, background: NullSignStyle.raisedPanel)
+		.padding(.vertical, 5)
 	}
 
 	static func appDescription(app: ASRepository.App) -> String {

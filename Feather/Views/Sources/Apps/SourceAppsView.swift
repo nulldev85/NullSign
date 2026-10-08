@@ -50,7 +50,7 @@ struct SourceAppsView: View {
 
 	var body: some View {
 		ZStack {
-			Color.black.ignoresSafeArea()
+			NullSignBackdrop(intensity: 0.6)
 
 			if let _sourceContexts, !_sourceContexts.isEmpty {
 				SourceAppsTableRepresentableView(

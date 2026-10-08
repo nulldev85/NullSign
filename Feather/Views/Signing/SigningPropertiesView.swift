@@ -67,7 +67,7 @@ struct SigningPropertiesView: View {
 			.padding(.horizontal, 16)
 			.padding(.top, 12)
 		}
-		.background(Color.black.ignoresSafeArea())
+		.background(NullSignBackdrop(intensity: 0.6))
 		.navigationTitle(title)
 		.tint(NullSignStyle.accent)
 		.toolbar {

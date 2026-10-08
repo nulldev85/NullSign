@@ -23,13 +23,9 @@ struct VersionHistoryView: View {
 						if let url = version.downloadURL {
 							Button { _download(version, from: url) } label: {
 								Image(systemName: "arrow.down")
-									.font(.subheadline.weight(.bold))
-									.foregroundStyle(.black)
-									.frame(width: 34, height: 34)
-									.background(NullSignStyle.accent)
-									.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+									.font(.system(size: 13, weight: .heavy))
 							}
-							.buttonStyle(.plain)
+							.buttonStyle(NullSignPrimaryButtonStyle(height: 34))
 							.contextMenu {
 								Button(.localized("Copy Download URL"), systemImage: "doc.on.clipboard") {
 									UIPasteboard.general.string = url.absoluteString
@@ -47,7 +43,7 @@ struct VersionHistoryView: View {
 			.sourcePanel(padding: 0)
 			.padding(16)
 		}
-		.background(Color.black)
+		.background(NullSignBackdrop(intensity: 0.6))
 		.tint(NullSignStyle.accent)
 	}
 

@@ -21,10 +21,11 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 		let tableView = UITableView(frame: .zero, style: .plain)
 		tableView.delegate = context.coordinator
 		tableView.dataSource = context.coordinator
-		tableView.backgroundColor = .black
+		tableView.backgroundColor = .clear
 		tableView.separatorStyle = .none
 		tableView.showsVerticalScrollIndicator = false
 		tableView.contentInset.bottom = 18
+		tableView.sectionHeaderTopPadding = 0
 		tableView.register(UITableViewCell.self, forCellReuseIdentifier: "AppCell")
 		tableView.register(UITableViewHeaderFooterView.self, forHeaderFooterViewReuseIdentifier: "SectionHeader")
 		
@@ -271,15 +272,17 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 		case .name, .date: title = _sortedSectionTitles[section]
 		}
 		
-		headerView?.backgroundView = UIView()
-		headerView?.backgroundView?.backgroundColor = .black
+		// Sticky headers float over the cards, so they get a frosted backing.
+		let backing = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+		backing.backgroundColor = UIColor.black.withAlphaComponent(0.45)
+		headerView?.backgroundView = backing
 		headerView?.contentConfiguration = UIHostingConfiguration {
 			SourceSectionLabel(title: title)
-				.padding(.horizontal, 16)
-				.padding(.top, 8)
+				.padding(.horizontal, 20)
+				.padding(.vertical, 10)
 		}
 		.margins(.all, 0)
-		.background(Color.black)
+		.background(Color.clear)
 		
 		return headerView
 	}
