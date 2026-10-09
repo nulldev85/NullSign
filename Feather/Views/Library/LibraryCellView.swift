@@ -26,7 +26,7 @@ struct LibraryCellView: View {
 	@Binding var selectedInstallAppPresenting: AnyApp?
 	@Binding var selectedAppUUIDs: Set<String>
 
-	private let _cardShape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+	private let _cardShape = RoundedRectangle(cornerRadius: 16, style: .continuous)
 
 	// MARK: Selections
 	private var _isSelected: Bool {
@@ -46,28 +46,37 @@ struct LibraryCellView: View {
 
 	// MARK: Body
 	var body: some View {
-		HStack(spacing: 14) {
+		HStack(spacing: 12) {
 			if isSelecting {
 				_selectionIndicator
-					.transition(.move(edge: .leading).combined(with: .opacity))
+					.transition(.opacity)
 			}
 
 			_appIcon
 
-			VStack(alignment: .leading, spacing: 5) {
-				Text(app.name ?? .localized("Unknown"))
-					.font(.system(size: 16, weight: .semibold))
-					.foregroundStyle(.white)
-					.lineLimit(1)
-				Text(_meta)
-					.font(NullSignStyle.mono(11, weight: .medium))
+			VStack(alignment: .leading, spacing: 2) {
+				HStack(alignment: .firstTextBaseline, spacing: 6) {
+					Text(app.name ?? .localized("Unknown"))
+						.font(.headline)
+						.foregroundStyle(.white)
+						.lineLimit(1)
+					if let version = app.version, !version.isEmpty {
+						Text(version)
+							.font(.subheadline)
+							.foregroundStyle(NullSignStyle.faint)
+							.lineLimit(1)
+							.layoutPriority(-1)
+					}
+				}
+				Text(app.identifier ?? .localized("Unknown"))
+					.font(.subheadline)
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
-					.truncationMode(.middle)
-				HStack(spacing: 5) {
+				HStack(spacing: 6) {
 					PlatformBadge(platform: app.platform)
-					_statusChip
+					_status
 				}
+				.padding(.top, 4)
 			}
 
 			Spacer(minLength: 4)
@@ -77,10 +86,10 @@ struct LibraryCellView: View {
 			}
 		}
 		.padding(12)
-		.nullSignSurface(cornerRadius: 22)
+		.nullSignSurface()
 		.overlay {
 			if isSelecting && _isSelected {
-				_cardShape.strokeBorder(NullSignStyle.accent, lineWidth: 1.5)
+				_cardShape.strokeBorder(NullSignStyle.accent, lineWidth: 2)
 			}
 		}
 		.contentShape(_cardShape)
@@ -142,31 +151,19 @@ struct LibraryCellView: View {
 		}
 		.accessibilityAddTraits(isSelecting && _isSelected ? .isSelected : [])
 	}
-
-	private var _meta: String {
-		let version = app.version.flatMap { $0.isEmpty ? nil : $0 }
-		let identifier = app.identifier.flatMap { $0.isEmpty ? nil : $0 }
-		switch (version, identifier) {
-		case let (version?, identifier?): return "\(version) · \(identifier)"
-		case let (version?, nil): return version
-		case let (nil, identifier?): return identifier
-		default: return .localized("Unknown")
-		}
-	}
 }
 
 
 // MARK: - Extension: View
 extension LibraryCellView {
 	private var _appIcon: some View {
-		FRAppIconView(app: app, size: 58, glow: true)
+		FRAppIconView(app: app, size: 56)
 			.overlay(alignment: .topTrailing) {
 				if _update != nil {
 					Circle()
 						.fill(NullSignStyle.accent)
-						.frame(width: 13, height: 13)
+						.frame(width: 12, height: 12)
 						.overlay(Circle().strokeBorder(Color.black, lineWidth: 2))
-						.shadow(color: NullSignStyle.accent.opacity(0.8), radius: 4)
 						.offset(x: 4, y: -4)
 						.accessibilityLabel(.localized("Update Available"))
 				}
@@ -174,36 +171,35 @@ extension LibraryCellView {
 	}
 
 	private var _selectionIndicator: some View {
-		ZStack {
-			Circle()
-				.strokeBorder(_isSelected ? Color.clear : NullSignStyle.faint, lineWidth: 1.5)
-			if _isSelected {
-				Circle()
-					.fill(NullSignStyle.signal)
-				Image(systemName: "checkmark")
-					.font(.system(size: 11, weight: .heavy))
-					.foregroundStyle(.white)
-			}
-		}
-		.frame(width: 24, height: 24)
-		.animation(.spring(response: 0.25, dampingFraction: 0.7), value: _isSelected)
+		Image(systemName: _isSelected ? "checkmark.circle.fill" : "circle")
+			.font(.title2)
+			.symbolRenderingMode(.palette)
+			.foregroundStyle(_isSelected ? Color.white : NullSignStyle.faint, _isSelected ? NullSignStyle.accent : NullSignStyle.faint)
 	}
 
 	@ViewBuilder
-	private var _statusChip: some View {
-		if app.isSigned {
+	private var _status: some View {
+		if _update != nil {
+			Text("Update available")
+				.font(.caption.weight(.medium))
+				.foregroundStyle(NullSignStyle.accent)
+		} else if app.isSigned {
 			if let certificate = Storage.shared.getCertificate(from: app) {
 				if certificate.revoked {
-					NullSignChip(text: .localized("Revoked"), systemImage: "xmark", tint: NullSignStyle.danger)
+					Text(.localized("Revoked"))
+						.font(.caption.weight(.medium))
+						.foregroundStyle(NullSignStyle.danger)
 				} else if let expiration = certificate.expiration {
 					let label = NullSignValidity.shortLabel(for: expiration)
-					NullSignChip(text: label.text, systemImage: "clock", tint: label.tint)
+					Text(label.text)
+						.font(.caption)
+						.foregroundStyle(label.tint)
 				}
-			} else {
-				NullSignChip(text: "Signed", systemImage: "checkmark", tint: NullSignStyle.success)
 			}
 		} else {
-			NullSignChip(text: "Unsigned", tint: NullSignStyle.muted)
+			Text("Not signed")
+				.font(.caption)
+				.foregroundStyle(NullSignStyle.faint)
 		}
 	}
 
@@ -234,7 +230,7 @@ extension LibraryCellView {
 			} label: {
 				Text(.localized("Sign"))
 			}
-			.buttonStyle(NullSignSecondaryButtonStyle(height: 32, tint: NullSignStyle.accentHighlight))
+			.buttonStyle(NullSignSecondaryButtonStyle(height: 32))
 		}
 	}
 

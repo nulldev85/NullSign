@@ -10,31 +10,25 @@ struct SourceAppsCellView: View {
 	let app: ASRepository.App
 
 	var body: some View {
-		HStack(alignment: .center, spacing: 14) {
-			SourceRemoteIcon(url: app.iconURL, size: 58, placeholderSystemImage: "app.dashed")
+		HStack(alignment: .center, spacing: 12) {
+			SourceRemoteIcon(url: app.iconURL, size: 56, placeholderSystemImage: "app.dashed")
 
-			VStack(alignment: .leading, spacing: 5) {
+			VStack(alignment: .leading, spacing: 2) {
 				Text(app.currentName)
-					.font(.system(size: 16, weight: .semibold))
+					.font(.headline)
 					.foregroundStyle(.white)
 					.lineLimit(1)
 
 				Text(Self.appDescription(app: app))
-					.font(.caption)
+					.font(.subheadline)
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(_storeCellAppearance == 0 ? 1 : 2)
 
-				HStack(spacing: 5) {
-					if let version = app.currentVersion, !version.isEmpty {
-						NullSignChip(text: "v\(version)", uppercased: false)
-					}
-					if let sourceName = source.name, !sourceName.isEmpty {
-						Text(sourceName)
-							.font(NullSignStyle.mono(10, weight: .medium))
-							.foregroundStyle(NullSignStyle.faint)
-							.lineLimit(1)
-					}
-				}
+				Text(_footnote)
+					.font(.caption)
+					.foregroundStyle(NullSignStyle.faint)
+					.lineLimit(1)
+					.padding(.top, 1)
 			}
 
 			Spacer(minLength: 6)
@@ -42,9 +36,15 @@ struct SourceAppsCellView: View {
 			DownloadButtonView(sourceURL: sourceURL, source: source, app: app)
 		}
 		.padding(12)
-		.nullSignSurface(cornerRadius: 22)
+		.nullSignSurface()
 		.padding(.horizontal, 16)
 		.padding(.vertical, 5)
+	}
+
+	private var _footnote: String {
+		[app.currentVersion.flatMap { $0.isEmpty ? nil : $0 }, source.name]
+			.compactMap { $0 }
+			.joined(separator: " · ")
 	}
 
 	static func appDescription(app: ASRepository.App) -> String {

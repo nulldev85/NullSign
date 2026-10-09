@@ -21,22 +21,24 @@ struct DownloadHeaderView: View {
 				HStack(spacing: 12) {
 					DownloadItemView(download: firstDownload)
 					if manualDownloads.count > 1 {
-						NullSignChip(text: "+\(manualDownloads.count - 1)", tint: NullSignStyle.accentHighlight)
+						NullSignChip(text: "+\(manualDownloads.count - 1)")
 					}
 				}
 				.padding(.horizontal, 14)
 				.padding(.vertical, 10)
-				.background(Capsule().fill(.ultraThinMaterial))
-				.background(Capsule().fill(Color.black.opacity(0.35)))
-				.overlay(Capsule().strokeBorder(NullSignStyle.edge, lineWidth: 1))
-				.shadow(color: .black.opacity(0.5), radius: 14, y: 6)
+				.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+				.background(Color.black.opacity(0.4), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+				.overlay(
+					RoundedRectangle(cornerRadius: 18, style: .continuous)
+						.strokeBorder(NullSignStyle.hairline, lineWidth: 1)
+				)
 				.padding(.horizontal, 14)
 				.padding(.top, 4)
 				.padding(.bottom, 6)
 				.transition(_reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
 			}
 		}
-		.animation(_reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.82), value: downloadManager.manualDownloads.count)
+		.animation(_reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 0.85), value: downloadManager.manualDownloads.count)
 	}
 }
 
@@ -46,28 +48,27 @@ struct DownloadItemView: View {
 	var body: some View {
 		HStack(spacing: 12) {
 			ZStack {
-				NullSignRing(progress: overallProgress, size: 34, lineWidth: 3.5, tint: .white, showsSignalDot: overallProgress > 0)
+				NullSignRing(progress: overallProgress, size: 32, lineWidth: 3, tint: NullSignStyle.accent)
 				Image(systemName: download.onlyArchiving ? "shippingbox.fill" : "arrow.down")
-					.font(.system(size: 11, weight: .heavy))
+					.font(.system(size: 11, weight: .bold))
 					.foregroundStyle(.white)
 			}
 
-			VStack(alignment: .leading, spacing: 3) {
+			VStack(alignment: .leading, spacing: 2) {
 				Text(download.fileName)
-					.font(.system(size: 13, weight: .semibold))
+					.font(.subheadline.weight(.semibold))
 					.lineLimit(1)
 
 				HStack(spacing: 6) {
 					Text(verbatim: "\(Int(overallProgress * 100))%")
-						.contentTransition(.numericText())
 					if download.totalBytes > 0 {
-						Text(verbatim: "\(download.bytesDownloaded.formattedByteCount) / \(download.totalBytes.formattedByteCount)")
-							.contentTransition(.numericText())
+						Text(verbatim: "\(download.bytesDownloaded.formattedByteCount) of \(download.totalBytes.formattedByteCount)")
 					} else if download.onlyArchiving {
 						Text("Preparing")
 					}
 				}
-				.font(NullSignStyle.mono(10, weight: .medium))
+				.font(.caption)
+				.monospacedDigit()
 				.foregroundStyle(NullSignStyle.muted)
 				.lineLimit(1)
 			}

@@ -68,7 +68,7 @@ struct CertificatesAddView: View {
 				.padding(.top, 12)
 				.padding(.bottom, 28)
 			}
-			.background(NullSignBackdrop(intensity: 0.8))
+			.background(Color.black)
 			.toolbar {
 				NBToolbarButton(role: .cancel)
 				NBToolbarButton(
@@ -113,23 +113,20 @@ extension CertificatesAddView {
 			HStack(spacing: 12) {
 				NullSignIconTile(
 					systemImage: file == nil ? systemImage : "checkmark",
-					tint: file == nil ? .white : NullSignStyle.success,
-					size: 34
+					tint: file == nil ? .white : NullSignStyle.success
 				)
 
 				VStack(alignment: .leading, spacing: 2) {
 					Text(title)
-						.font(.system(size: 16, weight: .semibold))
-					Text(file?.lastPathComponent ?? "Choose a file")
-						.font(NullSignStyle.mono(11, weight: .medium))
-						.foregroundStyle(file == nil ? NullSignStyle.muted : NullSignStyle.success)
+					Text(file?.lastPathComponent ?? "No file selected")
+						.font(.footnote)
+						.foregroundStyle(NullSignStyle.muted)
 						.lineLimit(1)
 						.truncationMode(.middle)
 				}
 				Spacer()
 				Text(file == nil ? "Choose" : "Change")
-					.font(.system(size: 13, weight: .bold))
-					.foregroundStyle(NullSignStyle.accentHighlight)
+					.foregroundStyle(NullSignStyle.accent)
 			}
 			.contentShape(Rectangle())
 		}

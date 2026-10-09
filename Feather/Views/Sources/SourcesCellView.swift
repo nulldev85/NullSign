@@ -9,33 +9,34 @@ struct SourcesCellView: View {
 	let didFail: Bool
 
 	var body: some View {
-		HStack(spacing: 14) {
-			SourceRemoteIcon(url: source.iconURL ?? repository?.currentIconURL, size: 50)
+		HStack(spacing: 12) {
+			SourceRemoteIcon(url: source.iconURL ?? repository?.currentIconURL, size: 46)
 
-			VStack(alignment: .leading, spacing: 5) {
+			VStack(alignment: .leading, spacing: 2) {
 				Text(source.name ?? repository?.name ?? .localized("Unknown"))
-					.font(.system(size: 16, weight: .semibold))
+					.font(.headline)
 					.foregroundStyle(.white)
 					.lineLimit(1)
 
 				Text(_displayHost)
-					.font(NullSignStyle.mono(11, weight: .medium))
+					.font(.subheadline)
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
 
 				_status
+					.padding(.top, 2)
 			}
 
 			Spacer(minLength: 8)
 
 			Image(systemName: "chevron.right")
-				.font(.system(size: 13, weight: .bold))
+				.font(.footnote.weight(.semibold))
 				.foregroundStyle(NullSignStyle.faint)
 		}
 		.padding(12)
-		.nullSignSurface(cornerRadius: 22)
-		.contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 22, style: .continuous))
+		.nullSignSurface()
+		.contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 16, style: .continuous))
 		.swipeActions {
 			_actions(for: source)
 			_contextActions(for: source)
@@ -49,28 +50,30 @@ struct SourcesCellView: View {
 
 	@ViewBuilder
 	private var _status: some View {
-		if let repository {
+		HStack(spacing: 6) {
 			if isFetching && !didFail {
-				NullSignChip(text: "\(repository.apps.count) apps · updating", systemImage: "arrow.triangle.2.circlepath", tint: NullSignStyle.muted)
-			} else if didFail {
-				NullSignChip(text: "\(repository.apps.count) cached · offline", systemImage: "exclamationmark", tint: NullSignStyle.warning)
-			} else {
-				NullSignChip(text: .localized("%lld Apps", arguments: repository.apps.count), systemImage: "checkmark", tint: NullSignStyle.success)
-			}
-		} else if isFetching && !didFail {
-			HStack(spacing: 6) {
 				ProgressView()
 					.controlSize(.mini)
-					.tint(NullSignStyle.accent)
-				Text("UPDATING")
-					.font(NullSignStyle.mono(9.5, weight: .bold))
-					.foregroundStyle(NullSignStyle.muted)
+			} else {
+				Circle()
+					.fill(didFail ? NullSignStyle.danger : NullSignStyle.success)
+					.frame(width: 6, height: 6)
 			}
-		} else if didFail {
-			NullSignChip(text: "Unavailable · pull to retry", systemImage: "exclamationmark", tint: NullSignStyle.danger)
-		} else {
-			NullSignChip(text: "Waiting", tint: NullSignStyle.muted)
+			Text(_statusText)
+				.font(.caption)
+				.foregroundStyle(didFail ? NullSignStyle.danger : NullSignStyle.muted)
+				.lineLimit(1)
 		}
+	}
+
+	private var _statusText: String {
+		guard let repository else {
+			if didFail { return "Couldn't load · pull to retry" }
+			return isFetching ? "Updating…" : "Waiting to update"
+		}
+		let count = repository.apps.count == 1 ? "1 app" : "\(repository.apps.count.formatted()) apps"
+		if didFail { return "\(count) · offline" }
+		return count
 	}
 
 	private var _displayHost: String {

@@ -168,7 +168,7 @@ struct ConfigurationView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 28)
 		}
-		.background(NullSignBackdrop(intensity: 0.8))
+		.background(Color.black)
 		.navigationTitle("Signing Defaults")
 		.toolbar {
 			NBToolbarMenu(
@@ -211,7 +211,7 @@ extension ConfigurationView {
 		values: [T]
 	) -> some View {
 		HStack(spacing: 12) {
-			NullSignIconTile(systemImage: systemImage, size: 34)
+			NullSignIconTile(systemImage: systemImage)
 			Text(title)
 				.font(.system(size: 16, weight: .semibold))
 			Spacer()
@@ -233,7 +233,7 @@ extension ConfigurationView {
 	) -> some View {
 		Toggle(isOn: isOn) {
 			HStack(spacing: 12) {
-				NullSignIconTile(systemImage: systemImage, size: 34)
+				NullSignIconTile(systemImage: systemImage)
 				VStack(alignment: .leading, spacing: detail == nil ? 0 : 2) {
 					Text(title)
 						.font(.system(size: 16, weight: .semibold))

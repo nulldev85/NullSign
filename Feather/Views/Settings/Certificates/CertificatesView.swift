@@ -35,13 +35,13 @@ struct CertificatesView: View {
 				if _certificates.isEmpty {
 					NullSignEmptyState(
 						systemImage: "checkmark.seal",
-						title: "No certificates yet",
+						title: "No Certificates",
 						message: "Import your .p12 and its provisioning profile. Certificate files and passwords never leave this device."
 					) {
 						Button {
 							_isAddingPresenting = true
 						} label: {
-							Label("Import Certificate", systemImage: "plus")
+							Text("Import Certificate")
 								.frame(maxWidth: .infinity)
 						}
 						.buttonStyle(NullSignPrimaryButtonStyle())
@@ -49,9 +49,9 @@ struct CertificatesView: View {
 					}
 					.padding(.top, 20)
 				} else {
-					NullSignSectionLabel(title: "Identities", count: _certificates.count)
-						.padding(.horizontal, 6)
-						.padding(.top, 8)
+					NullSignSectionLabel(title: "Saved", count: _certificates.count)
+						.padding(.horizontal, 4)
+						.padding(.top, 10)
 
 					ForEach(Array(_certificates.enumerated()), id: \.element.objectID) { index, cert in
 						_cellButton(for: cert, at: index)
@@ -62,7 +62,7 @@ struct CertificatesView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 24)
 		}
-		.background(NullSignBackdrop(intensity: 0.8))
+		.background(Color.black)
 		.navigationTitle("Certificates")
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {
@@ -99,13 +99,11 @@ struct CertificatesView: View {
 extension CertificatesView {
 	private var _header: some View {
 		NullSignSettingsIntro(
-			systemImage: "person.badge.key.fill",
-			title: "Signing identities",
+			systemImage: "checkmark.seal",
+			title: "Signing Certificates",
 			detail: _platform == .tvOS
-				? "Choose a certificate whose profile includes tvOS."
-				: "A .p12 and its matching provisioning profile sign every app on this device.",
-			status: _certificates.isEmpty ? "Setup needed" : "\(_certificates.count) saved",
-			statusColor: _certificates.isEmpty ? NullSignStyle.warning : NullSignStyle.success
+				? "Choose a certificate whose provisioning profile includes tvOS."
+				: "Each certificate is a .p12 paired with its provisioning profile."
 		)
 	}
 
@@ -113,7 +111,7 @@ extension CertificatesView {
 	private func _cellButton(for cert: CertificatePair, at index: Int) -> some View {
 		let isSelected = _selectedCertBinding.wrappedValue == index
 		let isCompatible = _platform.map { Storage.shared.certificate(cert, supports: $0) } ?? true
-		let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+		let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
 
 		HStack(spacing: 0) {
 			Button {
@@ -146,18 +144,10 @@ extension CertificatesView {
 			}
 			.accessibilityLabel("Certificate actions")
 		}
-		.background(
-			RadialGradient(
-				colors: [NullSignStyle.accent.opacity(isSelected ? 0.2 : 0), .clear],
-				center: .leading,
-				startRadius: 2,
-				endRadius: 200
-			)
-		)
-		.nullSignSurface(cornerRadius: 22)
+		.nullSignSurface()
 		.overlay {
 			if isSelected {
-				shape.strokeBorder(NullSignStyle.accent.opacity(0.75), lineWidth: 1.5)
+				shape.strokeBorder(NullSignStyle.accent, lineWidth: 2)
 			}
 		}
 		.transaction { $0.animation = nil }

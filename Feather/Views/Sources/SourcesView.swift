@@ -26,32 +26,23 @@ struct SourcesView: View {
 		_sources.compactMap { viewModel.sources[$0] }.reduce(0) { $0 + $1.apps.count }
 	}
 
-	private var _subtitle: String {
-		guard !_sources.isEmpty else { return "No sources yet" }
-		let sources = _sources.count == 1 ? "1 source" : "\(_sources.count) sources"
-		return "\(sources) · \(_loadedAppCount.formatted()) apps"
-	}
-
 	var body: some View {
 		let filteredSources = _filteredSources
 
-		NBNavigationView("", displayMode: .inline) {
+		NBNavigationView("Apps") {
 			List {
-				NullSignTitle(title: "Apps", subtitle: _subtitle)
-					.nullSignListRow(top: 2, bottom: 14)
-
 				if _sources.isEmpty {
 					SourceEmptyState(
 						icon: "square.grid.2x2",
 						title: .localized("No Repositories"),
-						message: "Add an AltStore-compatible source to browse apps and send them straight to your signer.",
+						message: "Add an AltStore-compatible source to browse its apps and import them into NullSign.",
 						actionTitle: .localized("Add Source"),
 						action: { _isAddingPresenting = true }
 					)
-					.nullSignListRow(top: 30, bottom: 30)
+					.nullSignListRow(top: 40, bottom: 30)
 				} else {
-					NullSignSearchField(prompt: .localized("Search repositories"), text: $_searchText)
-						.nullSignListRow(bottom: 8)
+					NullSignSearchField(prompt: .localized("Search"), text: $_searchText)
+						.nullSignListRow(top: 4, bottom: 6)
 
 					if _searchText.isEmpty {
 						ZStack {
@@ -62,13 +53,13 @@ struct SourcesView: View {
 							}
 							.opacity(0)
 
-							_catalogHero
+							_allAppsRow
 						}
-						.nullSignListRow(top: 6, bottom: 8)
+						.nullSignListRow(top: 6, bottom: 4)
 					}
 
-					NullSignSectionLabel(title: .localized("Repositories"), count: filteredSources.count)
-						.nullSignListRow(top: 14, bottom: 4, horizontal: 20)
+					NullSignSectionLabel(title: .localized("Repositories"), prominent: true)
+						.nullSignListRow(top: 18, bottom: 4, horizontal: 20)
 
 					ForEach(filteredSources) { source in
 						ZStack {
@@ -86,20 +77,15 @@ struct SourcesView: View {
 								didFail: source.sourceURL.map(viewModel.failedSourceURLs.contains) ?? false
 							)
 						}
-						.nullSignListRow(top: 5, bottom: 5)
+						.nullSignListRow()
 					}
 
 					if filteredSources.isEmpty {
-						VStack(spacing: 10) {
-							Image(systemName: "magnifyingglass")
-								.font(.system(size: 22, weight: .semibold))
-								.foregroundStyle(NullSignStyle.faint)
-							Text("No repository matches “\(_searchText)”")
-								.font(.system(size: 15, weight: .semibold))
-								.multilineTextAlignment(.center)
-						}
-						.frame(maxWidth: .infinity)
-						.nullSignListRow(top: 24, bottom: 24)
+						Text("No repositories match “\(_searchText)”.")
+							.font(.subheadline)
+							.foregroundStyle(NullSignStyle.muted)
+							.frame(maxWidth: .infinity)
+							.nullSignListRow(top: 24, bottom: 24)
 					}
 				}
 			}
@@ -107,7 +93,7 @@ struct SourcesView: View {
 			// Section labels are short rows; don't pad them up to 44pt.
 			.environment(\.defaultMinListRowHeight, 0)
 			.scrollContentBackground(.hidden)
-			.background(NullSignBackdrop())
+			.background(Color.black)
 			.scrollDismissesKeyboard(.interactively)
 			.toolbar {
 				ToolbarItem(placement: .topBarTrailing) {
@@ -132,66 +118,41 @@ struct SourcesView: View {
 		}
 	}
 
-	private var _catalogHero: some View {
+	private var _allAppsRow: some View {
 		let iconURLs = _sources.compactMap { $0.iconURL ?? viewModel.sources[$0]?.currentIconURL }
 
-		return VStack(alignment: .leading, spacing: 16) {
-			HStack(alignment: .top) {
-				NullSignChip(text: "Catalog", systemImage: "sparkles", tint: NullSignStyle.accentHighlight)
-				Spacer()
-				if !iconURLs.isEmpty {
-					SourceIconStack(urls: iconURLs, size: 34)
-				}
+		return HStack(spacing: 14) {
+			if iconURLs.isEmpty {
+				NullSignIconTile(systemImage: "square.grid.2x2", size: 48)
+			} else {
+				SourceIconStack(urls: iconURLs, size: 40)
 			}
 
-			VStack(alignment: .leading, spacing: 5) {
-				Text("Browse every app")
-					.font(NullSignStyle.display(22, weight: .bold))
+			VStack(alignment: .leading, spacing: 2) {
+				Text("All Apps")
+					.font(.headline)
 					.foregroundStyle(.white)
 				Text(_catalogSummary)
-					.font(NullSignStyle.mono(11, weight: .medium))
+					.font(.subheadline)
 					.foregroundStyle(NullSignStyle.muted)
 			}
 
-			HStack {
-				Text("Open catalog")
-					.font(.system(size: 14, weight: .bold))
-				Spacer()
-				Image(systemName: "arrow.right")
-					.font(.system(size: 14, weight: .bold))
-			}
-			.foregroundStyle(.white)
-			.padding(.horizontal, 16)
-			.frame(height: 44)
-			.background(Capsule().fill(NullSignStyle.signal))
-			.overlay(Capsule().strokeBorder(Color.white.opacity(0.2), lineWidth: 1))
-			.shadow(color: NullSignStyle.accent.opacity(0.4), radius: 12, y: 5)
+			Spacer(minLength: 8)
+
+			Image(systemName: "chevron.right")
+				.font(.footnote.weight(.semibold))
+				.foregroundStyle(NullSignStyle.faint)
 		}
-		.padding(18)
-		.background(
-			ZStack {
-				RadialGradient(
-					colors: [NullSignStyle.accent.opacity(0.35), .clear],
-					center: .topTrailing,
-					startRadius: 2,
-					endRadius: 260
-				)
-				RadialGradient(
-					colors: [NullSignStyle.violet.opacity(0.18), .clear],
-					center: .bottomLeading,
-					startRadius: 2,
-					endRadius: 220
-				)
-			}
-		)
-		.nullSignSurface(cornerRadius: 26)
-		.contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+		.padding(14)
+		.nullSignSurface()
+		.contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 	}
 
 	private var _catalogSummary: String {
 		if viewModel.isFetching && _loadedAppCount == 0 {
-			return .localized("Updating catalog…")
+			return .localized("Updating…")
 		}
-		return "\(_loadedAppCount.formatted()) apps · \(_sources.count.formatted()) sources"
+		let sources = _sources.count == 1 ? "1 source" : "\(_sources.count.formatted()) sources"
+		return "\(_loadedAppCount.formatted()) apps from \(sources)"
 	}
 }

@@ -50,7 +50,7 @@ struct InstallPreviewView: View {
 				VStack(alignment: .leading, spacing: 6) {
 					HStack(spacing: 7) {
 						Text(app.name ?? "App")
-							.font(NullSignStyle.display(16, weight: .bold))
+							.font(.headline)
 							.lineLimit(1)
 						PlatformBadge(platform: app.platform)
 					}
@@ -67,23 +67,11 @@ struct InstallPreviewView: View {
 		}
 		.padding(20)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-		.background {
+		.background(NullSignStyle.surface, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+		.overlay(
 			RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-				.fill(Color(white: 0.055))
-				.overlay(
-					RadialGradient(
-						colors: [NullSignStyle.accent.opacity(0.22), .clear],
-						center: .topLeading,
-						startRadius: 2,
-						endRadius: 240
-					)
-				)
-				.overlay(
-					RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-						.strokeBorder(NullSignStyle.edge, lineWidth: 1)
-				)
-		}
-		.clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+				.strokeBorder(NullSignStyle.hairline, lineWidth: 1)
+		)
 		.padding()
 		.sheet(isPresented: $_isWebviewPresenting) {
 			SafariRepresentableView(url: installer.pageEndpoint).ignoresSafeArea()
@@ -144,7 +132,7 @@ struct InstallPreviewView: View {
 	@ViewBuilder
 	private func _status() -> some View {
 		Label(viewModel.statusLabel, systemImage: viewModel.statusImage)
-			.font(NullSignStyle.mono(11, weight: .semibold))
+			.font(.footnote.weight(.semibold))
 			.foregroundStyle(viewModel.isCompleted ? NullSignStyle.success : NullSignStyle.muted)
 			.animation(.smooth, value: viewModel.statusImage)
 	}

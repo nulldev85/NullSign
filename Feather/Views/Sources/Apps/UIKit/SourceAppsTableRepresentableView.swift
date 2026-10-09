@@ -277,9 +277,9 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 		backing.backgroundColor = UIColor.black.withAlphaComponent(0.45)
 		headerView?.backgroundView = backing
 		headerView?.contentConfiguration = UIHostingConfiguration {
-			SourceSectionLabel(title: title)
+			SourceSectionLabel(title: title, prominent: false)
 				.padding(.horizontal, 20)
-				.padding(.vertical, 10)
+				.padding(.vertical, 8)
 		}
 		.margins(.all, 0)
 		.background(Color.clear)

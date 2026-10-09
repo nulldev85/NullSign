@@ -24,7 +24,7 @@ struct CertificatesInfoEntitlementView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 28)
 		}
-		.background(NullSignBackdrop(intensity: 0.6))
+		.background(Color.black)
 		.navigationTitle("Entitlements")
 	}
 }

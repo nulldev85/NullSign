@@ -48,7 +48,7 @@ struct VariedTabbarView: View {
 						}
 					}
 				)
-				.transition(.move(edge: .bottom).combined(with: .opacity))
+				.transition(.opacity)
 			}
 		}
 		// The dock steps aside for the keyboard instead of riding on top of it.
@@ -61,8 +61,8 @@ struct VariedTabbarView: View {
 	}
 }
 
-/// A floating glass dock. The active tab expands into a crimson pill that
-/// carries its label; the others stay as quiet glyphs.
+/// A floating dock. The active tab becomes a red pill carrying its label;
+/// the others stay as glyphs.
 private struct NullSignDock: View {
 	@Binding var selection: TabEnum
 	let onReselect: (TabEnum) -> Void
@@ -75,10 +75,10 @@ private struct NullSignDock: View {
 				_item(for: tab)
 			}
 		}
-		.padding(6)
+		.padding(5)
 		.modifier(NullSignDockChrome())
-		.frame(maxWidth: 400)
-		.padding(.horizontal, 20)
+		.frame(maxWidth: 360)
+		.padding(.horizontal, 24)
 		.padding(.top, 6)
 		.padding(.bottom, 4)
 	}
@@ -93,39 +93,29 @@ private struct NullSignDock: View {
 				return
 			}
 			UISelectionFeedbackGenerator().selectionChanged()
-			withAnimation(_reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.78)) {
+			withAnimation(_reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85)) {
 				selection = tab
 			}
 		} label: {
-			HStack(spacing: 7) {
+			HStack(spacing: 6) {
 				Image(systemName: tab.icon)
 					.font(.system(size: 17, weight: .semibold))
 					.symbolVariant(isSelected ? .fill : .none)
 				if isSelected {
 					Text(tab.title)
-						.font(.system(size: 14, weight: .bold).width(.expanded))
+						.font(.system(size: 15, weight: .semibold))
 						.lineLimit(1)
 						.fixedSize()
-						.transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .leading)))
+						.transition(.opacity)
 				}
 			}
 			.foregroundStyle(isSelected ? Color.white : NullSignStyle.muted)
-			.frame(maxWidth: isSelected ? .infinity : 62)
-			.frame(height: 48)
+			.frame(maxWidth: isSelected ? .infinity : 56)
+			.frame(height: 44)
 			.background {
 				if isSelected {
 					Capsule()
-						.fill(NullSignStyle.signal)
-						.overlay(
-							Capsule().fill(
-								LinearGradient(
-									colors: [Color.white.opacity(0.22), Color.clear],
-									startPoint: .top,
-									endPoint: .center
-								)
-							)
-						)
-						.shadow(color: NullSignStyle.accent.opacity(0.55), radius: 12, y: 3)
+						.fill(NullSignStyle.accent)
 						.matchedGeometryEffect(id: "pill", in: _pill)
 				}
 			}
@@ -137,20 +127,18 @@ private struct NullSignDock: View {
 	}
 }
 
-/// Liquid Glass where the system has it; frosted dark glass before that.
+/// Liquid Glass where the system has it; dark frosted glass before that.
 private struct NullSignDockChrome: ViewModifier {
 	@ViewBuilder
 	func body(content: Content) -> some View {
 		if #available(iOS 26.0, *) {
 			content
 				.glassEffect(in: Capsule())
-				.shadow(color: .black.opacity(0.45), radius: 18, y: 8)
 		} else {
 			content
-				.background(Capsule().fill(.ultraThinMaterial))
-				.background(Capsule().fill(Color.black.opacity(0.45)))
-				.overlay(Capsule().strokeBorder(NullSignStyle.edge, lineWidth: 1))
-				.shadow(color: .black.opacity(0.6), radius: 18, y: 8)
+				.background(.ultraThinMaterial, in: Capsule())
+				.background(Color.black.opacity(0.5), in: Capsule())
+				.overlay(Capsule().strokeBorder(NullSignStyle.hairline, lineWidth: 1))
 		}
 	}
 }

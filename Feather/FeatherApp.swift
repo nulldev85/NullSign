@@ -152,26 +152,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 		UIView.appearance().tintColor = .white
 		UITableView.appearance().backgroundColor = .black
 		UICollectionView.appearance().backgroundColor = .black
-		_configureNavigationTitles()
 		_createPipeline()
 		_createDocumentsDirectories()
 		ResetView.clearWorkCache()
 		_addDefaultCertificates()
 		_refreshServerCertificates()
 		return true
-	}
-
-	/// Wide, heavy navigation titles to match the in-app headers.
-	private func _configureNavigationTitles() {
-		let bar = UINavigationBar.appearance()
-		bar.titleTextAttributes = [
-			.font: UIFont.systemFont(ofSize: 16, weight: .bold, width: .expanded),
-			.foregroundColor: UIColor.white
-		]
-		bar.largeTitleTextAttributes = [
-			.font: UIFont.systemFont(ofSize: 30, weight: .heavy, width: .expanded),
-			.foregroundColor: UIColor.white
-		]
 	}
 
 	private func _refreshServerCertificates() {

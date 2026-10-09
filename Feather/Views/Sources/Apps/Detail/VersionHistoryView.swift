@@ -23,7 +23,7 @@ struct VersionHistoryView: View {
 						if let url = version.downloadURL {
 							Button { _download(version, from: url) } label: {
 								Image(systemName: "arrow.down")
-									.font(.system(size: 13, weight: .heavy))
+									.font(.system(size: 13, weight: .semibold))
 							}
 							.buttonStyle(NullSignPrimaryButtonStyle(height: 34))
 							.contextMenu {
@@ -43,7 +43,7 @@ struct VersionHistoryView: View {
 			.sourcePanel(padding: 0)
 			.padding(16)
 		}
-		.background(NullSignBackdrop(intensity: 0.6))
+		.background(Color.black)
 		.tint(NullSignStyle.accent)
 	}
 

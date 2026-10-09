@@ -27,14 +27,8 @@ struct InstallProgressView: View {
 	@ViewBuilder
 	private func _appIcon() -> some View {
 		ZStack {
-			Circle()
-				.strokeBorder(
-					viewModel.isCompleted ? NullSignStyle.success.opacity(0.6) : NullSignStyle.accent.opacity(0.55),
-					lineWidth: 1.5
-				)
-				.frame(width: 76, height: 76)
-				.scaleEffect(_isPulsing && !_reduceMotion ? 1.08 : 1)
-				.opacity(_isPulsing && !_reduceMotion ? 0.35 : 1)
+			FRAppIconView(app: app, size: 58)
+				.opacity(viewModel.isCompleted || _reduceMotion ? 1 : (_isPulsing ? 0.6 : 1))
 				.animation(
 					viewModel.isCompleted || _reduceMotion
 						? .easeOut(duration: 0.2)
@@ -42,20 +36,18 @@ struct InstallProgressView: View {
 					value: _isPulsing
 				)
 
-			FRAppIconView(app: app, size: 56, glow: true)
-
 			if viewModel.isCompleted {
 				Image(systemName: "checkmark.circle.fill")
 					.font(.system(size: 20, weight: .bold))
 					.symbolRenderingMode(.palette)
-					.foregroundStyle(.black, NullSignStyle.success)
+					.foregroundStyle(.white, NullSignStyle.success)
 					.background(Circle().fill(.black).padding(2))
-					.offset(x: 26, y: 26)
+					.offset(x: 27, y: 27)
 					.transition(.scale.combined(with: .opacity))
 			}
 		}
-		.frame(width: 78, height: 78)
-		.animation(.spring(response: 0.35, dampingFraction: 0.7), value: viewModel.isCompleted)
+		.frame(width: 68, height: 68)
+		.animation(.easeOut(duration: 0.25), value: viewModel.isCompleted)
 	}
 
 	private func _updateAnimation() {
@@ -80,9 +72,9 @@ struct NullSignInstallProgressBar: View {
 	var body: some View {
 		VStack(alignment: .trailing, spacing: 6) {
 			Text("\(Int(targetProgress * 100))%")
-				.font(NullSignStyle.mono(10, weight: .bold))
+				.font(.caption2.weight(.semibold))
+				.monospacedDigit()
 				.foregroundStyle(NullSignStyle.muted)
-				.contentTransition(.numericText())
 				.opacity(showsPercentage && progress != nil && targetProgress > 0 && targetProgress < 1 ? 1 : 0)
 				.frame(height: 12)
 
@@ -93,8 +85,7 @@ struct NullSignInstallProgressBar: View {
 
 					ZStack(alignment: .leading) {
 						Capsule()
-							.fill(Color.white.opacity(0.08))
-							.overlay(Capsule().strokeBorder(Color.white.opacity(0.06), lineWidth: 1))
+							.fill(NullSignStyle.fill)
 
 						if progress == nil {
 							_indeterminateFill(width: width, seconds: seconds)
@@ -102,10 +93,10 @@ struct NullSignInstallProgressBar: View {
 							_determinateFill(width: width)
 						}
 					}
-					.frame(width: width, height: 8, alignment: .leading)
+					.frame(width: width, height: 6, alignment: .leading)
 					.clipShape(Capsule())
 				}
-				.frame(height: 8)
+				.frame(height: 6)
 			}
 		}
 	}
@@ -115,16 +106,8 @@ struct NullSignInstallProgressBar: View {
 		let fillWidth = min(width, max(0, width * targetProgress))
 
 		Capsule()
-			.fill(NullSignStyle.signal)
-			.overlay(alignment: .trailing) {
-				Circle()
-					.fill(Color.white)
-					.frame(width: 4, height: 4)
-					.padding(.trailing, 2)
-					.opacity(targetProgress > 0.02 && targetProgress < 1 ? 0.9 : 0)
-			}
+			.fill(NullSignStyle.accent)
 			.frame(width: fillWidth)
-			.shadow(color: NullSignStyle.accent.opacity(0.6), radius: 6)
 			.animation(.linear(duration: 0.2), value: targetProgress)
 	}
 
@@ -135,16 +118,9 @@ struct NullSignInstallProgressBar: View {
 		let easedPosition = (sin(seconds * 2.1) + 1) / 2
 
 		Capsule()
-			.fill(
-				LinearGradient(
-					colors: [NullSignStyle.accent.opacity(0.2), NullSignStyle.accentHighlight, NullSignStyle.accent.opacity(0.2)],
-					startPoint: .leading,
-					endPoint: .trailing
-				)
-			)
+			.fill(NullSignStyle.accent)
 			.frame(width: segmentWidth)
 			.offset(x: travel * CGFloat(easedPosition))
-			.shadow(color: NullSignStyle.accent.opacity(0.6), radius: 7)
 	}
 
 }

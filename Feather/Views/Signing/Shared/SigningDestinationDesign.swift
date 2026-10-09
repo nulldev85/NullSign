@@ -1,24 +1,24 @@
 import SwiftUI
 
 /// Shared pieces for signing destinations. Repeated information stays in a
-/// continuous list on the backdrop; cards are reserved for summaries.
+/// continuous list; cards are reserved for summaries.
 struct SigningSectionHeader: View {
 	let title: String
 	var detail: String? = nil
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 6) {
+		VStack(alignment: .leading, spacing: 4) {
 			NullSignSectionLabel(title: title)
 
 			if let detail {
 				Text(detail)
-					.font(.caption)
-					.foregroundStyle(NullSignStyle.muted)
+					.font(.footnote)
+					.foregroundStyle(NullSignStyle.faint)
 					.fixedSize(horizontal: false, vertical: true)
 			}
 		}
 		.textCase(nil)
-		.padding(.top, 12)
+		.padding(.top, 10)
 		.padding(.bottom, 4)
 	}
 }
@@ -28,7 +28,7 @@ struct SigningRowIcon: View {
 	var tint: Color = .white
 
 	var body: some View {
-		NullSignIconTile(systemImage: systemImage, tint: tint, size: 32)
+		NullSignIconTile(systemImage: systemImage, tint: tint, size: 30)
 	}
 }
 
@@ -38,10 +38,12 @@ struct SigningEmptyState: View {
 	let detail: String
 
 	var body: some View {
-		VStack(spacing: 12) {
-			NullSignIconTile(systemImage: systemImage, tint: NullSignStyle.muted, size: 48)
+		VStack(spacing: 10) {
+			Image(systemName: systemImage)
+				.font(.system(size: 30, weight: .regular))
+				.foregroundStyle(NullSignStyle.faint)
 			Text(title)
-				.font(.system(size: 16, weight: .bold))
+				.font(.headline)
 			Text(detail)
 				.font(.subheadline)
 				.foregroundStyle(NullSignStyle.muted)
@@ -50,7 +52,7 @@ struct SigningEmptyState: View {
 		}
 		.frame(maxWidth: .infinity)
 		.padding(.horizontal, 28)
-		.padding(.vertical, 30)
+		.padding(.vertical, 28)
 	}
 }
 
@@ -64,15 +66,7 @@ struct SigningSummaryCard<Content: View>: View {
 	var body: some View {
 		content
 			.padding(16)
-			.background(
-				RadialGradient(
-					colors: [NullSignStyle.accent.opacity(0.16), .clear],
-					center: .topLeading,
-					startRadius: 2,
-					endRadius: 220
-				)
-			)
-			.nullSignSurface(cornerRadius: 22)
+			.nullSignSurface()
 	}
 }
 

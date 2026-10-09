@@ -62,28 +62,22 @@ struct SigningView: View {
 					.listRowBackground(NullSignStyle.panel)
 			}
 			.scrollContentBackground(.hidden)
-			.background(NullSignBackdrop())
+			.background(Color.black)
 			.tint(NullSignStyle.accent)
 			.safeAreaInset(edge: .bottom, spacing: 0) {
 				Button {
 					_start()
 				} label: {
-					HStack(spacing: 10) {
-						Image(systemName: "signature")
-							.font(.system(size: 16, weight: .bold))
-						Text(_isSigning ? .localized("Signing…") : .localized("Sign App"))
-						Spacer()
+					HStack(spacing: 8) {
 						if _isSigning {
 							ProgressView()
 								.tint(.white)
-						} else {
-							Image(systemName: "arrow.right")
-								.font(.system(size: 15, weight: .bold))
 						}
+						Text(_isSigning ? .localized("Signing…") : .localized("Sign App"))
 					}
-					.padding(.horizontal, 4)
+					.frame(maxWidth: .infinity)
 				}
-				.buttonStyle(NullSignPrimaryButtonStyle(height: 56, dimsWhenDisabled: false))
+				.buttonStyle(NullSignPrimaryButtonStyle(height: 52, dimsWhenDisabled: false))
 				.animation(_reduceMotion ? nil : .easeInOut(duration: 0.2), value: _isSigning)
 				.padding(.horizontal, 16)
 				.padding(.top, 14)
@@ -182,17 +176,17 @@ extension SigningView {
 			Group {
 				if let icon = appIcon {
 					Image(uiImage: icon)
-						.appIconStyle(size: 88)
+						.appIconStyle(size: 84)
 				} else {
-					FRAppIconView(app: app, size: 88, glow: true)
+					FRAppIconView(app: app, size: 84)
 				}
 			}
 			.overlay(alignment: .bottomTrailing) {
 				Image(systemName: "pencil")
-					.font(.system(size: 11, weight: .heavy))
+					.font(.system(size: 11, weight: .bold))
 					.foregroundStyle(.white)
 					.frame(width: 26, height: 26)
-					.background(Circle().fill(NullSignStyle.signal))
+					.background(Circle().fill(Color(white: 0.22)))
 					.overlay(Circle().strokeBorder(Color.black, lineWidth: 2))
 					.offset(x: 6, y: 6)
 			}
@@ -269,13 +263,11 @@ extension SigningView {
 			} label: {
 				LabeledContent {
 					Text(_temporaryOptions.injectionFiles.count.description)
-						.font(NullSignStyle.mono(14, weight: .bold))
 						.foregroundStyle(NullSignStyle.muted)
 				} label: {
 					HStack(spacing: 12) {
 						SigningRowIcon(systemImage: "shippingbox.and.arrow.backward")
 						Text("Add .deb or .dylib")
-							.font(.system(size: 16, weight: .semibold))
 					}
 				}
 			}
@@ -284,15 +276,14 @@ extension SigningView {
 				HStack(spacing: 12) {
 					SigningRowIcon(systemImage: "arrow.triangle.2.circlepath")
 					Text("Replace Substrate with ElleKit")
-						.font(.system(size: 16, weight: .semibold))
 				}
 			}
 		} header: {
 			SigningSectionHeader(title: "Tweaks & Injection")
 		} footer: {
 			Text("NullSign adds ElleKit when an imported tweak needs a hooking runtime. Enable replacement only when the app already contains Cydia Substrate and you want to swap it for ElleKit.")
-				.font(.caption)
-				.foregroundStyle(NullSignStyle.muted)
+				.font(.footnote)
+				.foregroundStyle(NullSignStyle.faint)
 		}
 	}
 
@@ -328,7 +319,7 @@ extension SigningView {
 					temporaryOptions: _optionsManager.options
 				)}
 				.scrollContentBackground(.hidden)
-				.background(NullSignBackdrop(intensity: 0.6))
+				.background(Color.black)
 				.navigationTitle(.localized("Properties"))
 			}
 		} header: {
@@ -343,13 +334,10 @@ extension SigningView {
 		} label: {
 			LabeledContent {
 				Text(desc ?? .localized("Unknown"))
-					.font(NullSignStyle.mono(13, weight: .medium))
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
-					.truncationMode(.middle)
 			} label: {
 				Text(title)
-					.font(.system(size: 16, weight: .semibold))
 			}
 		}
 	}

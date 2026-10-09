@@ -52,7 +52,7 @@ struct LibraryInfoView: View {
 			}
 			.listStyle(.plain)
 			.scrollContentBackground(.hidden)
-			.background(NullSignBackdrop(intensity: 0.7))
+			.background(Color.black)
 			.tint(NullSignStyle.accent)
 			.toolbar {
 				NBToolbarButton(role: .close)
@@ -69,31 +69,26 @@ struct LibraryInfoView: View {
 // MARK: - Extension: View
 extension LibraryInfoView {
 	private var _summary: some View {
-		VStack(spacing: 14) {
-			FRAppIconView(app: app, size: 88, glow: true)
-			VStack(spacing: 7) {
+		VStack(spacing: 12) {
+			FRAppIconView(app: app, size: 84)
+			VStack(spacing: 4) {
 				Text(app.name ?? .localized("Unknown App"))
-					.font(NullSignStyle.display(21, weight: .bold))
+					.font(.title2.weight(.bold))
 					.multilineTextAlignment(.center)
 					.lineLimit(2)
 				if let identifier = app.identifier {
 					Text(identifier)
-						.font(NullSignStyle.mono(11, weight: .medium))
+						.font(.subheadline)
 						.foregroundStyle(NullSignStyle.muted)
 						.lineLimit(1)
-						.truncationMode(.middle)
 				}
-				HStack(spacing: 6) {
-					PlatformBadge(platform: app.platform)
-					if let version = app.version, !version.isEmpty {
-						NullSignChip(text: "v\(version)", uppercased: false)
-					}
-					NullSignChip(
-						text: app.isSigned ? "Signed" : "Imported",
-						systemImage: app.isSigned ? "checkmark.seal.fill" : "shippingbox",
-						tint: app.isSigned ? NullSignStyle.success : NullSignStyle.warning
-					)
+			}
+			HStack(spacing: 6) {
+				PlatformBadge(platform: app.platform)
+				if let version = app.version, !version.isEmpty {
+					NullSignChip(text: version)
 				}
+				NullSignChip(text: app.isSigned ? "Signed" : "Not signed")
 			}
 		}
 		.frame(maxWidth: .infinity)
@@ -191,7 +186,7 @@ extension LibraryInfoView {
 				.font(.body.weight(.medium))
 			Spacer(minLength: 12)
 			Text(desc)
-				.font(NullSignStyle.mono(13, weight: .medium))
+				.font(.subheadline)
 				.foregroundStyle(NullSignStyle.muted)
 				.multilineTextAlignment(.trailing)
 				.lineLimit(2)

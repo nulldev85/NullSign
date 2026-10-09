@@ -57,11 +57,6 @@ struct LibraryView: View {
 		!_signedApps.isEmpty || !_importedApps.isEmpty
 	}
 
-	private var _subtitle: String {
-		guard _hasApps else { return "No apps yet" }
-		return "\(_signedApps.count) signed · \(_importedApps.count) imported"
-	}
-
 	// MARK: Fetch
 	@FetchRequest(
 		entity: Signed.entity(),
@@ -96,31 +91,28 @@ struct LibraryView: View {
 		let showsSigned = !filteredSignedApps.isEmpty && (_selectedScope == .all || _selectedScope == .signed)
 		let showsImported = !filteredImportedApps.isEmpty && (_selectedScope == .all || _selectedScope == .imported)
 
-		NBNavigationView("", displayMode: .inline) {
+		NBNavigationView("Signer") {
 			List {
-				NullSignTitle(title: "Signer", subtitle: _subtitle)
-					.nullSignListRow(top: 2, bottom: 14)
-
 				NullSignIdentityCard(certificate: NullSignIdentity.activeCertificate(in: _certificates)) {
 					_isCertificatesPresenting = true
 				}
-				.nullSignListRow(bottom: 8)
+				.nullSignListRow(top: 4, bottom: 6)
 
 				if _hasApps {
 					_libraryTools
-						.nullSignListRow(top: 8, bottom: 6)
+						.nullSignListRow(top: 6, bottom: 4)
 
 					if showsSigned {
-						NullSignSectionLabel(title: .localized("Signed"), count: filteredSignedApps.count)
-							.nullSignListRow(top: 16, bottom: 4, horizontal: 20)
+						NullSignSectionLabel(title: .localized("Signed"), prominent: true)
+							.nullSignListRow(top: 18, bottom: 4, horizontal: 20)
 						ForEach(filteredSignedApps, id: \.objectID) { app in
 							_cell(for: app)
 						}
 					}
 
 					if showsImported {
-						NullSignSectionLabel(title: .localized("Imported"), count: filteredImportedApps.count)
-							.nullSignListRow(top: 16, bottom: 4, horizontal: 20)
+						NullSignSectionLabel(title: .localized("Imported"), prominent: true)
+							.nullSignListRow(top: 18, bottom: 4, horizontal: 20)
 						ForEach(filteredImportedApps, id: \.objectID) { app in
 							_cell(for: app)
 						}
@@ -139,7 +131,7 @@ struct LibraryView: View {
 			// Section labels are short rows; don't pad them up to 44pt.
 			.environment(\.defaultMinListRowHeight, 0)
 			.scrollContentBackground(.hidden)
-			.background(NullSignBackdrop())
+			.background(Color.black)
 			.scrollDismissesKeyboard(.interactively)
 			.toolbar {
 				ToolbarItem(placement: .topBarLeading) {
@@ -280,11 +272,18 @@ extension LibraryView {
 
 	private var _libraryTools: some View {
 		VStack(spacing: 10) {
-			NullSignSearchField(prompt: "Search your library", text: $_searchText)
+			NullSignSearchField(prompt: "Search", text: $_searchText)
 			NullSignSegmentedControl(
 				options: Scope.allCases,
 				selection: $_selectedScope,
-				title: \.displayName
+				title: \.displayName,
+				count: { scope in
+					switch scope {
+					case .all: return nil
+					case .signed: return _signedApps.count
+					case .imported: return _importedApps.count
+					}
+				}
 			)
 		}
 	}
@@ -292,16 +291,16 @@ extension LibraryView {
 	private var _emptyLibrary: some View {
 		NullSignEmptyState(
 			systemImage: "shippingbox",
-			title: "Drop in an IPA",
+			title: "No Apps Yet",
 			message: _certificates.isEmpty
-				? "Import an app to start. You'll also need a certificate — add one from Settings."
-				: "Import an app from Files or a link. NullSign checks every package before it signs."
+				? "Import an IPA to get started. You'll also need a certificate, which you can add in Settings."
+				: "Import an IPA from Files or a link to sign it."
 		) {
 			VStack(spacing: 10) {
 				Button {
 					_isImportingPresenting = true
 				} label: {
-					Label("Choose from Files", systemImage: "folder.fill")
+					Text("Import from Files")
 						.frame(maxWidth: .infinity)
 				}
 				.buttonStyle(NullSignPrimaryButtonStyle())
@@ -309,25 +308,23 @@ extension LibraryView {
 				Button {
 					_isDownloadingPresenting = true
 				} label: {
-					Label("Import from a Link", systemImage: "link")
+					Text("Import from URL")
 						.frame(maxWidth: .infinity)
 				}
 				.buttonStyle(NullSignSecondaryButtonStyle())
 			}
-			.padding(.top, 6)
+			.padding(.top, 4)
 		}
 	}
 
 	private var _noResults: some View {
-		VStack(spacing: 10) {
-			Image(systemName: _searchText.isEmpty ? "line.3.horizontal.decrease" : "magnifyingglass")
-				.font(.system(size: 22, weight: .semibold))
-				.foregroundStyle(NullSignStyle.faint)
-			Text(_searchText.isEmpty ? "Nothing in this group" : "No matching apps")
-				.font(.system(size: 15, weight: .semibold))
+		VStack(spacing: 8) {
+			Text(_searchText.isEmpty ? "Nothing here yet" : "No Results")
+				.font(.headline)
 			if !_searchText.isEmpty {
-				Button("Clear Search") { _searchText = "" }
-					.buttonStyle(NullSignSecondaryButtonStyle(height: 36))
+				Text("No apps match “\(_searchText)”.")
+					.font(.subheadline)
+					.foregroundStyle(NullSignStyle.muted)
 			}
 		}
 		.frame(maxWidth: .infinity)
@@ -335,36 +332,31 @@ extension LibraryView {
 
 	private var _selectionBar: some View {
 		HStack(spacing: 10) {
-			VStack(alignment: .leading, spacing: 2) {
-				Text(_selectedAppUUIDs.isEmpty ? "Select apps" : "\(_selectedAppUUIDs.count) selected")
-					.font(.system(size: 15, weight: .bold))
-					.contentTransition(.numericText())
-				Text("Tap cards to choose")
-					.font(NullSignStyle.mono(10, weight: .medium))
-					.foregroundStyle(NullSignStyle.muted)
-			}
+			Text(_selectedAppUUIDs.isEmpty ? "Select apps" : "\(_selectedAppUUIDs.count) selected")
+				.font(.headline)
+				.monospacedDigit()
 			Spacer(minLength: 8)
 			Button {
 				_toggleSelectAllVisible()
 			} label: {
-				Text(_allVisibleSelected ? "None" : "All")
+				Text(_allVisibleSelected ? "Deselect All" : "Select All")
 			}
-			.buttonStyle(NullSignSecondaryButtonStyle(height: 40))
+			.buttonStyle(NullSignSecondaryButtonStyle(height: 36))
 
 			Button {
 				_isBulkDeleteConfirmationPresented = true
 			} label: {
-				Label(.localized("Delete"), systemImage: "trash")
+				Text(.localized("Delete"))
 			}
-			.buttonStyle(NullSignPrimaryButtonStyle(height: 40))
+			.buttonStyle(NullSignPrimaryButtonStyle(height: 36))
 			.disabled(_selectedAppUUIDs.isEmpty)
 		}
 		.padding(.leading, 18)
 		.padding(.trailing, 8)
 		.padding(.vertical, 8)
-		.background(Capsule().fill(.ultraThinMaterial))
-		.background(Capsule().fill(Color.black.opacity(0.4)))
-		.overlay(Capsule().strokeBorder(NullSignStyle.edge, lineWidth: 1))
+		.background(.ultraThinMaterial, in: Capsule())
+		.background(Color.black.opacity(0.5), in: Capsule())
+		.overlay(Capsule().strokeBorder(NullSignStyle.hairline, lineWidth: 1))
 		.padding(.horizontal, 16)
 		.padding(.bottom, 8)
 	}

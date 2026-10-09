@@ -83,7 +83,7 @@ extension SigningAlternativeIconView {
 		}
 		.listStyle(.plain)
 		.scrollContentBackground(.hidden)
-		.background(NullSignBackdrop(intensity: 0.6))
+		.background(Color.black)
 		.tint(NullSignStyle.accent)
 		.onAppear(perform: _loadAlternateIcons)
 	}

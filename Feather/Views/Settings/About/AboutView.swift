@@ -26,33 +26,16 @@ struct AboutView: View {
 	var body: some View {
 		ScrollView {
 			VStack(spacing: 22) {
-				VStack(spacing: 14) {
-					FRAppIconView(size: 92, glow: true)
-					HStack(alignment: .firstTextBaseline, spacing: 3) {
-						Text("NullSign")
-							.font(NullSignStyle.display(28))
-						Circle()
-							.fill(NullSignStyle.accent)
-							.frame(width: 8, height: 8)
-							.shadow(color: NullSignStyle.accent.opacity(0.9), radius: 6)
-					}
-					HStack(spacing: 6) {
-						NullSignChip(text: "v\(Bundle.main.version)", uppercased: false)
-						NullSignChip(text: "Build \(_build)", tint: NullSignStyle.muted)
-						NullSignChip(text: "GPL-3.0", tint: NullSignStyle.violet)
-					}
+				VStack(spacing: 10) {
+					FRAppIconView(size: 84)
+					Text("NullSign")
+						.font(.title2.weight(.bold))
+					Text("Version \(Bundle.main.version) (\(_build))")
+						.font(.subheadline)
+						.foregroundStyle(NullSignStyle.muted)
 				}
 				.frame(maxWidth: .infinity)
-				.padding(.vertical, 22)
-				.background(
-					RadialGradient(
-						colors: [NullSignStyle.accent.opacity(0.25), .clear],
-						center: .top,
-						startRadius: 2,
-						endRadius: 220
-					)
-				)
-				.nullSignSurface(cornerRadius: 28)
+				.padding(.vertical, 12)
 
 				NullSignSettingsSection("App Updates", detail: _selfUpdateDetail) {
 					Button {
@@ -139,7 +122,7 @@ struct AboutView: View {
 			.padding(.top, 16)
 			.padding(.bottom, 28)
 		}
-		.background(NullSignBackdrop(intensity: 0.8))
+		.background(Color.black)
 		.navigationTitle("About")
 		.navigationBarTitleDisplayMode(.inline)
 		.task {

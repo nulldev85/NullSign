@@ -62,8 +62,7 @@ struct PlatformBadge: View {
 			text: platform.rawValue,
 			systemImage: platform == .tvOS ? "appletv.fill" : "iphone",
 			tint: platform == .tvOS ? NullSignStyle.crimson : Color.white,
-			filled: platform == .tvOS,
-			uppercased: false
+			filled: platform == .tvOS
 		)
 		.accessibilityLabel(platform == .tvOS ? "Apple TV app" : "iPhone app")
 	}

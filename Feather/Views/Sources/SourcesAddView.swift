@@ -50,7 +50,7 @@ struct SourcesAddView: View {
 				.padding(.bottom, 32)
 			}
 			.scrollDismissesKeyboard(.interactively)
-			.background(NullSignBackdrop(intensity: 0.8))
+			.background(Color.black)
 			.toolbar {
 				NBToolbarButton(role: .cancel)
 			}
@@ -66,17 +66,13 @@ struct SourcesAddView: View {
 			SourceSectionLabel(title: .localized("Repository URL"))
 
 			VStack(alignment: .leading, spacing: 12) {
-				Text("Paste an AltStore-compatible source URL. NullSign will check it before adding anything.")
+				Text("Paste an AltStore-compatible source URL. NullSign checks it before adding anything.")
 					.font(.subheadline)
-					.foregroundStyle(.secondary)
+					.foregroundStyle(NullSignStyle.muted)
 					.fixedSize(horizontal: false, vertical: true)
 
-				HStack(spacing: 10) {
-					Image(systemName: "link")
-						.font(.system(size: 15, weight: .semibold))
-						.foregroundStyle(NullSignStyle.accentHighlight)
+				HStack(spacing: 8) {
 					TextField(.localized("https://example.com/apps.json"), text: $_sourceURL)
-						.font(NullSignStyle.mono(14, weight: .medium))
 						.keyboardType(.URL)
 						.textInputAutocapitalization(.never)
 						.autocorrectionDisabled()
@@ -84,28 +80,25 @@ struct SourcesAddView: View {
 						_sourceURL = UIPasteboard.general.string ?? _sourceURL
 					} label: {
 						Text("Paste")
-							.font(.system(size: 12, weight: .bold))
-							.foregroundStyle(NullSignStyle.accentHighlight)
+							.font(.subheadline.weight(.semibold))
+							.foregroundStyle(NullSignStyle.accent)
 					}
 					.buttonStyle(.plain)
 				}
-				.padding(.horizontal, 15)
-				.frame(height: 48)
-				.background(Capsule().fill(Color.white.opacity(0.06)))
-				.overlay(Capsule().strokeBorder(NullSignStyle.edge, lineWidth: 1))
+				.padding(.horizontal, 12)
+				.frame(height: 44)
+				.background(NullSignStyle.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
 				Button(action: _saveSource) {
 					HStack(spacing: 8) {
 						if _isSaving {
 							ProgressView().tint(.white)
-						} else {
-							Image(systemName: "plus")
 						}
-						Text(_isSaving ? "Checking Source" : .localized("Add Source"))
+						Text(_isSaving ? "Checking Source…" : .localized("Add Source"))
 					}
 					.frame(maxWidth: .infinity)
 				}
-				.buttonStyle(NullSignPrimaryButtonStyle(height: 48))
+				.buttonStyle(NullSignPrimaryButtonStyle(height: 46))
 				.disabled(_trimmedURL.isEmpty || _isBusy)
 			}
 			.sourcePanel()
@@ -187,7 +180,7 @@ struct SourcesAddView: View {
 	) -> some View {
 		Button(action: action) {
 			HStack(spacing: 12) {
-				NullSignIconTile(systemImage: icon, size: 34)
+				NullSignIconTile(systemImage: icon)
 				VStack(alignment: .leading, spacing: 2) {
 					Text(title)
 						.font(.system(size: 15, weight: .semibold))
@@ -212,15 +205,17 @@ struct SourcesAddView: View {
 	private func _featuredRow(url: URL, source: ASRepository) -> some View {
 		HStack(spacing: 12) {
 			_featuredIcon(source.currentIconURL)
-			VStack(alignment: .leading, spacing: 4) {
+			VStack(alignment: .leading, spacing: 2) {
 				Text(source.name ?? .localized("Unknown"))
-					.font(.system(size: 15, weight: .semibold))
+					.font(.headline)
 					.lineLimit(1)
 				Text(url.host?.replacingOccurrences(of: "www.", with: "") ?? url.absoluteString)
-					.font(NullSignStyle.mono(10.5, weight: .medium))
+					.font(.subheadline)
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
-				NullSignChip(text: .localized("%lld Apps", arguments: source.apps.count), tint: NullSignStyle.muted)
+				Text(verbatim: .localized("%lld Apps", arguments: source.apps.count))
+					.font(.caption)
+					.foregroundStyle(NullSignStyle.faint)
 			}
 			Spacer(minLength: 8)
 			Button {
@@ -230,7 +225,7 @@ struct SourcesAddView: View {
 			} label: {
 				Text(.localized("Add"))
 			}
-			.buttonStyle(NullSignPrimaryButtonStyle(height: 32))
+			.buttonStyle(NullSignSecondaryButtonStyle(height: 30))
 		}
 		.padding(12)
 	}

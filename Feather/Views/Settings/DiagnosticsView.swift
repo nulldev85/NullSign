@@ -69,14 +69,14 @@ struct DiagnosticsView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 28)
 		}
-		.background(NullSignBackdrop(intensity: 0.8))
+		.background(Color.black)
 		.navigationTitle("Diagnostics")
 		.onAppear(perform: _refresh)
 	}
 
 	private func _check(_ title: String, systemImage: String) -> some View {
 		HStack(spacing: 12) {
-			NullSignIconTile(systemImage: systemImage, size: 34)
+			NullSignIconTile(systemImage: systemImage)
 			Text(title)
 				.font(.system(size: 15, weight: .semibold))
 			Spacer()

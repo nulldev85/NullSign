@@ -5,9 +5,10 @@ import NukeUI
 struct SourceSectionLabel: View {
 	let title: String
 	var count: Int? = nil
+	var prominent: Bool = true
 
 	var body: some View {
-		NullSignSectionLabel(title: title, count: count)
+		NullSignSectionLabel(title: title, count: count, prominent: prominent)
 	}
 }
 
@@ -25,7 +26,7 @@ struct SourceEmptyState: View {
 					Text(actionTitle)
 						.frame(minWidth: 160)
 				}
-				.buttonStyle(NullSignPrimaryButtonStyle(height: 46))
+				.buttonStyle(NullSignPrimaryButtonStyle(height: 44))
 				.padding(.top, 4)
 			}
 		}
@@ -38,7 +39,7 @@ struct SourcePanelModifier: ViewModifier {
 	func body(content: Content) -> some View {
 		content
 			.padding(padding)
-			.nullSignSurface(cornerRadius: 20)
+			.nullSignSurface()
 	}
 }
 
@@ -52,13 +53,10 @@ struct SourceLoadingState: View {
 	var label: String = "Loading apps"
 
 	var body: some View {
-		VStack(spacing: 14) {
+		VStack(spacing: 12) {
 			ProgressView()
-				.tint(NullSignStyle.accent)
-				.controlSize(.large)
-			Text(label.uppercased())
-				.font(NullSignStyle.mono(11, weight: .semibold))
-				.tracking(1.2)
+			Text(label)
+				.font(.subheadline)
 				.foregroundStyle(NullSignStyle.muted)
 		}
 		.padding(24)
@@ -113,21 +111,11 @@ struct SourceIconPlaceholder: View {
 	var body: some View {
 		ZStack {
 			RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
-				.fill(
-					LinearGradient(
-						colors: [Color.white.opacity(0.12), Color.white.opacity(0.04)],
-						startPoint: .topLeading,
-						endPoint: .bottomTrailing
-					)
-				)
+				.fill(NullSignStyle.fill)
 			Image(systemName: systemImage)
-				.font(.system(size: size * 0.38, weight: .semibold))
-				.foregroundStyle(NullSignStyle.muted)
+				.font(.system(size: size * 0.38, weight: .medium))
+				.foregroundStyle(NullSignStyle.faint)
 		}
-		.overlay(
-			RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
-				.strokeBorder(NullSignStyle.hairline, lineWidth: 1)
-		)
 		.frame(width: size, height: size)
 	}
 }

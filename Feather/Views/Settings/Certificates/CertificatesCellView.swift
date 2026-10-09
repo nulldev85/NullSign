@@ -17,36 +17,41 @@ struct CertificatesCellView: View {
 	var body: some View {
 		let validity = NullSignValidity(certificate: cert, profile: data)
 
-		HStack(spacing: 14) {
+		HStack(spacing: 12) {
 			ZStack {
 				NullSignRing(
 					progress: validity.progress,
-					size: 44,
-					lineWidth: 4.5,
-					tint: validity.tint,
-					showsSignalDot: isSelected
+					size: 40,
+					lineWidth: 3.5,
+					tint: validity.tint == NullSignStyle.success ? .white : validity.tint
 				)
-				Image(systemName: cert.revoked ? "xmark" : "checkmark.seal.fill")
-					.font(.system(size: 14, weight: .bold))
-					.foregroundStyle(cert.revoked ? NullSignStyle.danger : Color.white)
+				Text(validity.value)
+					.font(.system(size: 12, weight: .bold, design: .rounded))
+					.monospacedDigit()
+					.minimumScaleFactor(0.6)
+					.lineLimit(1)
+					.frame(width: 28)
 			}
 
-			VStack(alignment: .leading, spacing: 4) {
+			VStack(alignment: .leading, spacing: 2) {
 				Text(title)
-					.font(.system(size: 16, weight: .semibold))
+					.font(.headline)
 					.foregroundStyle(.white)
 					.lineLimit(1)
 				Text(subtitle)
-					.font(NullSignStyle.mono(11, weight: .medium))
+					.font(.subheadline)
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
-				_status(validity)
+				_status
+					.padding(.top, 3)
 			}
 
 			Spacer(minLength: 4)
 
 			if isSelected {
-				NullSignChip(text: "Active", systemImage: "checkmark", tint: NullSignStyle.accent, filled: true)
+				Image(systemName: "checkmark")
+					.font(.body.weight(.semibold))
+					.foregroundStyle(NullSignStyle.accent)
 					.accessibilityLabel("Selected")
 			}
 		}
@@ -57,21 +62,25 @@ struct CertificatesCellView: View {
 	}
 
 	@ViewBuilder
-	private func _status(_ validity: NullSignValidity) -> some View {
-		HStack(spacing: 5) {
+	private var _status: some View {
+		HStack(spacing: 6) {
 			if cert.revoked {
-				NullSignChip(text: "Revoked", systemImage: "xmark", tint: NullSignStyle.danger)
+				Text("Revoked")
+					.font(.caption.weight(.medium))
+					.foregroundStyle(NullSignStyle.danger)
 			} else if let expiration = cert.expiration {
 				let label = NullSignValidity.shortLabel(for: expiration)
-				NullSignChip(text: label.text, systemImage: "clock", tint: label.tint)
+				Text(label.text)
+					.font(.caption)
+					.foregroundStyle(label.tint)
 			}
 
 			if cert.ppQCheck == true {
-				NullSignChip(text: "PPQ", tint: NullSignStyle.muted)
+				NullSignChip(text: "PPQ")
 			}
 
 			if let platforms = data?.Platform, platforms.contains(where: { $0.localizedCaseInsensitiveContains("tvos") }) {
-				NullSignChip(text: "tvOS", systemImage: "appletv.fill", tint: NullSignStyle.crimson, uppercased: false)
+				NullSignChip(text: "tvOS", systemImage: "appletv.fill", tint: NullSignStyle.crimson, filled: true)
 			}
 		}
 	}

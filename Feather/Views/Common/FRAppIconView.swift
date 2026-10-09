@@ -17,7 +17,6 @@ final class FRIconCache {
 	private init() {}
 
 	private let cache = NSCache<NSString, UIImage>()
-	private let glowCache = NSCache<NSString, UIColor>()
 
 	private func key(url: URL, appearance: FRIconAppearance, tint: String, isTinted: Bool, dynamic: Bool) -> NSString {
 		"\(url.path)#\(appearance.rawValue)#\(tint)#\(isTinted)#\(dynamic)" as NSString
@@ -27,21 +26,12 @@ final class FRIconCache {
 		cache.object(forKey: key(url: url, appearance: appearance, tint: tint, isTinted: isTinted, dynamic: dynamic))
 	}
 
-	func glow(for url: URL, appearance: FRIconAppearance, tint: String, isTinted: Bool, dynamic: Bool) -> UIColor? {
-		glowCache.object(forKey: key(url: url, appearance: appearance, tint: tint, isTinted: isTinted, dynamic: dynamic))
-	}
-
-	func insert(_ image: UIImage, glow: UIColor?, for url: URL, appearance: FRIconAppearance, tint: String, isTinted: Bool, dynamic: Bool) {
-		let key = key(url: url, appearance: appearance, tint: tint, isTinted: isTinted, dynamic: dynamic)
-		cache.setObject(image, forKey: key)
-		if let glow {
-			glowCache.setObject(glow, forKey: key)
-		}
+	func insert(_ image: UIImage, for url: URL, appearance: FRIconAppearance, tint: String, isTinted: Bool, dynamic: Bool) {
+		cache.setObject(image, forKey: key(url: url, appearance: appearance, tint: tint, isTinted: isTinted, dynamic: dynamic))
 	}
 
 	func invalidateAll() {
 		cache.removeAllObjects()
-		glowCache.removeAllObjects()
 	}
 }
 
@@ -51,25 +41,20 @@ final class FRIconCache {
 private actor FRIconRenderer {
 	static let shared = FRIconRenderer()
 
-	func render(bundleURL: URL) -> (image: UIImage, glow: UIColor?)? {
+	func render(bundleURL: URL) -> UIImage? {
 		// The bundle can be deleted between a row appearing and this running;
 		// never hand IconServices a bundle that is no longer on disk.
 		guard FileManager.default.fileExists(atPath: bundleURL.appendingPathComponent("Info.plist").path) else {
 			return nil
 		}
 
-		guard let image = tvOSIcon(in: bundleURL) ?? iconTest(bundleURL) else {
-			return nil
-		}
-
-		return (image, averageGlowColor(of: image))
+		return tvOSIcon(in: bundleURL) ?? iconTest(bundleURL)
 	}
 }
 
 @MainActor
 final class FRAppIconLoader: ObservableObject {
 	@Published var image: UIImage?
-	@Published var glow: Color?
 	private var task: Task<Void, Never>?
 	private var representedRequest: String?
 
@@ -80,20 +65,19 @@ final class FRAppIconLoader: ObservableObject {
 
 		if let cached = FRIconCache.shared.image(for: bundleURL, appearance: appearance, tint: tint, isTinted: isTinted, dynamic: dynamic) {
 			self.image = cached
-			self.glow = FRIconCache.shared.glow(for: bundleURL, appearance: appearance, tint: tint, isTinted: isTinted, dynamic: dynamic).map(Color.init(uiColor:))
 			return
 		}
 
 		image = nil
-		glow = nil
 		task = Task {
-			let rendered = await FRIconRenderer.shared.render(bundleURL: bundleURL)
+			let generated = await FRIconRenderer.shared.render(bundleURL: bundleURL)
 
-			guard !Task.isCancelled, representedRequest == request, let rendered else { return }
+			guard !Task.isCancelled, representedRequest == request else { return }
 
-			FRIconCache.shared.insert(rendered.image, glow: rendered.glow, for: bundleURL, appearance: appearance, tint: tint, isTinted: isTinted, dynamic: dynamic)
-			self.image = rendered.image
-			self.glow = rendered.glow.map(Color.init(uiColor:))
+			if let generated {
+				FRIconCache.shared.insert(generated, for: bundleURL, appearance: appearance, tint: tint, isTinted: isTinted, dynamic: dynamic)
+				self.image = generated
+			}
 		}
 	}
 
@@ -148,58 +132,9 @@ private func tvOSIcon(in bundleURL: URL) -> UIImage? {
 		.max(by: { $0.1 < $1.1 })?.0
 }
 
-/// The icon's dominant light, lifted so it reads as a glow on black.
-private func averageGlowColor(of image: UIImage) -> UIColor? {
-	guard let cgImage = image.cgImage else { return nil }
-
-	let side = 12
-	var pixels = [UInt8](repeating: 0, count: side * side * 4)
-	let drawn: Bool = pixels.withUnsafeMutableBytes { buffer in
-		guard let context = CGContext(
-			data: buffer.baseAddress,
-			width: side,
-			height: side,
-			bitsPerComponent: 8,
-			bytesPerRow: side * 4,
-			space: CGColorSpaceCreateDeviceRGB(),
-			bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-		) else {
-			return false
-		}
-		context.interpolationQuality = .medium
-		context.draw(cgImage, in: CGRect(x: 0, y: 0, width: side, height: side))
-		return true
-	}
-	guard drawn else { return nil }
-
-	var red = 0.0, green = 0.0, blue = 0.0, weight = 0.0
-	for index in stride(from: 0, to: pixels.count, by: 4) {
-		let alpha = Double(pixels[index + 3]) / 255
-		guard alpha > 0.1 else { continue }
-		red += Double(pixels[index]) / 255
-		green += Double(pixels[index + 1]) / 255
-		blue += Double(pixels[index + 2]) / 255
-		weight += alpha
-	}
-	guard weight > 0 else { return nil }
-
-	let average = UIColor(red: red / weight, green: green / weight, blue: blue / weight, alpha: 1)
-	var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0, alpha: CGFloat = 0
-	guard average.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha) else {
-		return average
-	}
-	return UIColor(
-		hue: hue,
-		saturation: min(saturation * 1.25, 1),
-		brightness: max(brightness, 0.65),
-		alpha: 1
-	)
-}
-
 struct FRAppIconView: View {
 	private let app: AppInfoPresentable?
 	private let size: CGFloat
-	private let glow: Bool
 
 	@Environment(\.colorScheme) private var colorScheme
 	@StateObject private var loader = FRAppIconLoader()
@@ -208,11 +143,9 @@ struct FRAppIconView: View {
 	@AppStorage("Feather.shouldTintIcons") private var shouldTintIcons: Bool = false
 	@AppStorage("Feather.shouldChangeIconsBasedOffStyle") private var shouldChangeIconsBasedOffStyle: Bool = false
 
-	/// - Parameter glow: Lights the area behind the icon with its own color.
-	init(app: AppInfoPresentable? = nil, size: CGFloat = 87, glow: Bool = false) {
+	init(app: AppInfoPresentable? = nil, size: CGFloat = 87) {
 		self.app = app
 		self.size = size
-		self.glow = glow
 	}
 
 	private var appearance: FRIconAppearance {
@@ -227,23 +160,6 @@ struct FRAppIconView: View {
 			} else {
 				Image("App_Unknown")
 					.appIconStyle(size: size)
-			}
-		}
-		.background {
-			if glow {
-				Circle()
-					.fill(
-						RadialGradient(
-							colors: [(loader.glow ?? NullSignStyle.accent).opacity(0.5), .clear],
-							center: .center,
-							startRadius: 0,
-							endRadius: size * 0.95
-						)
-					)
-					.frame(width: size * 1.9, height: size * 1.9)
-					.offset(y: size * 0.1)
-					.allowsHitTesting(false)
-					.animation(.easeOut(duration: 0.35), value: loader.glow)
 			}
 		}
 		.task(id: "\(app?.uuid ?? "self")\(appearance.rawValue)\(selectedColorHex)\(shouldTintIcons)\(shouldChangeIconsBasedOffStyle)") {

@@ -59,7 +59,7 @@ struct ConfigurationDictView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 28)
 		}
-		.background(NullSignBackdrop(intensity: 0.8))
+		.background(Color.black)
 		.navigationTitle(title)
 		.navigationDestination(isPresented: $_isAddingPresenting) {
 			ConfigurationDictAddView(dataDict: $dataDict)
