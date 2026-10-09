@@ -42,7 +42,7 @@ struct CertificatesView: View {
 							_isAddingPresenting = true
 						} label: {
 							Text("Import Certificate")
-								.frame(maxWidth: .infinity)
+								.frame(minWidth: 160)
 						}
 						.buttonStyle(NullSignPrimaryButtonStyle())
 						.padding(.top, 4)

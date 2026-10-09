@@ -313,6 +313,9 @@ extension LibraryView {
 				}
 				.buttonStyle(NullSignSecondaryButtonStyle())
 			}
+			// Size the stack to its widest label so both buttons hug their
+			// text and still match each other.
+			.fixedSize(horizontal: true, vertical: false)
 			.padding(.top, 4)
 		}
 	}

@@ -61,12 +61,11 @@ struct VariedTabbarView: View {
 	}
 }
 
-/// A floating dock. The active tab becomes a red pill carrying its label;
-/// the others stay as glyphs.
+/// A floating dock of equal-width glyphs. The active tab's glyph turns red;
+/// nothing else changes.
 private struct NullSignDock: View {
 	@Binding var selection: TabEnum
 	let onReselect: (TabEnum) -> Void
-	@Namespace private var _pill
 	@Environment(\.accessibilityReduceMotion) private var _reduceMotion
 
 	var body: some View {
@@ -97,29 +96,12 @@ private struct NullSignDock: View {
 				selection = tab
 			}
 		} label: {
-			HStack(spacing: 6) {
-				Image(systemName: tab.icon)
-					.font(.system(size: 17, weight: .semibold))
-					.symbolVariant(isSelected ? .fill : .none)
-				if isSelected {
-					Text(tab.title)
-						.font(.system(size: 15, weight: .semibold))
-						.lineLimit(1)
-						.fixedSize()
-						.transition(.opacity)
-				}
-			}
-			.foregroundStyle(isSelected ? Color.white : NullSignStyle.muted)
-			.frame(maxWidth: isSelected ? .infinity : 56)
-			.frame(height: 44)
-			.background {
-				if isSelected {
-					Capsule()
-						.fill(NullSignStyle.accent)
-						.matchedGeometryEffect(id: "pill", in: _pill)
-				}
-			}
-			.contentShape(Capsule())
+			Image(systemName: tab.icon)
+				.font(.system(size: 20, weight: .semibold))
+				.foregroundStyle(isSelected ? NullSignStyle.accent : NullSignStyle.muted)
+				.frame(maxWidth: .infinity)
+				.frame(height: 44)
+				.contentShape(Rectangle())
 		}
 		.buttonStyle(.plain)
 		.accessibilityLabel(tab.title)
