@@ -136,6 +136,8 @@ struct LibraryView: View {
 				}
 			}
 			.listStyle(.plain)
+			// Section labels are short rows; don't pad them up to 44pt.
+			.environment(\.defaultMinListRowHeight, 0)
 			.scrollContentBackground(.hidden)
 			.background(NullSignBackdrop())
 			.scrollDismissesKeyboard(.interactively)

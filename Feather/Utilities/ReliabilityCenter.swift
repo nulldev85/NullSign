@@ -17,6 +17,8 @@ final class ReliabilityCenter {
 	private let queue = DispatchQueue(label: "com.nulldev.NullSign.diagnostics")
 	private let fileManager = FileManager.default
 	private let maximumLogSize: UInt64 = 512 * 1024
+	/// Formatters are costly to create and safe to share for formatting.
+	private let timestampFormatter = ISO8601DateFormatter()
 
 	var logURL: URL {
 		fileManager.urls(for: .cachesDirectory, in: .userDomainMask)[0]
@@ -26,7 +28,7 @@ final class ReliabilityCenter {
 	func record(_ stage: SigningStage, _ message: String) {
 		let safeMessage = message
 			.replacingOccurrences(of: NSHomeDirectory(), with: "<app-container>")
-		let line = "\(ISO8601DateFormatter().string(from: Date())) [\(stage.rawValue)] \(safeMessage)\n"
+		let line = "\(timestampFormatter.string(from: Date())) [\(stage.rawValue)] \(safeMessage)\n"
 		Logger.signing.info("[\(stage.rawValue)] \(safeMessage)")
 
 		queue.async {

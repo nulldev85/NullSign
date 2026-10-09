@@ -39,7 +39,7 @@ final class Storage: ObservableObject {
 	/// Saves the main context on its own queue. Safe to call from any thread.
 	func saveContext() {
 		context.perform { [weak self] in
-			self?.saveContextNow()
+			_ = self?.saveContextNow()
 		}
 	}
 
@@ -47,13 +47,17 @@ final class Storage: ObservableObject {
 	///
 	/// A failed save is rolled back: a context holding an object that can
 	/// never validate would otherwise make every later save fail too.
-	func saveContextNow() {
-		guard context.hasChanges else { return }
+	/// - Returns: Whether the context is now in sync with the store.
+	@discardableResult
+	func saveContextNow() -> Bool {
+		guard context.hasChanges else { return true }
 		do {
 			try context.save()
+			return true
 		} catch {
 			Logger.misc.error("Core Data save failed: \(error.localizedDescription)")
 			context.rollback()
+			return false
 		}
 	}
 

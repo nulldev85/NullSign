@@ -81,8 +81,9 @@ extension Storage {
 
 		let directory = getUuidDirectory(for: cert)
 		context.delete(cert)
-		saveContextNow()
-		FileManager.default.removeItemsInBackground(directory.map { [$0] } ?? [])
+		if saveContextNow() {
+			FileManager.default.removeItemsInBackground(directory.map { [$0] } ?? [])
+		}
 	}
 	
 	func getCertificate(for index: Int) -> CertificatePair? {

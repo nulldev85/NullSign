@@ -54,8 +54,11 @@ extension Storage {
 			}
 		}
 
-		saveContextNow()
-		FileManager.default.removeItemsInBackground(directories)
+		// If the save was rolled back the rows are still listed, so their
+		// files must stay too.
+		if saveContextNow() {
+			FileManager.default.removeItemsInBackground(directories)
+		}
 	}
 
 	func getCertificate(from app: AppInfoPresentable) -> CertificatePair? {
