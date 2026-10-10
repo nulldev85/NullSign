@@ -12,6 +12,41 @@ import SwiftUI
 // only altstore repo (ofc) has the correct format.
 // we're going to use a defensive approach and try to parse many repos.
 
+// MARK: - Lossy Arrays
+
+/// Wraps one array element so a failure is captured instead of thrown,
+/// which also keeps the unkeyed container moving to the next element.
+private struct LossyElement<Element: Decodable>: Decodable {
+	let result: Result<Element, Error>
+
+	init(from decoder: any Decoder) throws {
+		result = Result { try Element(from: decoder) }
+	}
+}
+
+private extension KeyedDecodingContainer {
+	/// Decodes an array, dropping elements that fail instead of failing the
+	/// whole source. `firstError` says why the first dropped element failed.
+	func decodeLossyArrayIfPresent<Element: Decodable>(
+		_ type: Element.Type,
+		forKey key: Key
+	) throws -> (elements: [Element], firstError: Error?)? {
+		guard let wrapped = try decodeIfPresent([LossyElement<Element>].self, forKey: key) else {
+			return nil
+		}
+
+		var elements: [Element] = []
+		var firstError: Error?
+		for element in wrapped {
+			switch element.result {
+			case .success(let value): elements.append(value)
+			case .failure(let error): firstError = firstError ?? error
+			}
+		}
+		return (elements, firstError)
+	}
+}
+
 // MARK: - Repository
 
 public struct ASRepository: Sendable, Decodable, Hashable, Identifiable {
@@ -79,11 +114,16 @@ public struct ASRepository: Sendable, Decodable, Hashable, Identifiable {
 			forKey: .userInfo
 		)
 
-		let decodedApps = try container.decodeIfPresent([App].self, forKey: .apps)
+		// One malformed app shouldn't hide the rest of the source. If none
+		// decode, report the first failure (e.g. an AltStore PAL app) instead.
+		let decodedApps = try container.decodeLossyArrayIfPresent(App.self, forKey: .apps)
 		guard
-			let apps = decodedApps,
+			let apps = decodedApps?.elements,
 			!apps.isEmpty
 		else {
+			if let firstError = decodedApps?.firstError {
+				throw firstError
+			}
 			throw NSError(
 				domain: "FeatherSources",
 				code: 44521,
@@ -96,7 +136,7 @@ public struct ASRepository: Sendable, Decodable, Hashable, Identifiable {
 		self.apps = apps
 		self.featuredApps =
 			try container.decodeIfPresent([App.ID].self, forKey: .featuredApps) ?? []
-		self.news = try container.decodeIfPresent([News].self, forKey: .news) ?? []
+		self.news = (try? container.decodeLossyArrayIfPresent(News.self, forKey: .news))?.elements ?? []
 	}
 
 	public enum CodingKeys: String, CodingKey {
@@ -225,10 +265,10 @@ extension ASRepository {
 
 			self.developer = try container.decodeIfPresent(String.self, forKey: .developer)
 
-			self.versions = try container.decodeIfPresent(
-				[Version].self,
+			self.versions = try container.decodeLossyArrayIfPresent(
+				Version.self,
 				forKey: .versions
-			)
+			)?.elements
 
 			self.version = try container.decodeIfPresent(
 				String.self,
@@ -258,7 +298,7 @@ extension ASRepository {
 					forKey: .localizedDescription
 				)
 
-			self.iconURL = try container.decode(URL.self, forKey: .iconURL)
+			self.iconURL = try? container.decodeIfPresent(URL.self, forKey: .iconURL)
 
 			self.tintColor =
 				try container.decodeIfPresent(Color.self, forKey: .tintColor)
@@ -276,10 +316,10 @@ extension ASRepository {
 			self.beta =
 				(try? container.decodeIfPresent(Bool.self, forKey: .beta)) ?? false
 
-			self.permissions = try container.decodeIfPresent(
-				[Permission].self,
+			self.permissions = (try? container.decodeLossyArrayIfPresent(
+				Permission.self,
 				forKey: .permissions
-			)
+			))?.elements
 			self.appPermissions = try container.decodeIfPresent(
 				AppPermissions.self,
 				forKey: .appPermissions
