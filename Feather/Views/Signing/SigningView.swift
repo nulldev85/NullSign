@@ -75,10 +75,12 @@ struct SigningView: View {
 						}
 						Text(_isSigning ? .localized("Signing…") : .localized("Sign App"))
 					}
-					.frame(maxWidth: .infinity)
+					.frame(minWidth: 160)
 				}
 				.buttonStyle(NullSignPrimaryButtonStyle(height: 52, dimsWhenDisabled: false))
 				.animation(_reduceMotion ? nil : .easeInOut(duration: 0.2), value: _isSigning)
+				// The button hugs its label; the fade behind it stays full width.
+				.frame(maxWidth: .infinity)
 				.padding(.horizontal, 16)
 				.padding(.top, 14)
 				.padding(.bottom, 8)
