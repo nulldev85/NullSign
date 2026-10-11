@@ -113,17 +113,171 @@
 // layer stack stored in an imported Apple TV app's Assets.car.
 @interface CUICatalog : NSObject
 - (instancetype)initWithURL:(NSURL *)url error:(NSError **)error;
+- (NSArray<NSString *> *)allImageNames;
+- (NSArray *)imagesWithName:(NSString *)name;
+- (id)imageWithName:(NSString *)name scaleFactor:(CGFloat)scale;
+- (id)imageWithName:(NSString *)name
+		 scaleFactor:(CGFloat)scale
+		 deviceIdiom:(NSInteger)deviceIdiom;
 - (id)_IS_layerStackWithName:(NSString *)name
 					  scale:(CGFloat)scale
 			layoutDirection:(NSInteger)layoutDirection
 				   platform:(NSUInteger)platform;
 - (id)layerStackWithName:(NSString *)name;
 - (id)layerStackWithName:(NSString *)name scaleFactor:(CGFloat)scale;
+- (id)layerStackWithName:(NSString *)name
+			 scaleFactor:(CGFloat)scale
+			 deviceIdiom:(NSInteger)deviceIdiom;
 @end
 
 @interface CUINamedLayerStack : NSObject
 - (CGImageRef)flattenedImage;
+- (UIImage *)flattenedUIImage;
 @end
+
+@interface CUINamedImage : NSObject
+- (CGImageRef)image;
+- (CGImageRef)croppedImage;
+- (CGFloat)scale;
+@end
+
+static UIImage *FRUIImageFromCoreUIImage(id namedImage) {
+	if (!namedImage) return nil;
+
+	if ([namedImage respondsToSelector:@selector(flattenedUIImage)]) {
+		UIImage *flattened = [(CUINamedLayerStack *)namedImage flattenedUIImage];
+		if (flattened.size.width > 1 && flattened.size.height > 1) {
+			return flattened;
+		}
+	}
+	if ([namedImage respondsToSelector:@selector(flattenedImage)]) {
+		CGImageRef flattenedRef = [(CUINamedLayerStack *)namedImage flattenedImage];
+		if (flattenedRef && CGImageGetWidth(flattenedRef) > 1 && CGImageGetHeight(flattenedRef) > 1) {
+			return [UIImage imageWithCGImage:flattenedRef scale:1 orientation:UIImageOrientationUp];
+		}
+	}
+
+	CGImageRef imageRef = nil;
+	if ([namedImage respondsToSelector:@selector(image)]) {
+		imageRef = [(CUINamedImage *)namedImage image];
+	}
+	if (!imageRef && [namedImage respondsToSelector:@selector(croppedImage)]) {
+		imageRef = [(CUINamedImage *)namedImage croppedImage];
+	}
+	if (!imageRef || CGImageGetWidth(imageRef) <= 1 || CGImageGetHeight(imageRef) <= 1) {
+		return nil;
+	}
+
+	// Keep the catalog's pixel dimensions. Imported tvOS artwork can report a
+	// display scale intended for Apple TV rather than the current iPhone.
+	return [UIImage imageWithCGImage:imageRef scale:1 orientation:UIImageOrientationUp];
+}
+
+static UIImage *FRLargestCatalogImage(CUICatalog *catalog, NSString *name) {
+	NSMutableArray *lookups = [NSMutableArray array];
+	if ([catalog respondsToSelector:@selector(imagesWithName:)]) {
+		NSArray *matches = [catalog imagesWithName:name];
+		if ([matches isKindOfClass:NSArray.class]) {
+			[lookups addObjectsFromArray:matches];
+		}
+	}
+
+	if ([catalog respondsToSelector:@selector(imageWithName:scaleFactor:)]) {
+		for (NSNumber *scale in @[@1, @2, @3]) {
+			id match = [catalog imageWithName:name scaleFactor:scale.doubleValue];
+			if (match) [lookups addObject:match];
+		}
+	}
+	if ([catalog respondsToSelector:@selector(imageWithName:scaleFactor:deviceIdiom:)]) {
+		// CoreUI's catalog idioms are not UIKit's enum values. Compiled tvOS
+		// renditions use idiom 3; keep 2/0/6 for older catalogs and marketing
+		// variants encountered in the wild.
+		for (NSNumber *idiom in @[@3, @2, @0, @6]) {
+			for (NSNumber *scale in @[@1, @2, @3]) {
+				id match = [catalog imageWithName:name
+								 scaleFactor:scale.doubleValue
+								 deviceIdiom:idiom.integerValue];
+				if (match) [lookups addObject:match];
+			}
+		}
+	}
+
+	UIImage *largest = nil;
+	NSUInteger largestArea = 0;
+	for (id lookup in lookups) {
+		UIImage *image = FRUIImageFromCoreUIImage(lookup);
+		if (!image.CGImage) continue;
+		NSUInteger area = CGImageGetWidth(image.CGImage) * CGImageGetHeight(image.CGImage);
+		if (area > largestArea) {
+			largest = image;
+			largestArea = area;
+		}
+	}
+	return largest;
+}
+
+static UIImage *FRCompositeTVIconLayers(CUICatalog *catalog, NSString *iconName) {
+	// Xcode compiles a pre-flattened rendition beside the layer-stack
+	// descriptor. It is the most faithful and cheapest representation to use.
+	UIImage *flattened = FRLargestCatalogImage(catalog, iconName);
+	if (flattened) return flattened;
+
+	NSArray<NSString *> *roles = @[@"Background", @"Middle", @"Foreground"];
+	NSMutableArray<UIImage *> *layers = [NSMutableArray array];
+	NSArray<NSString *> *allNames = [catalog respondsToSelector:@selector(allImageNames)]
+		? [catalog allImageNames]
+		: @[];
+
+	for (NSString *role in roles) {
+		NSMutableArray<NSString *> *candidates = [NSMutableArray arrayWithObjects:
+			[NSString stringWithFormat:@"%@/%@/Content", iconName, role],
+			[NSString stringWithFormat:@"%@/%@", iconName, role], nil];
+
+		// Asset catalogs occasionally retain a generator-specific suffix. Match
+		// it by role, but only inside the requested brand asset.
+		NSString *prefix = [iconName stringByAppendingString:@"/"];
+		for (NSString *catalogName in allNames) {
+			if ([catalogName rangeOfString:prefix options:NSCaseInsensitiveSearch].location == 0 &&
+				[catalogName rangeOfString:role options:NSCaseInsensitiveSearch].location != NSNotFound &&
+				![candidates containsObject:catalogName]) {
+				[candidates addObject:catalogName];
+			}
+		}
+
+		UIImage *layer = nil;
+		for (NSString *candidate in candidates) {
+			layer = FRLargestCatalogImage(catalog, candidate);
+			if (layer) break;
+		}
+		if (layer) [layers addObject:layer];
+	}
+
+	if (layers.count == 0) return nil;
+
+	CGSize canvasSize = CGSizeZero;
+	for (UIImage *layer in layers) {
+		if (layer.size.width * layer.size.height > canvasSize.width * canvasSize.height) {
+			canvasSize = layer.size;
+		}
+	}
+	if (canvasSize.width <= 1 || canvasSize.height <= 1) return nil;
+
+	UIGraphicsBeginImageContextWithOptions(canvasSize, NO, 1);
+	for (UIImage *layer in layers) {
+		CGFloat scale = MIN(canvasSize.width / layer.size.width, canvasSize.height / layer.size.height);
+		CGSize size = CGSizeMake(layer.size.width * scale, layer.size.height * scale);
+		CGRect rect = CGRectMake(
+			(canvasSize.width - size.width) / 2,
+			(canvasSize.height - size.height) / 2,
+			size.width,
+			size.height
+		);
+		[layer drawInRect:rect];
+	}
+	UIImage *result = UIGraphicsGetImageFromCurrentImageContext();
+	UIGraphicsEndImageContext();
+	return result;
+}
 
 
 @interface LSApplicationRecordFake : NSObject
@@ -257,12 +411,38 @@ UIImage* tvOSIconTest(NSURL *bundleURL, NSArray<NSString *> *iconNames) {
 		if (!stack && [catalog respondsToSelector:@selector(layerStackWithName:scaleFactor:)]) {
 			stack = [catalog layerStackWithName:name scaleFactor:1];
 		}
+		if (!stack && [catalog respondsToSelector:@selector(layerStackWithName:scaleFactor:deviceIdiom:)]) {
+			for (NSNumber *idiom in @[@3, @2, @0, @6]) {
+				for (NSNumber *scale in @[@1, @2, @3]) {
+					stack = [catalog layerStackWithName:name
+									 scaleFactor:scale.doubleValue
+									 deviceIdiom:idiom.integerValue];
+					if (stack) break;
+				}
+				if (stack) break;
+			}
+		}
+
+		if ([stack respondsToSelector:@selector(flattenedUIImage)]) {
+			UIImage *image = [(CUINamedLayerStack *)stack flattenedUIImage];
+			if (image.size.width > 1 && image.size.height > 1) {
+				return image;
+			}
+		}
 
 		if ([stack respondsToSelector:@selector(flattenedImage)]) {
 			CGImageRef imageRef = [(CUINamedLayerStack *)stack flattenedImage];
 			if (imageRef && CGImageGetWidth(imageRef) > 1 && CGImageGetHeight(imageRef) > 1) {
 				return [UIImage imageWithCGImage:imageRef scale:1 orientation:UIImageOrientationUp];
 			}
+		}
+
+		// Some iOS releases can open a tvOS layer stack but cannot flatten it.
+		// The component renditions are still ordinary CoreUI images, so extract
+		// and composite them directly.
+		UIImage *composited = FRCompositeTVIconLayers(catalog, name);
+		if (composited.size.width > 1 && composited.size.height > 1) {
+			return composited;
 		}
 	}
 
