@@ -87,8 +87,9 @@ final class FRAppIconLoader: ObservableObject {
 }
 
 /// tvOS app icons are layered brand assets rather than the single iOS icon
-/// IconServices expects. Ask the imported bundle's asset catalog for the
-/// declared brand asset first, then fall back to any bundled square artwork.
+/// IconServices expects. Resolve both the tvOS string-style Info.plist entry
+/// and the individual layers compiled into Assets.car, then fall back to loose
+/// artwork for older packages.
 private func tvOSIcon(in bundleURL: URL) -> UIImage? {
 	guard let bundle = Bundle(url: bundleURL) else { return nil }
 	let families = bundle.object(forInfoDictionaryKey: "UIDeviceFamily") as? [Int] ?? []
@@ -98,15 +99,22 @@ private func tvOSIcon(in bundleURL: URL) -> UIImage? {
 	}
 
 	var names: [String] = []
-	if let icons = bundle.object(forInfoDictionaryKey: "CFBundleIcons") as? [String: Any],
-	   let primary = icons["CFBundlePrimaryIcon"] as? [String: Any] {
-		if let name = primary["CFBundleIconName"] as? String { names.append(name) }
-		if let files = primary["CFBundleIconFiles"] as? [String] { names.append(contentsOf: files.reversed()) }
+	if let icons = bundle.object(forInfoDictionaryKey: "CFBundleIcons") as? [String: Any] {
+		// tvOS writes the primary icon as a brand-asset name, unlike the nested
+		// dictionary used by iOS.
+		if let primaryName = icons["CFBundlePrimaryIcon"] as? String {
+			names.append(primaryName)
+		} else if let primary = icons["CFBundlePrimaryIcon"] as? [String: Any] {
+			if let name = primary["CFBundleIconName"] as? String { names.append(name) }
+			if let files = primary["CFBundleIconFiles"] as? [String] {
+				names.append(contentsOf: files.reversed())
+			}
+		}
 	}
-	names.append(contentsOf: ["App Icon", "App Icon - Small", "AppIcon"])
+	names.append(contentsOf: ["App Icon - Small", "App Icon - Large", "App Icon", "AppIcon"])
 
-	for name in names where !name.isEmpty {
-		if let image = UIImage(named: name, in: bundle, compatibleWith: nil), image.size.width > 1 {
+	for name in _uniqueIconNames(names) {
+		if let image = _tvOSAsset(named: name, in: bundle) {
 			return image
 		}
 	}
@@ -119,17 +127,69 @@ private func tvOSIcon(in bundleURL: URL) -> UIImage? {
 	) as? FileManager.DirectoryEnumerator)?
 		.compactMap { $0 as? URL }
 		.filter {
-			$0.pathExtension.lowercased() == "png" &&
-			!$0.lastPathComponent.localizedCaseInsensitiveContains("top shelf") &&
-			!$0.lastPathComponent.localizedCaseInsensitiveContains("topshelf")
+			let path = $0.path.lowercased()
+			let name = $0.lastPathComponent.lowercased()
+			return $0.pathExtension.lowercased() == "png" &&
+				!path.contains("/frameworks/") &&
+				!path.contains("/plugins/") &&
+				!name.contains("top shelf") &&
+				!name.contains("topshelf") &&
+				!name.contains("launch") &&
+				!name.contains("splash")
 		} ?? []
 
 	return candidates
 		.compactMap { url -> (UIImage, CGFloat)? in
-			guard let image = UIImage(contentsOfFile: url.path), image.size.width == image.size.height else { return nil }
-			return (image, image.size.width)
+			guard let image = UIImage(contentsOfFile: url.path), image.size.width > 1, image.size.height > 1 else {
+				return nil
+			}
+			let iconBonus: CGFloat = url.lastPathComponent.localizedCaseInsensitiveContains("icon") ? 1_000_000_000 : 0
+			return (image, iconBonus + image.size.width * image.size.height)
 		}
 		.max(by: { $0.1 < $1.1 })?.0
+}
+
+private func _uniqueIconNames(_ names: [String]) -> [String] {
+	var seen = Set<String>()
+	return names.filter { !$0.isEmpty && seen.insert($0).inserted }
+}
+
+private func _tvOSAsset(named name: String, in bundle: Bundle) -> UIImage? {
+	if let image = UIImage(named: name, in: bundle, compatibleWith: nil), image.size.width > 1 {
+		return image
+	}
+
+	// A compiled .brandassets icon exposes each layer as
+	// "<brand name>/<layer>/Content". UIKit does not synthesize the complete
+	// stack when loading another app's bundle, so composite those renditions.
+	let layerRoles = ["Background", "Middle", "Foreground"]
+	let layers = layerRoles.compactMap { role -> UIImage? in
+		for candidate in ["\(name)/\(role)/Content", "\(name)/\(role)"] {
+			if let image = UIImage(named: candidate, in: bundle, compatibleWith: nil), image.size.width > 1 {
+				return image
+			}
+		}
+		return nil
+	}
+
+	guard !layers.isEmpty else { return nil }
+	guard let canvasSize = layers.max(by: {
+		$0.size.width * $0.size.height < $1.size.width * $1.size.height
+	})?.size else {
+		return nil
+	}
+
+	let format = UIGraphicsImageRendererFormat.default()
+	format.scale = 1
+	format.opaque = false
+	return UIGraphicsImageRenderer(size: canvasSize, format: format).image { _ in
+		for layer in layers {
+			let scale = min(canvasSize.width / layer.size.width, canvasSize.height / layer.size.height)
+			let size = CGSize(width: layer.size.width * scale, height: layer.size.height * scale)
+			let origin = CGPoint(x: (canvasSize.width - size.width) / 2, y: (canvasSize.height - size.height) / 2)
+			layer.draw(in: CGRect(origin: origin, size: size))
+		}
+	}
 }
 
 struct FRAppIconView: View {

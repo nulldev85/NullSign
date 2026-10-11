@@ -1,6 +1,5 @@
 import SwiftUI
 import AltSourceKit
-import NukeUI
 
 struct SourceAppsCellView: View {
 	@AppStorage("Feather.storeCellAppearance") private var _storeCellAppearance: Int = 0
@@ -11,7 +10,12 @@ struct SourceAppsCellView: View {
 
 	var body: some View {
 		HStack(alignment: .center, spacing: 12) {
-			SourceRemoteIcon(url: app.iconURL, size: 56, placeholderSystemImage: "app.dashed")
+			SourceRemoteIcon(
+				url: app.iconURL,
+				relativeTo: sourceURL,
+				size: 56,
+				placeholderSystemImage: "app.dashed"
+			)
 
 			VStack(alignment: .leading, spacing: 2) {
 				Text(app.currentName)

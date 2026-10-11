@@ -94,7 +94,12 @@ struct SourceAppsDetailView: View {
 
 	private var _header: some View {
 		HStack(alignment: .top, spacing: 16) {
-			SourceRemoteIcon(url: app.iconURL, size: 100, placeholderSystemImage: "app.dashed")
+			SourceRemoteIcon(
+				url: app.iconURL,
+				relativeTo: sourceURL,
+				size: 100,
+				placeholderSystemImage: "app.dashed"
+			)
 
 			VStack(alignment: .leading, spacing: 4) {
 				Text(app.currentName)

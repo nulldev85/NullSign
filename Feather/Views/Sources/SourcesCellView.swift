@@ -1,6 +1,5 @@
 import SwiftUI
 import AltSourceKit
-import NukeUI
 
 struct SourcesCellView: View {
 	let source: AltSource
@@ -10,7 +9,11 @@ struct SourcesCellView: View {
 
 	var body: some View {
 		HStack(spacing: 12) {
-			SourceRemoteIcon(url: source.iconURL ?? repository?.currentIconURL, size: 46)
+			SourceRemoteIcon(
+				url: source.iconURL ?? repository?.currentIconURL,
+				relativeTo: source.sourceURL,
+				size: 46
+			)
 
 			VStack(alignment: .leading, spacing: 2) {
 				Text(source.name ?? repository?.name ?? .localized("Unknown"))
@@ -88,12 +91,15 @@ extension SourcesCellView {
 		Button(.localized("Delete"), systemImage: "trash", role: .destructive) {
 			Storage.shared.deleteSource(for: source)
 		}
+		.tint(NullSignStyle.accent)
 	}
 
 	@ViewBuilder
 	private func _contextActions(for source: AltSource) -> some View {
 		Button(.localized("Copy"), systemImage: "doc.on.clipboard") {
 			UIPasteboard.general.string = source.sourceURL?.absoluteString
+			UINotificationFeedbackGenerator().notificationOccurred(.success)
 		}
+		.tint(Color(white: 0.22))
 	}
 }

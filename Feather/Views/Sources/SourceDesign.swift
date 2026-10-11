@@ -1,6 +1,79 @@
 import SwiftUI
 import NukeUI
 
+/// Source feeds in the wild frequently use repository-relative paths or a
+/// GitHub asset page instead of a direct image URL. Resolve those forms in one
+/// place so every source screen displays the same icon.
+enum SourceAssetURL {
+	private static let _inlineImageCache = NSCache<NSString, UIImage>()
+
+	static func resolve(_ url: URL?, relativeTo sourceURL: URL?) -> URL? {
+		guard let url else { return nil }
+		let rawValue = url.absoluteString.trimmingCharacters(in: .whitespacesAndNewlines)
+		guard !rawValue.isEmpty else { return nil }
+
+		if rawValue.hasPrefix("//") {
+			let scheme = sourceURL?.scheme ?? "https"
+			return URL(string: "\(scheme):\(rawValue)").flatMap(_normalizedRemoteURL)
+		}
+
+		if url.scheme == nil {
+			guard let sourceURL else { return nil }
+			return URL(string: rawValue, relativeTo: sourceURL)?.absoluteURL.flatMap(_normalizedRemoteURL)
+		}
+
+		return _normalizedRemoteURL(url)
+	}
+
+	static func inlineImage(from url: URL) -> UIImage? {
+		guard url.scheme?.lowercased() == "data" else { return nil }
+		let key = url.absoluteString as NSString
+		if let cached = _inlineImageCache.object(forKey: key) { return cached }
+
+		let value = url.absoluteString
+		guard let comma = value.firstIndex(of: ",") else { return nil }
+		let metadata = value[value.startIndex..<comma].lowercased()
+		let payload = String(value[value.index(after: comma)...])
+		let data: Data?
+		if metadata.contains(";base64") {
+			data = Data(base64Encoded: payload, options: .ignoreUnknownCharacters)
+		} else if let decoded = payload.removingPercentEncoding {
+			data = decoded.data(using: .utf8)
+		} else {
+			data = nil
+		}
+
+		guard let data, let image = UIImage(data: data) else { return nil }
+		_inlineImageCache.setObject(image, forKey: key)
+		return image
+	}
+
+	private static func _normalizedRemoteURL(_ url: URL) -> URL? {
+		guard var components = URLComponents(url: url, resolvingAgainstBaseURL: true) else { return url }
+
+		// ATS rejects ordinary HTTP image requests. Most source CDNs offer HTTPS,
+		// so prefer it without weakening transport security for the entire app.
+		if components.scheme?.lowercased() == "http" {
+			components.scheme = "https"
+		}
+
+		guard components.host?.lowercased() == "github.com" else {
+			return components.url
+		}
+
+		let path = components.path.split(separator: "/", omittingEmptySubsequences: true)
+		guard path.count >= 5, path[2] == "blob" || path[2] == "raw" else {
+			return components.url
+		}
+
+		var raw = URLComponents()
+		raw.scheme = "https"
+		raw.host = "raw.githubusercontent.com"
+		raw.path = "/" + ([path[0], path[1]] + Array(path.dropFirst(3))).joined(separator: "/")
+		return raw.url
+	}
+}
+
 /// Small, source-specific pieces reused throughout the Apps tab.
 struct SourceSectionLabel: View {
 	let title: String
@@ -85,12 +158,19 @@ struct SourceIconStack: View {
 /// A remote icon in NullSign's app-icon shape with a quiet placeholder.
 struct SourceRemoteIcon: View {
 	let url: URL?
+	var relativeTo: URL? = nil
 	var size: CGFloat = 50
 	var placeholderSystemImage: String = "shippingbox"
 
 	var body: some View {
+		let resolvedURL = SourceAssetURL.resolve(url, relativeTo: relativeTo)
+
 		Group {
-			if let url {
+			if let url = resolvedURL,
+			   let image = SourceAssetURL.inlineImage(from: url) {
+				Image(uiImage: image)
+					.appIconStyle(size: size, isCircle: false, background: NullSignStyle.raisedPanel)
+			} else if let url = resolvedURL {
 				LazyImageIcon(url: url, size: size, placeholderSystemImage: placeholderSystemImage)
 			} else {
 				_placeholder

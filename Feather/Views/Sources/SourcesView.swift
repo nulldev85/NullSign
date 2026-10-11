@@ -119,7 +119,12 @@ struct SourcesView: View {
 	}
 
 	private var _allAppsRow: some View {
-		let iconURLs = _sources.compactMap { $0.iconURL ?? viewModel.sources[$0]?.currentIconURL }
+		let iconURLs = _sources.compactMap { source in
+			SourceAssetURL.resolve(
+				source.iconURL ?? viewModel.sources[source]?.currentIconURL,
+				relativeTo: source.sourceURL
+			)
+		}
 
 		return HStack(spacing: 14) {
 			if iconURLs.isEmpty {

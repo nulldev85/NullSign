@@ -2,7 +2,6 @@ import SwiftUI
 import NimbleViews
 import AltSourceKit
 import NimbleJSON
-import NukeUI
 import OSLog
 
 struct SourcesAddView: View {
@@ -204,7 +203,7 @@ struct SourcesAddView: View {
 
 	private func _featuredRow(url: URL, source: ASRepository) -> some View {
 		HStack(spacing: 12) {
-			_featuredIcon(source.currentIconURL)
+			SourceRemoteIcon(url: source.currentIconURL, relativeTo: url, size: 46)
 			VStack(alignment: .leading, spacing: 2) {
 				Text(source.name ?? .localized("Unknown"))
 					.font(.headline)
@@ -228,29 +227,6 @@ struct SourcesAddView: View {
 			.buttonStyle(NullSignSecondaryButtonStyle(height: 30))
 		}
 		.padding(12)
-	}
-
-	@ViewBuilder
-	private func _featuredIcon(_ url: URL?) -> some View {
-		if let url {
-			LazyImage(url: url) { state in
-				if let image = state.image {
-					image.appIconStyle(size: 46, isCircle: false, background: NullSignStyle.raisedPanel)
-				} else {
-					_featuredPlaceholder
-				}
-			}
-		} else {
-			_featuredPlaceholder
-		}
-	}
-
-	private var _featuredPlaceholder: some View {
-		ZStack {
-			RoundedRectangle(cornerRadius: 11, style: .continuous).fill(NullSignStyle.raisedPanel)
-			Image(systemName: "shippingbox").foregroundStyle(NullSignStyle.accent)
-		}
-		.frame(width: 46, height: 46)
 	}
 
 	private func _saveSource() {
