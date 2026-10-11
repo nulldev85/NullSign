@@ -1,4 +1,5 @@
 import SwiftUI
+import Nuke
 import NukeUI
 
 /// Source feeds in the wild frequently use repository-relative paths or a
@@ -172,7 +173,12 @@ struct SourceRemoteIcon: View {
 				Image(uiImage: image)
 					.appIconStyle(size: size, isCircle: false, background: NullSignStyle.raisedPanel)
 			} else if let url = resolvedURL {
-				LazyImageIcon(url: url, size: size, placeholderSystemImage: placeholderSystemImage)
+				LazyImageIcon(
+					url: url,
+					referer: relativeTo,
+					size: size,
+					placeholderSystemImage: placeholderSystemImage
+				)
 			} else {
 				_placeholder
 			}
@@ -204,11 +210,29 @@ struct SourceIconPlaceholder: View {
 /// A remote image loaded through Nuke, shaped like an app icon.
 struct LazyImageIcon: View {
 	let url: URL
+	var referer: URL? = nil
 	let size: CGFloat
 	var placeholderSystemImage: String = "shippingbox"
 
+	private var request: ImageRequest {
+		var urlRequest = URLRequest(url: url)
+		urlRequest.setValue("image/avif,image/webp,image/apng,image/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
+		urlRequest.setValue(
+			"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
+			forHTTPHeaderField: "User-Agent"
+		)
+		if let referer,
+		   var components = URLComponents(url: referer, resolvingAgainstBaseURL: true) {
+			components.path = "/"
+			components.query = nil
+			components.fragment = nil
+			urlRequest.setValue(components.url?.absoluteString, forHTTPHeaderField: "Referer")
+		}
+		return ImageRequest(urlRequest: urlRequest)
+	}
+
 	var body: some View {
-		LazyImage(url: url) { state in
+		LazyImage(request: request) { state in
 			if let image = state.image {
 				image.appIconStyle(size: size, isCircle: false, background: NullSignStyle.raisedPanel)
 			} else {

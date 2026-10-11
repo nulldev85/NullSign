@@ -45,6 +45,30 @@ private extension KeyedDecodingContainer {
 		}
 		return (elements, firstError)
 	}
+
+	/// Several source generators use `icon`, `image`, or differently-cased URL
+	/// keys instead of AltStore's `iconURL`. Decode those without making the
+	/// whole app entry fail, and repair ordinary unescaped spaces while here.
+	func decodeFlexibleURL(forKeys keys: [Key]) -> URL? {
+		for key in keys where contains(key) {
+			if let url = try? decode(URL.self, forKey: key) {
+				return url
+			}
+
+			guard let value = try? decode(String.self, forKey: key) else { continue }
+			let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+			guard !trimmed.isEmpty else { continue }
+
+			if let url = URL(string: trimmed) {
+				return url
+			}
+			if let escaped = trimmed.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed),
+			   let url = URL(string: escaped) {
+				return url
+			}
+		}
+		return nil
+	}
 }
 
 // MARK: - Repository
@@ -85,10 +109,10 @@ public struct ASRepository: Sendable, Decodable, Hashable, Identifiable {
 			forKey: .description
 		)
 		self.website = try container.decodeIfPresent(URL.self, forKey: .website)
-		self.iconURL = try container.decodeIfPresent(
-			URL.self,
-			forKey: .iconURL
-		)
+		self.iconURL = container.decodeFlexibleURL(forKeys: [
+			.iconURL, .iconUrl, .iconSnake, .icon, .imageURL, .imageUrl, .imageSnake, .image,
+			.logoURL, .logoUrl, .logoSnake, .logo
+		])
 		self.headerURL = try container.decodeIfPresent(
 			URL.self,
 			forKey: .headerURL
@@ -153,6 +177,8 @@ public struct ASRepository: Sendable, Decodable, Hashable, Identifiable {
 		     apps,
 		     featuredApps,
 		     news
+		case iconUrl, icon, imageURL, imageUrl, image, logoURL, logoUrl, logo
+		case iconSnake = "icon_url", imageSnake = "image_url", logoSnake = "logo_url"
 	}
 	
 	public var currentIconURL: URL? {
@@ -298,7 +324,11 @@ extension ASRepository {
 					forKey: .localizedDescription
 				)
 
-			self.iconURL = try? container.decodeIfPresent(URL.self, forKey: .iconURL)
+			self.iconURL = container.decodeFlexibleURL(forKeys: [
+				.iconURL, .iconUrl, .iconSnake, .icon, .imageURL, .imageUrl, .imageSnake, .image,
+				.artworkURL, .artworkUrl, .artworkSnake, .artwork,
+				.logoURL, .logoUrl, .logoSnake, .logo
+			])
 
 			self.tintColor =
 				try container.decodeIfPresent(Color.self, forKey: .tintColor)
@@ -392,6 +422,10 @@ extension ASRepository {
 			case permissions, appPermissions
 			case screenshots, screenshotURLs
 			case marketplaceID
+			case iconUrl, icon, imageURL, imageUrl, image
+			case artworkURL, artworkUrl, artwork, logoURL, logoUrl, logo
+			case iconSnake = "icon_url", imageSnake = "image_url"
+			case artworkSnake = "artwork_url", logoSnake = "logo_url"
 		}
 		
 		public var currentAppVersion: Version? {

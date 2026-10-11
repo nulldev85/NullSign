@@ -12,6 +12,7 @@
 @import ObjectiveC;
 
 UIImage* iconTest(NSURL *bundleURL);
+UIImage* tvOSIconTest(NSURL *bundleURL, NSArray<NSString *> *iconNames);
 static CGColorRef FRCreateCGColorFromHex(void);
 
 #endif /* iconPoc_h */

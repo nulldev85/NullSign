@@ -108,6 +108,23 @@
 - (instancetype)init;
 @end
 
+// tvOS app icons are compiled as CoreUI layer stacks. UIKit's public image
+// loader only searches the current iOS app's catalog, so it cannot flatten a
+// layer stack stored in an imported Apple TV app's Assets.car.
+@interface CUICatalog : NSObject
+- (instancetype)initWithURL:(NSURL *)url error:(NSError **)error;
+- (id)_IS_layerStackWithName:(NSString *)name
+					  scale:(CGFloat)scale
+			layoutDirection:(NSInteger)layoutDirection
+				   platform:(NSUInteger)platform;
+- (id)layerStackWithName:(NSString *)name;
+- (id)layerStackWithName:(NSString *)name scaleFactor:(CGFloat)scale;
+@end
+
+@interface CUINamedLayerStack : NSObject
+- (CGImageRef)flattenedImage;
+@end
+
 
 @interface LSApplicationRecordFake : NSObject
 @property NSBundle* bundle;
@@ -188,6 +205,69 @@
     return 4;
 }
 @end
+
+
+UIImage* tvOSIconTest(NSURL *bundleURL, NSArray<NSString *> *iconNames) {
+	NSURL *catalogURL = [bundleURL URLByAppendingPathComponent:@"Assets.car"];
+	if (![[NSFileManager defaultManager] fileExistsAtPath:catalogURL.path]) {
+		return nil;
+	}
+
+	// The platform-aware layer-stack helpers are supplied by IconServices on
+	// iOS, while CUICatalog itself lives in CoreUI.
+	dlopen("/System/Library/PrivateFrameworks/CoreUI.framework/CoreUI", RTLD_LAZY | RTLD_GLOBAL);
+	dlopen("/System/Library/PrivateFrameworks/IconServices.framework/IconServices", RTLD_LAZY | RTLD_GLOBAL);
+
+	Class catalogClass = objc_lookUpClass("CUICatalog");
+	if (!catalogClass) {
+		return nil;
+	}
+
+	NSError *error = nil;
+	CUICatalog *catalog = [[catalogClass alloc] initWithURL:catalogURL error:&error];
+	if (!catalog || error) {
+		return nil;
+	}
+
+	// IconServices platforms are bit flags: 4 is iOS and 8 is tvOS. Keep the
+	// native and neutral values as compatibility fallbacks across iOS releases.
+	NSArray<NSNumber *> *platforms = @[@8, @4, @0];
+	NSArray<NSNumber *> *scales = @[@0, @1, @2, @3];
+	SEL platformSelector = @selector(_IS_layerStackWithName:scale:layoutDirection:platform:);
+
+	for (NSString *name in iconNames) {
+		id stack = nil;
+
+		if ([catalog respondsToSelector:platformSelector]) {
+			for (NSNumber *platform in platforms) {
+				for (NSNumber *scale in scales) {
+					stack = [catalog _IS_layerStackWithName:name
+											 scale:scale.doubleValue
+								   layoutDirection:0
+										platform:platform.unsignedIntegerValue];
+					if (stack) break;
+				}
+				if (stack) break;
+			}
+		}
+
+		if (!stack && [catalog respondsToSelector:@selector(layerStackWithName:)]) {
+			stack = [catalog layerStackWithName:name];
+		}
+		if (!stack && [catalog respondsToSelector:@selector(layerStackWithName:scaleFactor:)]) {
+			stack = [catalog layerStackWithName:name scaleFactor:1];
+		}
+
+		if ([stack respondsToSelector:@selector(flattenedImage)]) {
+			CGImageRef imageRef = [(CUINamedLayerStack *)stack flattenedImage];
+			if (imageRef && CGImageGetWidth(imageRef) > 1 && CGImageGetHeight(imageRef) > 1) {
+				return [UIImage imageWithCGImage:imageRef scale:1 orientation:UIImageOrientationUp];
+			}
+		}
+	}
+
+	return nil;
+}
 
 
 UIImage* iconTest(NSURL *bundleURL) {

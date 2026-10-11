@@ -11,7 +11,7 @@ struct SourceAppsCellView: View {
 	var body: some View {
 		HStack(alignment: .center, spacing: 12) {
 			SourceRemoteIcon(
-				url: app.iconURL,
+				url: app.iconURL ?? source.currentIconURL,
 				relativeTo: sourceURL,
 				size: 56,
 				placeholderSystemImage: "app.dashed"

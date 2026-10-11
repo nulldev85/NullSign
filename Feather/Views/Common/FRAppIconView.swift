@@ -112,8 +112,16 @@ private func tvOSIcon(in bundleURL: URL) -> UIImage? {
 		}
 	}
 	names.append(contentsOf: ["App Icon - Small", "App Icon - Large", "App Icon", "AppIcon"])
+	let uniqueNames = _uniqueIconNames(names)
 
-	for name in _uniqueIconNames(names) {
+	// Read and flatten the tvOS layer stack directly from the imported app's
+	// Assets.car. Public UIImage lookup cannot cross from iOS into another
+	// bundle's tvOS brand assets.
+	if let image = tvOSIconTest(bundleURL, uniqueNames), image.size.width > 1 {
+		return image
+	}
+
+	for name in uniqueNames {
 		if let image = _tvOSAsset(named: name, in: bundle) {
 			return image
 		}
