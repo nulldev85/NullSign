@@ -19,7 +19,8 @@ enum SourceAssetURL {
 
 		if url.scheme == nil {
 			guard let sourceURL else { return nil }
-			return URL(string: rawValue, relativeTo: sourceURL)?.absoluteURL.flatMap(_normalizedRemoteURL)
+			guard let resolvedURL = URL(string: rawValue, relativeTo: sourceURL)?.absoluteURL else { return nil }
+			return _normalizedRemoteURL(resolvedURL)
 		}
 
 		return _normalizedRemoteURL(url)
