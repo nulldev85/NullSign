@@ -12,7 +12,7 @@ struct SigningSectionHeader: View {
 
 			if let detail {
 				Text(detail)
-					.font(.footnote)
+					.font(.iosevka(.footnote))
 					.foregroundStyle(NullSignStyle.faint)
 					.fixedSize(horizontal: false, vertical: true)
 			}
@@ -43,9 +43,9 @@ struct SigningEmptyState: View {
 				.font(.system(size: 30, weight: .regular))
 				.foregroundStyle(NullSignStyle.faint)
 			Text(title)
-				.font(.headline)
+				.font(.iosevka(.headline))
 			Text(detail)
-				.font(.subheadline)
+				.font(.iosevka(.subheadline))
 				.foregroundStyle(NullSignStyle.muted)
 				.multilineTextAlignment(.center)
 				.fixedSize(horizontal: false, vertical: true)

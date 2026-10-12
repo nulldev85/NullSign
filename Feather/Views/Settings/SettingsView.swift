@@ -43,7 +43,7 @@ struct NullSignSettingsSection<Content: View>: View {
 
 			if let detail {
 				Text(detail)
-					.font(.footnote)
+					.font(.iosevka(.footnote))
 					.foregroundStyle(NullSignStyle.faint)
 					.fixedSize(horizontal: false, vertical: true)
 					.padding(.horizontal, 4)
@@ -79,7 +79,7 @@ struct NullSignSettingsRow: View {
 					.foregroundStyle(.white)
 				if let detail {
 					Text(detail)
-						.font(.footnote)
+						.font(.iosevka(.footnote))
 						.foregroundStyle(NullSignStyle.muted)
 						.fixedSize(horizontal: false, vertical: true)
 				}
@@ -126,17 +126,17 @@ struct NullSignSettingsIntro: View {
 			VStack(alignment: .leading, spacing: 4) {
 				HStack(alignment: .firstTextBaseline, spacing: 8) {
 					Text(title)
-						.font(.headline)
+						.font(.iosevka(.headline))
 						.lineLimit(2)
 					Spacer(minLength: 8)
 					if let status {
 						Text(status)
-							.font(.footnote.weight(.semibold))
+							.font(.iosevka(.footnote, weight: .semibold))
 							.foregroundStyle(statusColor)
 					}
 				}
 				Text(detail)
-					.font(.subheadline)
+					.font(.iosevka(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 					.fixedSize(horizontal: false, vertical: true)
 			}
@@ -240,7 +240,7 @@ struct SettingsView: View {
 					}
 
 					Text("Apps are signed on this device. Certificates and passwords never leave it.")
-						.font(.footnote)
+						.font(.iosevka(.footnote))
 						.foregroundStyle(NullSignStyle.faint)
 						.multilineTextAlignment(.center)
 						.padding(.horizontal, 24)

@@ -98,7 +98,7 @@ struct SigningView: View {
 				NBToolbarButton(role: .dismiss)
 				ToolbarItem(placement: .principal) {
 					Text("Sign App")
-						.font(.headline)
+						.font(.iosevka(.headline))
 				}
 				NBToolbarButton(
 					.localized("Reset"),
@@ -244,9 +244,9 @@ extension SigningView {
 						SigningRowIcon(systemImage: "checkmark.seal", tint: NullSignStyle.warning)
 						VStack(alignment: .leading, spacing: 2) {
 							Text(.localized("Choose Certificate"))
-								.font(.system(size: 16, weight: .semibold))
+								.font(.iosevka(size: 16, weight: .semibold))
 							Text("No compatible certificate selected")
-								.font(.caption)
+								.font(.iosevka(.caption))
 								.foregroundStyle(NullSignStyle.muted)
 						}
 					}
@@ -284,7 +284,7 @@ extension SigningView {
 			SigningSectionHeader(title: "Tweaks & Injection")
 		} footer: {
 			Text("NullSign adds ElleKit when an imported tweak needs a hooking runtime. Enable replacement only when the app already contains Cydia Substrate and you want to swap it for ElleKit.")
-				.font(.footnote)
+				.font(.iosevka(.footnote))
 				.foregroundStyle(NullSignStyle.faint)
 		}
 	}

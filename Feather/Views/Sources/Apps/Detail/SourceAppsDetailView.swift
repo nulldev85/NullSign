@@ -52,7 +52,7 @@ struct SourceAppsDetailView: View {
 				if let description = app.localizedDescription, !description.isEmpty {
 					_detailSection(.localized("About")) {
 						ExpandableText(text: description, lineLimit: 5)
-							.font(.subheadline)
+							.font(.iosevka(.subheadline))
 							.foregroundStyle(NullSignStyle.muted)
 							.frame(maxWidth: .infinity, alignment: .leading)
 							.sourcePanel(padding: 16)
@@ -104,19 +104,19 @@ struct SourceAppsDetailView: View {
 
 			VStack(alignment: .leading, spacing: 4) {
 				Text(app.currentName)
-					.font(.title2.weight(.bold))
+					.font(.iosevka(.title2, weight: .bold))
 					.lineLimit(2)
 
 				if let developer = app.developer, !developer.isEmpty {
 					Text(developer)
-						.font(.subheadline)
+						.font(.iosevka(.subheadline))
 						.foregroundStyle(NullSignStyle.muted)
 						.lineLimit(1)
 				}
 
 				if let summary = app.subtitle ?? app.description, !summary.isEmpty {
 					Text(summary)
-						.font(.footnote)
+						.font(.iosevka(.footnote))
 						.foregroundStyle(NullSignStyle.faint)
 						.lineLimit(2)
 				}
@@ -169,7 +169,7 @@ struct SourceAppsDetailView: View {
 					.multilineTextAlignment(.trailing)
 					.textSelection(.enabled)
 			}
-			.font(.subheadline)
+			.font(.iosevka(.subheadline))
 			.padding(.horizontal, 14)
 			.padding(.vertical, 12)
 			if !isLast {
@@ -199,7 +199,7 @@ struct SourceAppsDetailView: View {
 
 			if permissions.entitlements?.isEmpty != false && permissions.privacy?.isEmpty != false {
 				Text(.localized("No permissions are listed by this source."))
-					.font(.subheadline)
+					.font(.iosevka(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 			}
 		}
@@ -209,9 +209,9 @@ struct SourceAppsDetailView: View {
 		HStack(alignment: .top, spacing: 12) {
 			NullSignIconTile(systemImage: icon)
 			VStack(alignment: .leading, spacing: 3) {
-				Text(title).font(.subheadline.weight(.semibold))
+				Text(title).font(.iosevka(.subheadline, weight: .semibold))
 				Text(value)
-					.font(.footnote)
+					.font(.iosevka(.footnote))
 					.foregroundStyle(NullSignStyle.muted)
 					.fixedSize(horizontal: false, vertical: true)
 			}

@@ -43,9 +43,9 @@ extension SigningAlternativeIconView {
 						SigningRowIcon(systemImage: "app.dashed")
 						VStack(alignment: .leading, spacing: 3) {
 							Text("\(_alternateIcons.count) alternate \(_alternateIcons.count == 1 ? "icon" : "icons")")
-								.font(.headline)
+								.font(.iosevka(.headline))
 							Text(isModifing ? "Choose the icon to use for this signed app." : "Icons declared by this app's Info.plist.")
-								.font(.caption)
+								.font(.iosevka(.caption))
 								.foregroundStyle(.secondary)
 						}
 						Spacer(minLength: 0)
@@ -100,7 +100,7 @@ extension SigningAlternativeIconView {
 			}
 			
 			Text(icon.name)
-				.font(.body.weight(.medium))
+				.font(.iosevka(.body, weight: .medium))
 				.foregroundColor(.primary)
 				.lineLimit(2)
 

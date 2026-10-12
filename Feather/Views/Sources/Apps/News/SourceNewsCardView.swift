@@ -10,14 +10,14 @@ struct SourceNewsCardView: View {
 			_newsImage
 			VStack(alignment: .leading, spacing: 6) {
 				Text(new.title)
-					.font(.subheadline.weight(.semibold))
+					.font(.iosevka(.subheadline, weight: .semibold))
 					.foregroundStyle(.primary)
 					.lineLimit(3)
 					.multilineTextAlignment(.leading)
 				Spacer(minLength: 0)
 				if let date = new.date?.date {
 					Text(date.formatted(date: .abbreviated, time: .omitted))
-						.font(.caption2)
+						.font(.iosevka(.caption2))
 						.foregroundStyle(.secondary)
 				}
 			}

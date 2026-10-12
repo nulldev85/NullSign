@@ -32,6 +32,7 @@ struct NullSignApp: App {
 			.background(Color.black.ignoresSafeArea())
 			.preferredColorScheme(.dark)
 			.tint(.white)
+			.environment(\.font, .iosevka(.body))
 			.onReceive(NotificationCenter.default.publisher(for: .heartbeatInvalidHost)) { _ in
 				DispatchQueue.main.async {
 					UIAlertController.showAlertWithOk(

@@ -37,7 +37,7 @@ public struct NBPillView: View {
 				.font(.caption)
 				.foregroundStyle(color.opacity(0.9))
 			Text(title)
-				.font(.caption.bold())
+				.font(.iosevka(.caption, weight: .bold))
 		}
 		.frame(maxWidth: .infinity)
 		.padding(.vertical, 10)

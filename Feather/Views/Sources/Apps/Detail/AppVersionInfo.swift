@@ -26,20 +26,20 @@ struct AppVersionInfo: View {
 		VStack(alignment: .leading, spacing: 9) {
 			HStack {
 				Text("Version \(version)")
-					.font(.subheadline.weight(.semibold))
+					.font(.iosevka(.subheadline, weight: .semibold))
 					.foregroundStyle(.primary)
                 
 				Spacer()
                 
 				if let date {
 					Text(date.formatted(.relative(presentation: .named)))
-						.font(.caption)
+						.font(.iosevka(.caption))
 						.foregroundStyle(.secondary)
 				}
 			}
             
 			ExpandableText(text: description, lineLimit: 3)
-				.font(.subheadline)
+				.font(.iosevka(.subheadline))
 				.foregroundStyle(.secondary)
 		}
 		.frame(maxWidth: .infinity, alignment: .leading)

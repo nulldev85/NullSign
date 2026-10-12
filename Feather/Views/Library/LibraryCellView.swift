@@ -57,19 +57,19 @@ struct LibraryCellView: View {
 			VStack(alignment: .leading, spacing: 2) {
 				HStack(alignment: .firstTextBaseline, spacing: 6) {
 					Text(app.name ?? .localized("Unknown"))
-						.font(.headline)
+						.font(.iosevka(.headline))
 						.foregroundStyle(.white)
 						.lineLimit(1)
 					if let version = app.version, !version.isEmpty {
 						Text(version)
-							.font(.subheadline)
+							.font(.iosevka(.subheadline))
 							.foregroundStyle(NullSignStyle.faint)
 							.lineLimit(1)
 							.layoutPriority(-1)
 					}
 				}
 				Text(app.identifier ?? .localized("Unknown"))
-					.font(.subheadline)
+					.font(.iosevka(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
 				HStack(spacing: 6) {
@@ -181,24 +181,24 @@ extension LibraryCellView {
 	private var _status: some View {
 		if _update != nil {
 			Text("Update available")
-				.font(.caption.weight(.medium))
+				.font(.iosevka(.caption, weight: .medium))
 				.foregroundStyle(NullSignStyle.accent)
 		} else if app.isSigned {
 			if let certificate = Storage.shared.getCertificate(from: app) {
 				if certificate.revoked {
 					Text(.localized("Revoked"))
-						.font(.caption.weight(.medium))
+						.font(.iosevka(.caption, weight: .medium))
 						.foregroundStyle(NullSignStyle.danger)
 				} else if let expiration = certificate.expiration {
 					let label = NullSignValidity.shortLabel(for: expiration)
 					Text(label.text)
-						.font(.caption)
+						.font(.iosevka(.caption))
 						.foregroundStyle(label.tint)
 				}
 			}
 		} else {
 			Text("Not signed")
-				.font(.caption)
+				.font(.iosevka(.caption))
 				.foregroundStyle(NullSignStyle.faint)
 		}
 	}

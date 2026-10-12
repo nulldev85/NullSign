@@ -60,7 +60,7 @@ struct SigningPropertiesView: View {
 
 				if text != initialValue {
 					Label("Unsaved change", systemImage: "circle.fill")
-						.font(.caption)
+						.font(.iosevka(.caption))
 						.foregroundStyle(NullSignStyle.accent)
 				}
 			}

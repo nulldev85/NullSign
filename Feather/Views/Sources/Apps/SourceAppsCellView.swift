@@ -20,17 +20,17 @@ struct SourceAppsCellView: View {
 
 			VStack(alignment: .leading, spacing: 2) {
 				Text(app.currentName)
-					.font(.headline)
+					.font(.iosevka(.headline))
 					.foregroundStyle(.white)
 					.lineLimit(1)
 
 				Text(Self.appDescription(app: app))
-					.font(.subheadline)
+					.font(.iosevka(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(_storeCellAppearance == 0 ? 1 : 2)
 
 				Text(_footnote)
-					.font(.caption)
+					.font(.iosevka(.caption))
 					.foregroundStyle(NullSignStyle.faint)
 					.lineLimit(1)
 					.padding(.top, 1)

@@ -60,7 +60,7 @@ struct CertificatesAddView: View {
 						"Certificate files and passwords are stored locally and are never uploaded by NullSign.",
 						systemImage: "lock.fill"
 					)
-					.font(.footnote)
+					.font(.iosevka(.footnote))
 					.foregroundStyle(.secondary)
 					.padding(.horizontal, 4)
 				}
@@ -119,7 +119,7 @@ extension CertificatesAddView {
 				VStack(alignment: .leading, spacing: 2) {
 					Text(title)
 					Text(file?.lastPathComponent ?? "No file selected")
-						.font(.footnote)
+						.font(.iosevka(.footnote))
 						.foregroundStyle(NullSignStyle.muted)
 						.lineLimit(1)
 						.truncationMode(.middle)

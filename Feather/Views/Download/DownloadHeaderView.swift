@@ -56,7 +56,7 @@ struct DownloadItemView: View {
 
 			VStack(alignment: .leading, spacing: 2) {
 				Text(download.fileName)
-					.font(.subheadline.weight(.semibold))
+					.font(.iosevka(.subheadline, weight: .semibold))
 					.lineLimit(1)
 
 				HStack(spacing: 6) {
@@ -67,7 +67,7 @@ struct DownloadItemView: View {
 						Text("Preparing")
 					}
 				}
-				.font(.caption)
+				.font(.iosevka(.caption))
 				.monospacedDigit()
 				.foregroundStyle(NullSignStyle.muted)
 				.lineLimit(1)

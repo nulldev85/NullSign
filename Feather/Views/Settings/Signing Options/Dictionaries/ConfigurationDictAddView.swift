@@ -34,7 +34,7 @@ struct ConfigurationDictAddView: View {
 				NullSignSettingsSection("Rule") {
 					VStack(alignment: .leading, spacing: 6) {
 						Text("Match")
-							.font(.caption.weight(.semibold))
+							.font(.iosevka(.caption, weight: .semibold))
 							.foregroundStyle(.secondary)
 						TextField("Original value", text: $_newKey)
 							.textInputAutocapitalization(.never)
@@ -45,7 +45,7 @@ struct ConfigurationDictAddView: View {
 
 					VStack(alignment: .leading, spacing: 6) {
 						Text("Replace With")
-							.font(.caption.weight(.semibold))
+							.font(.iosevka(.caption, weight: .semibold))
 							.foregroundStyle(.secondary)
 						TextField("New value", text: $_newValue)
 							.textInputAutocapitalization(.never)

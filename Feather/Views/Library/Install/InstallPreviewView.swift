@@ -50,7 +50,7 @@ struct InstallPreviewView: View {
 				VStack(alignment: .leading, spacing: 6) {
 					HStack(spacing: 7) {
 						Text(app.name ?? "App")
-							.font(.headline)
+							.font(.iosevka(.headline))
 							.lineLimit(1)
 						PlatformBadge(platform: app.platform)
 					}
@@ -132,7 +132,7 @@ struct InstallPreviewView: View {
 	@ViewBuilder
 	private func _status() -> some View {
 		Label(viewModel.statusLabel, systemImage: viewModel.statusImage)
-			.font(.footnote.weight(.semibold))
+			.font(.iosevka(.footnote, weight: .semibold))
 			.foregroundStyle(viewModel.isCompleted ? NullSignStyle.success : NullSignStyle.muted)
 			.animation(.smooth, value: viewModel.statusImage)
 	}

@@ -213,7 +213,7 @@ extension ConfigurationView {
 		HStack(spacing: 12) {
 			NullSignIconTile(systemImage: systemImage)
 			Text(title)
-				.font(.system(size: 16, weight: .semibold))
+				.font(.iosevka(size: 16, weight: .semibold))
 			Spacer()
 			Picker(title, selection: selection) {
 				ForEach(values, id: \.self) { value in
@@ -236,10 +236,10 @@ extension ConfigurationView {
 				NullSignIconTile(systemImage: systemImage)
 				VStack(alignment: .leading, spacing: detail == nil ? 0 : 2) {
 					Text(title)
-						.font(.system(size: 16, weight: .semibold))
+						.font(.iosevka(size: 16, weight: .semibold))
 					if let detail {
 						Text(detail)
-							.font(.caption)
+							.font(.iosevka(.caption))
 							.foregroundStyle(NullSignStyle.muted)
 					}
 				}

@@ -64,11 +64,11 @@ struct NullSignSectionLabel: View {
 	var body: some View {
 		HStack(alignment: .firstTextBaseline, spacing: 6) {
 			Text(title)
-				.font(prominent ? Font.title3.weight(.bold) : Font.subheadline.weight(.semibold))
+				.font(prominent ? .iosevka(.title3, weight: .bold) : .iosevka(.subheadline, weight: .semibold))
 				.foregroundStyle(prominent ? Color.white : NullSignStyle.muted)
 			if let count {
 				Text(verbatim: "\(count)")
-					.font(prominent ? Font.title3.weight(.semibold) : Font.subheadline)
+					.font(prominent ? .iosevka(.title3, weight: .semibold) : .iosevka(.subheadline))
 					.foregroundStyle(NullSignStyle.faint)
 			}
 			Spacer(minLength: 0)
@@ -110,7 +110,7 @@ struct NullSignChip: View {
 					.font(.system(size: 9, weight: .semibold))
 			}
 			Text(text)
-				.font(.caption2.weight(.semibold))
+				.font(.iosevka(.caption2, weight: .semibold))
 				.lineLimit(1)
 		}
 		.foregroundStyle(filled ? Color.white : tint)
@@ -165,7 +165,7 @@ struct NullSignPrimaryButtonStyle: ButtonStyle {
 
 		var body: some View {
 			configuration.label
-				.font(.system(size: height < 40 ? 15 : 17, weight: .semibold))
+				.font(.iosevka(size: height < 40 ? 15 : 17, weight: .semibold))
 				.foregroundStyle(.white)
 				.padding(.horizontal, height < 40 ? 14 : 20)
 				.frame(minHeight: height)
@@ -191,7 +191,7 @@ struct NullSignSecondaryButtonStyle: ButtonStyle {
 
 		var body: some View {
 			configuration.label
-				.font(.system(size: height < 40 ? 15 : 17, weight: .semibold))
+				.font(.iosevka(size: height < 40 ? 15 : 17, weight: .semibold))
 				.foregroundStyle(tint)
 				.padding(.horizontal, height < 40 ? 14 : 20)
 				.frame(minHeight: height)
@@ -267,7 +267,7 @@ struct NullSignSegmentedControl<Value: Hashable>: View {
 								.foregroundStyle(NullSignStyle.faint)
 						}
 					}
-					.font(.subheadline.weight(.semibold))
+					.font(.iosevka(.subheadline, weight: .semibold))
 					.lineLimit(1)
 					.frame(maxWidth: .infinity)
 					.frame(height: 32)
@@ -318,10 +318,10 @@ struct NullSignEmptyState<Actions: View>: View {
 
 			VStack(spacing: 6) {
 				Text(title)
-					.font(.title3.weight(.semibold))
+					.font(.iosevka(.title3, weight: .semibold))
 					.multilineTextAlignment(.center)
 				Text(message)
-					.font(.subheadline)
+					.font(.iosevka(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 					.multilineTextAlignment(.center)
 					.fixedSize(horizontal: false, vertical: true)
@@ -524,13 +524,13 @@ struct NullSignIdentityCard: View {
 				)
 				VStack(spacing: -2) {
 					Text(validity.value)
-						.font(.system(size: 17, weight: .bold, design: .rounded))
+						.font(.iosevka(size: 17, weight: .bold))
 						.monospacedDigit()
 						.minimumScaleFactor(0.6)
 						.lineLimit(1)
 					if !validity.unit.isEmpty {
 						Text(validity.unit)
-							.font(.system(size: 10, weight: .medium))
+							.font(.iosevka(size: 10, weight: .medium))
 							.foregroundStyle(NullSignStyle.muted)
 					}
 				}
@@ -539,10 +539,10 @@ struct NullSignIdentityCard: View {
 
 			VStack(alignment: .leading, spacing: 3) {
 				Text(_title)
-					.font(.headline)
+					.font(.iosevka(.headline))
 					.lineLimit(1)
 				Text(_subtitle)
-					.font(.subheadline)
+					.font(.iosevka(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
 				HStack(spacing: 6) {
@@ -550,7 +550,7 @@ struct NullSignIdentityCard: View {
 						.fill(validity.tint)
 						.frame(width: 7, height: 7)
 					Text(_statusLine(validity))
-						.font(.subheadline)
+						.font(.iosevka(.subheadline))
 						.foregroundStyle(NullSignStyle.muted)
 						.lineLimit(1)
 				}
@@ -607,11 +607,11 @@ struct NullSignSigningHeader<IconMenu: View>: View {
 
 			VStack(spacing: 4) {
 				Text(app.name ?? "Unknown App")
-					.font(.title2.weight(.bold))
+					.font(.iosevka(.title2, weight: .bold))
 					.multilineTextAlignment(.center)
 					.lineLimit(2)
 				Text(app.identifier ?? "No bundle identifier")
-					.font(.subheadline)
+					.font(.iosevka(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
 			}

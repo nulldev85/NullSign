@@ -54,9 +54,9 @@ struct ServerView: View {
 				Toggle(isOn: $_ipFix) {
 					VStack(alignment: .leading, spacing: 2) {
 						Text("Use localhost only")
-							.font(.body.weight(.medium))
+							.font(.iosevka(.body, weight: .medium))
 						Text("Avoid exposing the temporary server on your LAN")
-							.font(.caption)
+							.font(.iosevka(.caption))
 							.foregroundStyle(.secondary)
 					}
 				}

@@ -78,7 +78,7 @@ struct DiagnosticsView: View {
 		HStack(spacing: 12) {
 			NullSignIconTile(systemImage: systemImage)
 			Text(title)
-				.font(.system(size: 15, weight: .semibold))
+				.font(.iosevka(size: 15, weight: .semibold))
 			Spacer()
 			Image(systemName: "checkmark")
 				.font(.caption.weight(.bold))

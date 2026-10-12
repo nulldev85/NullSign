@@ -18,12 +18,12 @@ struct SourcesCellView: View {
 
 			VStack(alignment: .leading, spacing: 2) {
 				Text(source.name ?? repository?.name ?? .localized("Unknown"))
-					.font(.headline)
+					.font(.iosevka(.headline))
 					.foregroundStyle(.white)
 					.lineLimit(1)
 
 				Text(_displayHost)
-					.font(.subheadline)
+					.font(.iosevka(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
 
@@ -64,7 +64,7 @@ struct SourcesCellView: View {
 					.frame(width: 6, height: 6)
 			}
 			Text(_statusText)
-				.font(.caption)
+				.font(.iosevka(.caption))
 				.foregroundStyle(didFail ? NullSignStyle.danger : NullSignStyle.muted)
 				.lineLimit(1)
 		}

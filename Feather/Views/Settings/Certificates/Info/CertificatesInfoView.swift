@@ -98,10 +98,10 @@ struct CertificatesInfoView: View {
 	private func _infoRow(_ title: String, value: String) -> some View {
 		HStack(alignment: .firstTextBaseline, spacing: 16) {
 			Text(title)
-				.font(.body.weight(.medium))
+				.font(.iosevka(.body, weight: .medium))
 			Spacer(minLength: 12)
 			Text(value)
-				.font(.subheadline)
+				.font(.iosevka(.subheadline))
 				.foregroundStyle(.secondary)
 				.multilineTextAlignment(.trailing)
 				.copyableText(value)

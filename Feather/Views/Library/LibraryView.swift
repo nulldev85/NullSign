@@ -140,7 +140,7 @@ struct LibraryView: View {
 							_setSelecting(!_isSelecting)
 						} label: {
 							Text(_isSelecting ? "Done" : "Select")
-								.font(.system(size: 15, weight: .semibold))
+								.font(.iosevka(size: 15, weight: .semibold))
 						}
 					}
 				}
@@ -323,10 +323,10 @@ extension LibraryView {
 	private var _noResults: some View {
 		VStack(spacing: 8) {
 			Text(_searchText.isEmpty ? "Nothing here yet" : "No Results")
-				.font(.headline)
+				.font(.iosevka(.headline))
 			if !_searchText.isEmpty {
 				Text("No apps match “\(_searchText)”.")
-					.font(.subheadline)
+					.font(.iosevka(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 			}
 		}
@@ -336,7 +336,7 @@ extension LibraryView {
 	private var _selectionBar: some View {
 		HStack(spacing: 10) {
 			Text(_selectedAppUUIDs.isEmpty ? "Select apps" : "\(_selectedAppUUIDs.count) selected")
-				.font(.headline)
+				.font(.iosevka(.headline))
 				.monospacedDigit()
 			Spacer(minLength: 8)
 			Button {

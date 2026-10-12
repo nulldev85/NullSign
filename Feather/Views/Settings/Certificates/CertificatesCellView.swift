@@ -26,7 +26,7 @@ struct CertificatesCellView: View {
 					tint: validity.tint == NullSignStyle.success ? .white : validity.tint
 				)
 				Text(validity.value)
-					.font(.system(size: 12, weight: .bold, design: .rounded))
+					.font(.iosevka(size: 12, weight: .bold))
 					.monospacedDigit()
 					.minimumScaleFactor(0.6)
 					.lineLimit(1)
@@ -35,11 +35,11 @@ struct CertificatesCellView: View {
 
 			VStack(alignment: .leading, spacing: 2) {
 				Text(title)
-					.font(.headline)
+					.font(.iosevka(.headline))
 					.foregroundStyle(.white)
 					.lineLimit(1)
 				Text(subtitle)
-					.font(.subheadline)
+					.font(.iosevka(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
 				_status
@@ -66,12 +66,12 @@ struct CertificatesCellView: View {
 		HStack(spacing: 6) {
 			if cert.revoked {
 				Text("Revoked")
-					.font(.caption.weight(.medium))
+					.font(.iosevka(.caption, weight: .medium))
 					.foregroundStyle(NullSignStyle.danger)
 			} else if let expiration = cert.expiration {
 				let label = NullSignValidity.shortLabel(for: expiration)
 				Text(label.text)
-					.font(.caption)
+					.font(.iosevka(.caption))
 					.foregroundStyle(label.tint)
 			}
 

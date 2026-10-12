@@ -36,7 +36,7 @@ struct ScreenshotPreviewView: View {
 					}
 					ToolbarItem(placement: .topBarTrailing) {
 						Text(verbatim: "\(currentIndex + 1) of \(screenshotURLs.count)")
-							.font(.caption.weight(.semibold))
+							.font(.iosevka(.caption, weight: .semibold))
 							.foregroundStyle(.secondary)
 					}
 				}

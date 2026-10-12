@@ -13,9 +13,9 @@ struct TunnelHeaderView: View {
 				.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 			VStack(alignment: .leading, spacing: 2) {
 				Text("Heartbeat")
-					.font(.body.weight(.medium))
+					.font(.iosevka(.body, weight: .medium))
 				Text("Local device connection")
-					.font(.caption)
+					.font(.iosevka(.caption))
 					.foregroundStyle(.secondary)
 			}
 			Spacer()
@@ -40,7 +40,7 @@ struct TunnelPulseRing: View {
 					.fill(color)
 					.frame(width: 7, height: 7)
 				Text(age < 5 ? "Live" : (age < 10 ? "Waiting" : "Offline"))
-					.font(.caption.weight(.medium))
+					.font(.iosevka(.caption, weight: .medium))
 					.foregroundStyle(color)
 			}
 		}
