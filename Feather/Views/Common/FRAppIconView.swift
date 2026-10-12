@@ -220,9 +220,28 @@ struct FRAppIconView: View {
 		colorScheme == .dark ? .dark : .light
 	}
 
+	/// These apps are distributed by feeds that omit icon metadata, and their
+	/// tvOS artwork lives in a foreign CoreUI catalog. Bundled copies of the
+	/// verified artwork avoid touching that private catalog during app launch.
+	private var bundledFallbackAssetName: String? {
+		switch app?.identifier?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+		case "com.nulldev85.nullsports":
+			return "LineupTV"
+		case "com.stadiumsync.mobile":
+			return "StadiumSync"
+		case "com.stadiumsync.mobile.tv":
+			return "StadiumSyncTV"
+		default:
+			return nil
+		}
+	}
+
 	var body: some View {
 		Group {
-			if let image = loader.image {
+			if let bundledFallbackAssetName {
+				Image(bundledFallbackAssetName)
+					.appIconStyle(size: size)
+			} else if let image = loader.image {
 				Image(uiImage: image)
 					.appIconStyle(size: size)
 			} else {
@@ -231,7 +250,11 @@ struct FRAppIconView: View {
 			}
 		}
 		.task(id: "\(app?.uuid ?? "self")\(appearance.rawValue)\(selectedColorHex)\(shouldTintIcons)\(shouldChangeIconsBasedOffStyle)") {
-			_load()
+			if bundledFallbackAssetName == nil {
+				_load()
+			} else {
+				loader.cancel()
+			}
 		}
 		.onDisappear {
 			loader.cancel()

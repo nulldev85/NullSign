@@ -114,7 +114,6 @@
 @interface CUICatalog : NSObject
 - (instancetype)initWithURL:(NSURL *)url error:(NSError **)error;
 - (NSArray<NSString *> *)allImageNames;
-- (NSArray *)imagesWithName:(NSString *)name;
 - (id)imageWithName:(NSString *)name scaleFactor:(CGFloat)scale;
 - (id)imageWithName:(NSString *)name
 		 scaleFactor:(CGFloat)scale
@@ -132,7 +131,6 @@
 
 @interface CUINamedLayerStack : NSObject
 - (CGImageRef)flattenedImage;
-- (UIImage *)flattenedUIImage;
 @end
 
 @interface CUINamedImage : NSObject
@@ -144,12 +142,6 @@
 static UIImage *FRUIImageFromCoreUIImage(id namedImage) {
 	if (!namedImage) return nil;
 
-	if ([namedImage respondsToSelector:@selector(flattenedUIImage)]) {
-		UIImage *flattened = [(CUINamedLayerStack *)namedImage flattenedUIImage];
-		if (flattened.size.width > 1 && flattened.size.height > 1) {
-			return flattened;
-		}
-	}
 	if ([namedImage respondsToSelector:@selector(flattenedImage)]) {
 		CGImageRef flattenedRef = [(CUINamedLayerStack *)namedImage flattenedImage];
 		if (flattenedRef && CGImageGetWidth(flattenedRef) > 1 && CGImageGetHeight(flattenedRef) > 1) {
@@ -175,19 +167,6 @@ static UIImage *FRUIImageFromCoreUIImage(id namedImage) {
 
 static UIImage *FRLargestCatalogImage(CUICatalog *catalog, NSString *name) {
 	NSMutableArray *lookups = [NSMutableArray array];
-	if ([catalog respondsToSelector:@selector(imagesWithName:)]) {
-		NSArray *matches = [catalog imagesWithName:name];
-		if ([matches isKindOfClass:NSArray.class]) {
-			[lookups addObjectsFromArray:matches];
-		}
-	}
-
-	if ([catalog respondsToSelector:@selector(imageWithName:scaleFactor:)]) {
-		for (NSNumber *scale in @[@1, @2, @3]) {
-			id match = [catalog imageWithName:name scaleFactor:scale.doubleValue];
-			if (match) [lookups addObject:match];
-		}
-	}
 	if ([catalog respondsToSelector:@selector(imageWithName:scaleFactor:deviceIdiom:)]) {
 		// CoreUI's catalog idioms are not UIKit's enum values. Compiled tvOS
 		// renditions use idiom 3; keep 2/0/6 for older catalogs and marketing
@@ -199,6 +178,12 @@ static UIImage *FRLargestCatalogImage(CUICatalog *catalog, NSString *name) {
 								 deviceIdiom:idiom.integerValue];
 				if (match) [lookups addObject:match];
 			}
+		}
+	}
+	if ([catalog respondsToSelector:@selector(imageWithName:scaleFactor:)]) {
+		for (NSNumber *scale in @[@1, @2, @3]) {
+			id match = [catalog imageWithName:name scaleFactor:scale.doubleValue];
+			if (match) [lookups addObject:match];
 		}
 	}
 
@@ -362,6 +347,7 @@ static UIImage *FRCompositeTVIconLayers(CUICatalog *catalog, NSString *iconName)
 
 
 UIImage* tvOSIconTest(NSURL *bundleURL, NSArray<NSString *> *iconNames) {
+	@try {
 	NSURL *catalogURL = [bundleURL URLByAppendingPathComponent:@"Assets.car"];
 	if (![[NSFileManager defaultManager] fileExistsAtPath:catalogURL.path]) {
 		return nil;
@@ -390,6 +376,14 @@ UIImage* tvOSIconTest(NSURL *bundleURL, NSArray<NSString *> *iconNames) {
 	SEL platformSelector = @selector(_IS_layerStackWithName:scale:layoutDirection:platform:);
 
 	for (NSString *name in iconNames) {
+		// Prefer the pre-flattened tvOS bitmap. This stays entirely inside
+		// CoreUI and avoids UIKit's private flattening category, which is not
+		// safe to invoke from the background renderer used by the app list.
+		UIImage *compiled = FRLargestCatalogImage(catalog, name);
+		if (compiled.size.width > 1 && compiled.size.height > 1) {
+			return compiled;
+		}
+
 		id stack = nil;
 
 		if ([catalog respondsToSelector:platformSelector]) {
@@ -423,13 +417,6 @@ UIImage* tvOSIconTest(NSURL *bundleURL, NSArray<NSString *> *iconNames) {
 			}
 		}
 
-		if ([stack respondsToSelector:@selector(flattenedUIImage)]) {
-			UIImage *image = [(CUINamedLayerStack *)stack flattenedUIImage];
-			if (image.size.width > 1 && image.size.height > 1) {
-				return image;
-			}
-		}
-
 		if ([stack respondsToSelector:@selector(flattenedImage)]) {
 			CGImageRef imageRef = [(CUINamedLayerStack *)stack flattenedImage];
 			if (imageRef && CGImageGetWidth(imageRef) > 1 && CGImageGetHeight(imageRef) > 1) {
@@ -447,6 +434,12 @@ UIImage* tvOSIconTest(NSURL *bundleURL, NSArray<NSString *> *iconNames) {
 	}
 
 	return nil;
+	} @catch (NSException *exception) {
+		// Imported apps are untrusted input. A private CoreUI mismatch must
+		// degrade to the normal placeholder, never terminate NullSign.
+		(void)exception;
+		return nil;
+	}
 }
 
 
