@@ -12,7 +12,8 @@ struct SourcesCellView: View {
 			SourceRemoteIcon(
 				url: source.iconURL ?? repository?.currentIconURL,
 				relativeTo: source.sourceURL,
-				size: 46
+				size: 46,
+				fallbackAssetName: SourceBundledIcon.assetName(for: repository)
 			)
 
 			VStack(alignment: .leading, spacing: 2) {

@@ -1,6 +1,33 @@
 import SwiftUI
+import AltSourceKit
 import Nuke
 import NukeUI
+
+/// Some otherwise valid feeds omit icon metadata entirely. Keep narrowly
+/// scoped, bundled fallbacks for known apps whose own distributable contains
+/// artwork but whose source provides no URL.
+enum SourceBundledIcon {
+	static func assetName(forBundleIdentifier identifier: String?) -> String? {
+		switch identifier?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+		case "com.stadiumsync.mobile":
+			return "StadiumSync"
+		case "com.stadiumsync.mobile.tv":
+			return "StadiumSyncTV"
+		default:
+			return nil
+		}
+	}
+
+	static func assetName(for repository: ASRepository?) -> String? {
+		guard let repository else { return nil }
+		for app in repository.apps {
+			if let name = assetName(forBundleIdentifier: app.id) {
+				return name
+			}
+		}
+		return nil
+	}
+}
 
 /// Source feeds in the wild frequently use repository-relative paths or a
 /// GitHub asset page instead of a direct image URL. Resolve those forms in one
@@ -163,6 +190,7 @@ struct SourceRemoteIcon: View {
 	var relativeTo: URL? = nil
 	var size: CGFloat = 50
 	var placeholderSystemImage: String = "shippingbox"
+	var fallbackAssetName: String? = nil
 
 	var body: some View {
 		let resolvedURL = SourceAssetURL.resolve(url, relativeTo: relativeTo)
@@ -177,7 +205,8 @@ struct SourceRemoteIcon: View {
 					url: url,
 					referer: relativeTo,
 					size: size,
-					placeholderSystemImage: placeholderSystemImage
+					placeholderSystemImage: placeholderSystemImage,
+					fallbackAssetName: fallbackAssetName
 				)
 			} else {
 				_placeholder
@@ -186,8 +215,14 @@ struct SourceRemoteIcon: View {
 		.frame(width: size, height: size)
 	}
 
+	@ViewBuilder
 	private var _placeholder: some View {
-		SourceIconPlaceholder(size: size, systemImage: placeholderSystemImage)
+		if let fallbackAssetName {
+			Image(fallbackAssetName)
+				.appIconStyle(size: size, isCircle: false, background: NullSignStyle.raisedPanel)
+		} else {
+			SourceIconPlaceholder(size: size, systemImage: placeholderSystemImage)
+		}
 	}
 }
 
@@ -213,6 +248,7 @@ struct LazyImageIcon: View {
 	var referer: URL? = nil
 	let size: CGFloat
 	var placeholderSystemImage: String = "shippingbox"
+	var fallbackAssetName: String? = nil
 
 	private var request: ImageRequest {
 		var urlRequest = URLRequest(url: url)
@@ -235,6 +271,9 @@ struct LazyImageIcon: View {
 		LazyImage(request: request) { state in
 			if let image = state.image {
 				image.appIconStyle(size: size, isCircle: false, background: NullSignStyle.raisedPanel)
+			} else if let fallbackAssetName {
+				Image(fallbackAssetName)
+					.appIconStyle(size: size, isCircle: false, background: NullSignStyle.raisedPanel)
 			} else {
 				SourceIconPlaceholder(size: size, systemImage: placeholderSystemImage)
 			}

@@ -98,7 +98,8 @@ struct SourceAppsDetailView: View {
 				url: app.iconURL ?? source.currentIconURL,
 				relativeTo: sourceURL,
 				size: 100,
-				placeholderSystemImage: "app.dashed"
+				placeholderSystemImage: "app.dashed",
+				fallbackAssetName: SourceBundledIcon.assetName(forBundleIdentifier: app.id)
 			)
 
 			VStack(alignment: .leading, spacing: 4) {

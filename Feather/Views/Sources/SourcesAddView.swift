@@ -203,7 +203,12 @@ struct SourcesAddView: View {
 
 	private func _featuredRow(url: URL, source: ASRepository) -> some View {
 		HStack(spacing: 12) {
-			SourceRemoteIcon(url: source.currentIconURL, relativeTo: url, size: 46)
+			SourceRemoteIcon(
+				url: source.currentIconURL,
+				relativeTo: url,
+				size: 46,
+				fallbackAssetName: SourceBundledIcon.assetName(for: source)
+			)
 			VStack(alignment: .leading, spacing: 2) {
 				Text(source.name ?? .localized("Unknown"))
 					.font(.headline)
