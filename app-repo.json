@@ -2,7 +2,6 @@
   "name": "NullSign Releases",
   "identifier": "com.elmat.nullsign-repo",
   "iconURL": "https://raw.githubusercontent.com/nulldev85/NullSign/main/Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png",
-  "website": "https://github.com/nulldev85/NullSign",
   "apps": [
     {
       "name": "NullSign",
@@ -34,7 +33,6 @@
       "caption": "NullSign now has its own interface, a stricter signing pipeline, local diagnostics, resilient repositories, and verified IPA packaging.",
       "tintColor": "FFFFFF",
       "imageURL": "https://raw.githubusercontent.com/nulldev85/NullSign/main/Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png",
-      "url": "https://github.com/nulldev85/NullSign",
       "date": "2026-08-31",
       "notify": false
     }
