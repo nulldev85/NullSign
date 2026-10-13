@@ -161,11 +161,8 @@ struct InstallPreviewView: View {
 				.font(.system(size: 12, weight: .semibold))
 				.padding(.horizontal, 12)
 				.frame(height: 34)
-				.foregroundStyle(.black)
-				.background(NullSignStyle.accent)
-				.clipShape(Capsule())
 		}
-		.buttonStyle(.plain)
+		.buttonStyle(.nullSign(cornerRadius: 17))
 	}
 	
 	private func _install() {

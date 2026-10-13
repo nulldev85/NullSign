@@ -35,13 +35,10 @@ struct SourceNewsCardInfoView: View {
 						Button { UIApplication.shared.open(url) } label: {
 							Label(.localized("Open Link"), systemImage: "arrow.up.right")
 								.font(.subheadline.weight(.semibold))
-								.foregroundStyle(.black)
 								.frame(maxWidth: .infinity)
 								.frame(height: 42)
-								.background(NullSignStyle.accent)
-								.clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
 						}
-						.buttonStyle(.plain)
+						.buttonStyle(.nullSign())
 					}
 				}
 				.padding(16)

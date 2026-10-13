@@ -89,14 +89,11 @@ struct SigningView: View {
 										Image(systemName: "arrow.right")
 									}
 								}
-								.foregroundStyle(.black)
 								.padding(.horizontal, 17)
 								.frame(height: 50)
-								.background(NullSignStyle.accent)
-								.clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-								.padding(.horizontal, 16)
 							}
-							.buttonStyle(.plain)
+							.buttonStyle(.nullSign(cornerRadius: 13, dimsWhenDisabled: false))
+							.padding(.horizontal, 16)
 							.animation(_reduceMotion ? nil : .easeInOut(duration: 0.2), value: _isSigning)
 							.offset(y: UIDevice.current.userInterfaceIdiom == .pad ? -20 : -40)
 						}

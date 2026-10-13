@@ -24,13 +24,10 @@ struct ConfigurationDictView: View {
 						} label: {
 							Label("Add", systemImage: "plus")
 								.font(.subheadline.weight(.semibold))
-								.foregroundStyle(.black)
 								.padding(.horizontal, 12)
 								.frame(height: 36)
-								.background(NullSignStyle.accent)
-								.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 						}
-						.buttonStyle(.plain)
+						.buttonStyle(.nullSign(cornerRadius: 10))
 					}
 				}
 

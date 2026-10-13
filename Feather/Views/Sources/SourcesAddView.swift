@@ -102,13 +102,10 @@ struct SourcesAddView: View {
 						Text(_isSaving ? "Checking Source" : .localized("Add Source"))
 					}
 					.font(.subheadline.weight(.semibold))
-					.foregroundStyle(.black)
 					.frame(maxWidth: .infinity)
 					.frame(height: 42)
-					.background(NullSignStyle.accent.opacity(_trimmedURL.isEmpty || _isBusy ? 0.45 : 1))
-					.clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
 				}
-				.buttonStyle(.plain)
+				.buttonStyle(.nullSign())
 				.disabled(_trimmedURL.isEmpty || _isBusy)
 			}
 			.sourcePanel()
@@ -238,13 +235,10 @@ struct SourcesAddView: View {
 			} label: {
 				Text(.localized("Add"))
 					.font(.caption.weight(.bold))
-					.foregroundStyle(.black)
 					.padding(.horizontal, 14)
 					.frame(height: 32)
-					.background(NullSignStyle.accent)
-					.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 			}
-			.buttonStyle(.plain)
+			.buttonStyle(.nullSign(cornerRadius: 9))
 		}
 		.padding(12)
 	}

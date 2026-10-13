@@ -34,6 +34,110 @@ extension View {
 	}
 }
 
+/// Shared button treatment: a faint vertical gradient and a fine edge give the
+/// fill some depth, and the button settles slightly while pressed. Callers keep
+/// their own padding and frame; the style supplies fill, shape, and feedback.
+struct NullSignButtonStyle: ButtonStyle {
+	enum Prominence {
+		case primary
+		case secondary
+	}
+
+	var prominence: Prominence = .primary
+	var cornerRadius: CGFloat = 11
+	/// Extends the tappable area vertically past the drawn fill, for compact buttons in rows.
+	var minTapHeight: CGFloat = 0
+	/// Off for buttons that are disabled only while their own work is running and
+	/// already show that with a spinner.
+	var dimsWhenDisabled: Bool = true
+
+	func makeBody(configuration: Configuration) -> some View {
+		NullSignButtonBody(
+			configuration: configuration,
+			prominence: prominence,
+			cornerRadius: cornerRadius,
+			minTapHeight: minTapHeight,
+			dimsWhenDisabled: dimsWhenDisabled
+		)
+	}
+}
+
+extension ButtonStyle where Self == NullSignButtonStyle {
+	static func nullSign(
+		_ prominence: NullSignButtonStyle.Prominence = .primary,
+		cornerRadius: CGFloat = 11,
+		minTapHeight: CGFloat = 0,
+		dimsWhenDisabled: Bool = true
+	) -> NullSignButtonStyle {
+		NullSignButtonStyle(
+			prominence: prominence,
+			cornerRadius: cornerRadius,
+			minTapHeight: minTapHeight,
+			dimsWhenDisabled: dimsWhenDisabled
+		)
+	}
+}
+
+private struct NullSignButtonBody: View {
+	let configuration: ButtonStyleConfiguration
+	let prominence: NullSignButtonStyle.Prominence
+	let cornerRadius: CGFloat
+	let minTapHeight: CGFloat
+	let dimsWhenDisabled: Bool
+
+	@Environment(\.isEnabled) private var _isEnabled
+	@Environment(\.accessibilityReduceMotion) private var _reduceMotion
+
+	var body: some View {
+		let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+		let isPressed = configuration.isPressed
+
+		configuration.label
+			.foregroundStyle(prominence == .primary ? NullSignStyle.ink : NullSignStyle.accent)
+			.background {
+				ZStack {
+					_fill
+					_pressedTint.opacity(isPressed ? 1 : 0)
+				}
+			}
+			.overlay {
+				shape.strokeBorder(_edge, lineWidth: 1)
+			}
+			.clipShape(shape)
+			.opacity(_isEnabled || !dimsWhenDisabled ? 1 : 0.45)
+			.scaleEffect(isPressed && !_reduceMotion ? 0.97 : 1)
+			.animation(_reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.82), value: isPressed)
+			.frame(minHeight: minTapHeight)
+			.contentShape(Rectangle())
+	}
+
+	private var _fill: LinearGradient {
+		switch prominence {
+		case .primary:
+			LinearGradient(colors: [Color(white: 1), Color(white: 0.87)], startPoint: .top, endPoint: .bottom)
+		case .secondary:
+			LinearGradient(colors: [Color.white.opacity(0.12), Color.white.opacity(0.06)], startPoint: .top, endPoint: .bottom)
+		}
+	}
+
+	/// Light catches the top edge on dark fills; white fills get a soft lower lip instead.
+	private var _edge: LinearGradient {
+		switch prominence {
+		case .primary:
+			LinearGradient(colors: [Color.white, Color.black.opacity(0.14)], startPoint: .top, endPoint: .bottom)
+		case .secondary:
+			LinearGradient(colors: [Color.white.opacity(0.22), Color.white.opacity(0.06)], startPoint: .top, endPoint: .bottom)
+		}
+	}
+
+	private var _pressedTint: Color {
+		switch prominence {
+		case .primary: Color.black.opacity(0.12)
+		case .secondary: Color.white.opacity(0.07)
+		}
+	}
+}
+
 struct NullSignLibrarySummary: View {
 	let signedCount: Int
 	let importedCount: Int
@@ -101,25 +205,16 @@ struct NullSignEmptySignerView: View {
 							.font(.system(size: 15, weight: .semibold))
 							.padding(.horizontal, 17)
 							.padding(.vertical, 13)
-							.foregroundStyle(NullSignStyle.ink)
-							.background(NullSignStyle.accent)
-							.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 					}
-					.buttonStyle(.plain)
+					.buttonStyle(.nullSign(cornerRadius: 12))
 
 					Button(action: importURL) {
 						Label("Paste URL", systemImage: "link")
 							.font(.system(size: 15, weight: .medium))
 							.padding(.horizontal, 17)
 							.padding(.vertical, 13)
-							.background(NullSignStyle.panel)
-							.overlay {
-								RoundedRectangle(cornerRadius: 12, style: .continuous)
-									.stroke(NullSignStyle.hairline, lineWidth: 1)
-							}
-							.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 					}
-					.buttonStyle(.plain)
+					.buttonStyle(.nullSign(.secondary, cornerRadius: 12))
 				}
 
 				HStack(spacing: 7) {

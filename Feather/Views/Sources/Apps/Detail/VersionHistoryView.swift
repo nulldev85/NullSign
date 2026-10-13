@@ -24,12 +24,9 @@ struct VersionHistoryView: View {
 							Button { _download(version, from: url) } label: {
 								Image(systemName: "arrow.down")
 									.font(.subheadline.weight(.bold))
-									.foregroundStyle(.black)
 									.frame(width: 34, height: 34)
-									.background(NullSignStyle.accent)
-									.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 							}
-							.buttonStyle(.plain)
+							.buttonStyle(.nullSign(cornerRadius: 9))
 							.contextMenu {
 								Button(.localized("Copy Download URL"), systemImage: "doc.on.clipboard") {
 									UIPasteboard.general.string = url.absoluteString

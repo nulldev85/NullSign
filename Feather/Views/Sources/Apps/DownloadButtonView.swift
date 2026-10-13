@@ -36,13 +36,9 @@ struct DownloadButtonView: View {
 				} label: {
 					Text(.localized("Get"))
 						.font(.caption.weight(.bold))
-						.foregroundStyle(.black)
 						.frame(width: 54, height: 32)
-						.background(NullSignStyle.accent)
-						.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-						.frame(minHeight: 44)
 				}
-				.buttonStyle(.borderless)
+				.buttonStyle(.nullSign(cornerRadius: 9, minTapHeight: 44))
 				.compatTransition()
 			}
 		}

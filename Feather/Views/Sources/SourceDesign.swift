@@ -52,13 +52,10 @@ struct SourceEmptyState: View {
 				Button(action: action) {
 					Text(actionTitle)
 						.font(.subheadline.weight(.semibold))
-						.foregroundStyle(.black)
 						.padding(.horizontal, 18)
 						.frame(height: 38)
-						.background(NullSignStyle.accent)
-						.clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 				}
-				.buttonStyle(.plain)
+				.buttonStyle(.nullSign(cornerRadius: 10))
 			}
 		}
 		.frame(maxWidth: 330)
