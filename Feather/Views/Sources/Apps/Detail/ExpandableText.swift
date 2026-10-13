@@ -53,7 +53,7 @@ struct ExpandableText: View {
 					}
 				}) {
 					Text(expanded ? .localized("Less") : .localized("More"))
-						.font(.iosevka(.caption, weight: .semibold))
+						.font(.roundedUI(.caption, weight: .bold))
 						.foregroundStyle(NullSignStyle.accent)
 				}
 			}

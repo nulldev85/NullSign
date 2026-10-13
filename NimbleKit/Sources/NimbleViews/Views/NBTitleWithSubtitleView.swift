@@ -21,10 +21,10 @@ public struct NBTitleWithSubtitleView: View {
 	public var body: some View {
 		VStack(alignment: .leading, spacing: 2) {
 			Text(_title)
-				.font(.iosevka(.headline))
+				.font(.roundedUI(.headline))
 				.foregroundColor(.primary)
 			Text(_subtitle)
-				.font(.iosevka(.subheadline))
+				.font(.roundedUI(.subheadline))
 				.foregroundColor(.secondary)
 		}
 		.padding(.vertical, 2)

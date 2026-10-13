@@ -158,7 +158,7 @@ struct SourceLoadingState: View {
 		VStack(spacing: 12) {
 			ProgressView()
 			Text(label)
-				.font(.iosevka(.subheadline))
+				.font(.roundedUI(.subheadline))
 				.foregroundStyle(NullSignStyle.muted)
 		}
 		.padding(24)

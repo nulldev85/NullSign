@@ -29,9 +29,9 @@ struct AboutView: View {
 				VStack(spacing: 10) {
 					FRAppIconView(size: 84)
 					Text("NullSign")
-						.font(.iosevka(.title2, weight: .bold))
+						.font(.roundedUI(.title2, weight: .heavy))
 					Text("Version \(Bundle.main.version) (\(_build))")
-						.font(.iosevka(.subheadline))
+						.font(.roundedUI(.subheadline))
 						.foregroundStyle(NullSignStyle.muted)
 				}
 				.frame(maxWidth: .infinity)

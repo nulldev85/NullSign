@@ -23,15 +23,15 @@ struct SigningEntitlementsView: View {
 						SigningRowIcon(systemImage: "doc.text")
 						VStack(alignment: .leading, spacing: 2) {
 							Text(ent.lastPathComponent)
-								.font(.iosevka(.body, weight: .medium))
+								.font(.roundedUI(.body, weight: .regular))
 								.lineLimit(2)
 							Text("Selected entitlements file")
-								.font(.iosevka(.caption))
+								.font(.roundedUI(.caption))
 								.foregroundStyle(.secondary)
 						}
 						Spacer(minLength: 0)
 						Button("Replace") { _isAddingPresenting = true }
-							.font(.iosevka(.subheadline, weight: .semibold))
+							.font(.roundedUI(.subheadline, weight: .bold))
 					}
 					.signingDestinationRow()
 					.swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -53,9 +53,9 @@ struct SigningEntitlementsView: View {
 								SigningRowIcon(systemImage: "doc.badge.plus")
 								VStack(alignment: .leading, spacing: 3) {
 									Text(.localized("Select Entitlements File"))
-										.font(.iosevka(.headline))
+										.font(.roundedUI(.headline))
 									Text("Choose a plist or .entitlements file for this signing session.")
-										.font(.iosevka(.caption))
+										.font(.roundedUI(.caption))
 										.foregroundStyle(.secondary)
 										.fixedSize(horizontal: false, vertical: true)
 								}

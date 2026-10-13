@@ -22,9 +22,9 @@ struct SigningTweaksView: View {
 					SigningRowIcon(systemImage: "shippingbox.and.arrow.backward")
 					VStack(alignment: .leading, spacing: 3) {
 						Text(options.injectionFiles.isEmpty ? "No tweaks selected" : "\(options.injectionFiles.count) selected")
-							.font(.iosevka(.headline))
+							.font(.roundedUI(.headline))
 						Text("NullSign accepts .deb packages and standalone .dylib files.")
-							.font(.iosevka(.caption))
+							.font(.roundedUI(.caption))
 							.foregroundStyle(.secondary)
 							.fixedSize(horizontal: false, vertical: true)
 					}
@@ -53,9 +53,9 @@ struct SigningTweaksView: View {
 						SigningRowIcon(systemImage: "puzzlepiece.extension")
 						VStack(alignment: .leading, spacing: 2) {
 							Text(.localized("Inject into Extensions"))
-								.font(.iosevka(.body, weight: .medium))
+								.font(.roundedUI(.body, weight: .regular))
 							Text("Also patch compatible embedded extensions")
-								.font(.iosevka(.caption))
+								.font(.roundedUI(.caption))
 								.foregroundStyle(.secondary)
 						}
 					}
@@ -130,10 +130,10 @@ extension SigningTweaksView {
 			)
 			VStack(alignment: .leading, spacing: 2) {
 				Text(tweak.deletingPathExtension().lastPathComponent)
-					.font(.iosevka(.body, weight: .medium))
+					.font(.roundedUI(.body, weight: .regular))
 					.lineLimit(2)
 				Text(tweak.pathExtension.uppercased())
-					.font(.iosevka(.caption2, weight: .semibold))
+					.font(.roundedUI(.caption2, weight: .bold))
 					.foregroundStyle(.secondary)
 			}
 			Spacer(minLength: 0)

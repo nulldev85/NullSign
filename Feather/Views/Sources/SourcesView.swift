@@ -82,7 +82,7 @@ struct SourcesView: View {
 
 					if filteredSources.isEmpty {
 						Text("No repositories match “\(_searchText)”.")
-							.font(.iosevka(.subheadline))
+							.font(.roundedUI(.subheadline))
 							.foregroundStyle(NullSignStyle.muted)
 							.frame(maxWidth: .infinity)
 							.nullSignListRow(top: 24, bottom: 24)
@@ -135,10 +135,10 @@ struct SourcesView: View {
 
 			VStack(alignment: .leading, spacing: 2) {
 				Text("All Apps")
-					.font(.iosevka(.headline))
+					.font(.roundedUI(.headline))
 					.foregroundStyle(.white)
 				Text(_catalogSummary)
-					.font(.iosevka(.subheadline))
+					.font(.roundedUI(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 			}
 

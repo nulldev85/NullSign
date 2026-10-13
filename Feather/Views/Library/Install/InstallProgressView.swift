@@ -72,7 +72,7 @@ struct NullSignInstallProgressBar: View {
 	var body: some View {
 		VStack(alignment: .trailing, spacing: 6) {
 			Text("\(Int(targetProgress * 100))%")
-				.font(.iosevka(.caption2, weight: .semibold))
+				.font(.roundedUI(.caption2, weight: .bold))
 				.monospacedDigit()
 				.foregroundStyle(NullSignStyle.muted)
 				.opacity(showsPercentage && progress != nil && targetProgress > 0 && targetProgress < 1 ? 1 : 0)

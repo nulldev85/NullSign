@@ -66,7 +66,7 @@ struct SourcesAddView: View {
 
 			VStack(alignment: .leading, spacing: 12) {
 				Text("Paste an AltStore-compatible source URL. NullSign checks it before adding anything.")
-					.font(.iosevka(.subheadline))
+					.font(.roundedUI(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 					.fixedSize(horizontal: false, vertical: true)
 
@@ -79,7 +79,7 @@ struct SourcesAddView: View {
 						_sourceURL = UIPasteboard.general.string ?? _sourceURL
 					} label: {
 						Text("Paste")
-							.font(.iosevka(.subheadline, weight: .semibold))
+							.font(.roundedUI(.subheadline, weight: .bold))
 							.foregroundStyle(NullSignStyle.accent)
 					}
 					.buttonStyle(.plain)
@@ -150,7 +150,7 @@ struct SourcesAddView: View {
 					Image(systemName: "checkmark.circle")
 						.foregroundStyle(NullSignStyle.accent)
 					Text("You already have all available featured sources.")
-						.font(.iosevka(.subheadline))
+						.font(.roundedUI(.subheadline))
 						.foregroundStyle(.secondary)
 				}
 				.frame(maxWidth: .infinity, alignment: .leading)
@@ -182,9 +182,9 @@ struct SourcesAddView: View {
 				NullSignIconTile(systemImage: icon)
 				VStack(alignment: .leading, spacing: 2) {
 					Text(title)
-						.font(.iosevka(size: 15, weight: .semibold))
+						.font(.roundedUI(size: 15, weight: .bold))
 					Text(subtitle)
-						.font(.iosevka(.caption))
+						.font(.roundedUI(.caption))
 						.foregroundStyle(NullSignStyle.muted)
 						.lineLimit(2)
 				}
@@ -211,14 +211,14 @@ struct SourcesAddView: View {
 			)
 			VStack(alignment: .leading, spacing: 2) {
 				Text(source.name ?? .localized("Unknown"))
-					.font(.iosevka(.headline))
+					.font(.roundedUI(.headline))
 					.lineLimit(1)
 				Text(url.host?.replacingOccurrences(of: "www.", with: "") ?? url.absoluteString)
-					.font(.iosevka(.subheadline))
+					.font(.roundedUI(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
 				Text(verbatim: .localized("%lld Apps", arguments: source.apps.count))
-					.font(.iosevka(.caption))
+					.font(.roundedUI(.caption))
 					.foregroundStyle(NullSignStyle.faint)
 			}
 			Spacer(minLength: 8)

@@ -36,7 +36,7 @@ public struct NBButton: View {
 			
 		case .text:
 			Text(_title)
-				.font(.iosevka(.footnote)).bold()
+				.font(.roundedUI(.footnote, weight: .bold))
 				.padding(.horizontal, _horizontalPadding)
 				.frame(height: 29)
 				.background(Color(uiColor: .quaternarySystemFill))

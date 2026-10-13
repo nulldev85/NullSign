@@ -215,7 +215,7 @@ struct SigningOptionsView: View {
 		HStack(spacing: 12) {
 			SigningRowIcon(systemImage: systemImage)
 			Text(title)
-				.font(.iosevka(.body, weight: .medium))
+				.font(.roundedUI(.body, weight: .regular))
 			Spacer(minLength: 8)
 			Picker(title, selection: selection) {
 				ForEach(values, id: \.self) { value in
@@ -239,10 +239,10 @@ struct SigningOptionsView: View {
 			HStack(spacing: 12) {
 				SigningRowIcon(systemImage: systemImage)
 				Text(title)
-					.font(.iosevka(.body, weight: .medium))
+					.font(.roundedUI(.body, weight: .regular))
 				if let tempValue = temporaryValue, tempValue != isOn.wrappedValue {
 					Text("Changed")
-						.font(.iosevka(.caption2, weight: .semibold))
+						.font(.roundedUI(.caption2, weight: .bold))
 						.foregroundStyle(NullSignStyle.accent)
 				}
 			}

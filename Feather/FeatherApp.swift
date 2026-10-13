@@ -32,7 +32,8 @@ struct NullSignApp: App {
 			.background(Color.black.ignoresSafeArea())
 			.preferredColorScheme(.dark)
 			.tint(.white)
-			.environment(\.font, .iosevka(.body))
+			.environment(\.font, .roundedUI(.body))
+			.modifier(NullSignRoundedFontDesign())
 			.onReceive(NotificationCenter.default.publisher(for: .heartbeatInvalidHost)) { _ in
 				DispatchQueue.main.async {
 					UIAlertController.showAlertWithOk(
@@ -153,12 +154,34 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 		UIView.appearance().tintColor = .white
 		UITableView.appearance().backgroundColor = .black
 		UICollectionView.appearance().backgroundColor = .black
+		_configureRoundedNavigationTitles()
 		_createPipeline()
 		_createDocumentsDirectories()
 		ResetView.clearWorkCache()
 		_addDefaultCertificates()
 		_refreshServerCertificates()
 		return true
+	}
+
+	private func _configureRoundedNavigationTitles() {
+		func roundedFont(size: CGFloat, weight: UIFont.Weight) -> UIFont {
+			let font = UIFont.systemFont(ofSize: size, weight: weight)
+			guard let descriptor = font.fontDescriptor.withDesign(.rounded) else {
+				return font
+			}
+			return UIFont(descriptor: descriptor, size: size)
+		}
+
+		UINavigationBar.appearance().largeTitleTextAttributes = [
+			.font: UIFontMetrics(forTextStyle: .largeTitle).scaledFont(
+				for: roundedFont(size: 34, weight: .heavy)
+			)
+		]
+		UINavigationBar.appearance().titleTextAttributes = [
+			.font: UIFontMetrics(forTextStyle: .headline).scaledFont(
+				for: roundedFont(size: 17, weight: .bold)
+			)
+		]
 	}
 
 	private func _refreshServerCertificates() {

@@ -6,13 +6,6 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>UIAppFonts</key>
-	<array>
-		<string>Iosevka-Regular.ttf</string>
-		<string>Iosevka-Medium.ttf</string>
-		<string>Iosevka-SemiBold.ttf</string>
-		<string>Iosevka-Bold.ttf</string>
-	</array>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).userTask.*</string>

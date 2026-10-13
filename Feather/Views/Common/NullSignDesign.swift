@@ -64,11 +64,11 @@ struct NullSignSectionLabel: View {
 	var body: some View {
 		HStack(alignment: .firstTextBaseline, spacing: 6) {
 			Text(title)
-				.font(prominent ? .iosevka(.title3, weight: .bold) : .iosevka(.subheadline, weight: .semibold))
+				.font(prominent ? .roundedUI(.title3, weight: .heavy) : .roundedUI(.subheadline, weight: .bold))
 				.foregroundStyle(prominent ? Color.white : NullSignStyle.muted)
 			if let count {
 				Text(verbatim: "\(count)")
-					.font(prominent ? .iosevka(.title3, weight: .semibold) : .iosevka(.subheadline))
+					.font(prominent ? .roundedUI(.title3, weight: .heavy) : .roundedUI(.subheadline))
 					.foregroundStyle(NullSignStyle.faint)
 			}
 			Spacer(minLength: 0)
@@ -110,7 +110,7 @@ struct NullSignChip: View {
 					.font(.system(size: 9, weight: .semibold))
 			}
 			Text(text)
-				.font(.iosevka(.caption2, weight: .semibold))
+				.font(.roundedUI(.caption2, weight: .bold))
 				.lineLimit(1)
 		}
 		.foregroundStyle(filled ? Color.white : tint)
@@ -165,7 +165,7 @@ struct NullSignPrimaryButtonStyle: ButtonStyle {
 
 		var body: some View {
 			configuration.label
-				.font(.iosevka(size: height < 40 ? 15 : 17, weight: .semibold))
+				.font(.roundedUI(size: height < 40 ? 15 : 17, weight: .bold))
 				.foregroundStyle(.white)
 				.padding(.horizontal, height < 40 ? 14 : 20)
 				.frame(minHeight: height)
@@ -191,7 +191,7 @@ struct NullSignSecondaryButtonStyle: ButtonStyle {
 
 		var body: some View {
 			configuration.label
-				.font(.iosevka(size: height < 40 ? 15 : 17, weight: .semibold))
+				.font(.roundedUI(size: height < 40 ? 15 : 17, weight: .bold))
 				.foregroundStyle(tint)
 				.padding(.horizontal, height < 40 ? 14 : 20)
 				.frame(minHeight: height)
@@ -267,7 +267,7 @@ struct NullSignSegmentedControl<Value: Hashable>: View {
 								.foregroundStyle(NullSignStyle.faint)
 						}
 					}
-					.font(.iosevka(.subheadline, weight: .semibold))
+					.font(.roundedUI(.subheadline, weight: .bold))
 					.lineLimit(1)
 					.frame(maxWidth: .infinity)
 					.frame(height: 32)
@@ -318,10 +318,10 @@ struct NullSignEmptyState<Actions: View>: View {
 
 			VStack(spacing: 6) {
 				Text(title)
-					.font(.iosevka(.title3, weight: .semibold))
+					.font(.roundedUI(.title3, weight: .heavy))
 					.multilineTextAlignment(.center)
 				Text(message)
-					.font(.iosevka(.subheadline))
+					.font(.roundedUI(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 					.multilineTextAlignment(.center)
 					.fixedSize(horizontal: false, vertical: true)
@@ -524,13 +524,13 @@ struct NullSignIdentityCard: View {
 				)
 				VStack(spacing: -2) {
 					Text(validity.value)
-						.font(.iosevka(size: 17, weight: .bold))
+						.font(.roundedUI(size: 17, weight: .heavy))
 						.monospacedDigit()
 						.minimumScaleFactor(0.6)
 						.lineLimit(1)
 					if !validity.unit.isEmpty {
 						Text(validity.unit)
-							.font(.iosevka(size: 10, weight: .medium))
+							.font(.roundedUI(size: 10, weight: .regular))
 							.foregroundStyle(NullSignStyle.muted)
 					}
 				}
@@ -539,10 +539,10 @@ struct NullSignIdentityCard: View {
 
 			VStack(alignment: .leading, spacing: 3) {
 				Text(_title)
-					.font(.iosevka(.headline))
+					.font(.roundedUI(.headline))
 					.lineLimit(1)
 				Text(_subtitle)
-					.font(.iosevka(.subheadline))
+					.font(.roundedUI(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
 				HStack(spacing: 6) {
@@ -550,7 +550,7 @@ struct NullSignIdentityCard: View {
 						.fill(validity.tint)
 						.frame(width: 7, height: 7)
 					Text(_statusLine(validity))
-						.font(.iosevka(.subheadline))
+						.font(.roundedUI(.subheadline))
 						.foregroundStyle(NullSignStyle.muted)
 						.lineLimit(1)
 				}
@@ -607,11 +607,11 @@ struct NullSignSigningHeader<IconMenu: View>: View {
 
 			VStack(spacing: 4) {
 				Text(app.name ?? "Unknown App")
-					.font(.iosevka(.title2, weight: .bold))
+					.font(.roundedUI(.title2, weight: .heavy))
 					.multilineTextAlignment(.center)
 					.lineLimit(2)
 				Text(app.identifier ?? "No bundle identifier")
-					.font(.iosevka(.subheadline))
+					.font(.roundedUI(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
 			}

@@ -13,9 +13,9 @@ struct ConfigurationDictView: View {
 					HStack(spacing: 12) {
 						VStack(alignment: .leading, spacing: 3) {
 							Text(title)
-								.font(.iosevka(.headline))
+								.font(.roundedUI(.headline))
 							Text("\(dataDict.count) automatic \(dataDict.count == 1 ? "rule" : "rules")")
-								.font(.iosevka(.subheadline))
+								.font(.roundedUI(.subheadline))
 								.foregroundStyle(.secondary)
 						}
 						Spacer()
@@ -34,9 +34,9 @@ struct ConfigurationDictView: View {
 							.font(.title2)
 							.foregroundStyle(NullSignStyle.accent)
 						Text("No rules configured")
-							.font(.iosevka(.headline))
+							.font(.roundedUI(.headline))
 						Text("Apps keep their original value unless a matching rule is added.")
-							.font(.iosevka(.subheadline))
+							.font(.roundedUI(.subheadline))
 							.foregroundStyle(.secondary)
 							.multilineTextAlignment(.center)
 					}
@@ -70,7 +70,7 @@ struct ConfigurationDictView: View {
 		HStack(spacing: 12) {
 			VStack(alignment: .leading, spacing: 6) {
 				Text(key)
-					.font(.iosevka(.subheadline, weight: .medium))
+					.font(.roundedUI(.subheadline, weight: .regular))
 					.foregroundStyle(.secondary)
 					.lineLimit(1)
 				HStack(spacing: 7) {
@@ -78,7 +78,7 @@ struct ConfigurationDictView: View {
 						.font(.caption.weight(.semibold))
 						.foregroundStyle(NullSignStyle.accent)
 					Text(value)
-						.font(.iosevka(.body, weight: .semibold))
+						.font(.roundedUI(.body, weight: .bold))
 						.lineLimit(2)
 				}
 			}

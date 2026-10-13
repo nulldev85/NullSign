@@ -33,9 +33,9 @@ struct LibraryInfoView: View {
 							SigningRowIcon(systemImage: "folder")
 							VStack(alignment: .leading, spacing: 2) {
 								Text(.localized("Open in Files"))
-									.font(.iosevka(.body, weight: .medium))
+									.font(.roundedUI(.body, weight: .regular))
 								Text("View this app's working directory")
-									.font(.iosevka(.caption))
+									.font(.roundedUI(.caption))
 									.foregroundStyle(NullSignStyle.muted)
 							}
 							Spacer()
@@ -73,12 +73,12 @@ extension LibraryInfoView {
 			FRAppIconView(app: app, size: 84)
 			VStack(spacing: 4) {
 				Text(app.name ?? .localized("Unknown App"))
-					.font(.iosevka(.title2, weight: .bold))
+					.font(.roundedUI(.title2, weight: .heavy))
 					.multilineTextAlignment(.center)
 					.lineLimit(2)
 				if let identifier = app.identifier {
 					Text(identifier)
-						.font(.iosevka(.subheadline))
+						.font(.roundedUI(.subheadline))
 						.foregroundStyle(NullSignStyle.muted)
 						.lineLimit(1)
 				}
@@ -183,10 +183,10 @@ extension LibraryInfoView {
 		HStack(spacing: 12) {
 			SigningRowIcon(systemImage: systemImage)
 			Text(title)
-				.font(.iosevka(.body, weight: .medium))
+				.font(.roundedUI(.body, weight: .regular))
 			Spacer(minLength: 12)
 			Text(desc)
-				.font(.iosevka(.subheadline))
+				.font(.roundedUI(.subheadline))
 				.foregroundStyle(NullSignStyle.muted)
 				.multilineTextAlignment(.trailing)
 				.lineLimit(2)
@@ -200,9 +200,9 @@ extension LibraryInfoView {
 			SigningRowIcon(systemImage: systemImage)
 			VStack(alignment: .leading, spacing: 2) {
 				Text(title)
-					.font(.iosevka(.body, weight: .medium))
+					.font(.roundedUI(.body, weight: .regular))
 				Text(detail)
-					.font(.iosevka(.caption))
+					.font(.roundedUI(.caption))
 					.foregroundStyle(NullSignStyle.muted)
 			}
 		}

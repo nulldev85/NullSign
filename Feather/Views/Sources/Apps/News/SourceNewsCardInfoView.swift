@@ -15,17 +15,17 @@ struct SourceNewsCardInfoView: View {
 					VStack(alignment: .leading, spacing: 10) {
 						if let date = new.date?.date {
 							Text(date.formatted(date: .long, time: .omitted))
-								.font(.iosevka(.caption, weight: .medium))
+								.font(.roundedUI(.caption, weight: .regular))
 								.foregroundStyle(NullSignStyle.accent)
 						}
 
 						Text(new.title)
-							.font(.iosevka(.title2, weight: .bold))
+							.font(.roundedUI(.title2, weight: .heavy))
 							.fixedSize(horizontal: false, vertical: true)
 
 						if !new.caption.isEmpty {
 							Text(new.caption)
-								.font(.iosevka(.body))
+								.font(.roundedUI(.body))
 								.foregroundStyle(.secondary)
 								.fixedSize(horizontal: false, vertical: true)
 						}
