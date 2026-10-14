@@ -68,7 +68,7 @@ struct SigningPropertiesView: View {
 			.padding(.top, 12)
 		}
 		.nullSignPage()
-		.navigationTitle(title)
+		.nullSignNavigationTitle(title)
 		.tint(NullSignStyle.accent)
 		.toolbar {
 			NBToolbarButton(

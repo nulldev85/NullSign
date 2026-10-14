@@ -14,6 +14,20 @@ extension View {
 	func nullSignTypography() -> some View {
 		modifier(NullSignTypography())
 	}
+
+	/// SwiftUI can replace UIKit appearance title fonts; own the inline label.
+	func nullSignNavigationTitle(_ title: String) -> some View {
+		self.navigationTitle(title)
+			.navigationBarTitleDisplayMode(.inline)
+			.toolbar {
+				ToolbarItem(placement: .principal) {
+					Text(title)
+						.font(.roundedUI(.headline, weight: .heavy))
+						.lineLimit(1)
+						.minimumScaleFactor(0.8)
+				}
+			}
+	}
 }
 
 /// Apply the rounded design to system-managed controls where supported.

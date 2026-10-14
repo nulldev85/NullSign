@@ -25,6 +25,6 @@ struct CertificatesInfoEntitlementView: View {
 			.padding(.bottom, 28)
 		}
 		.nullSignPage()
-		.navigationTitle("Entitlements")
+		.nullSignNavigationTitle("Entitlements")
 	}
 }

@@ -87,7 +87,7 @@ struct SourceAppsView: View {
 				)
 			}
 		}
-		.navigationTitle(_navigationTitle)
+		.nullSignNavigationTitle(_navigationTitle)
 		.toolbarBackground(NullSignStyle.ink, for: .navigationBar)
 		.toolbarBackground(.visible, for: .navigationBar)
 		.toolbarColorScheme(.dark, for: .navigationBar)

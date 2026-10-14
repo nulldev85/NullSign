@@ -11,19 +11,27 @@ unchanged.
 The chosen image is mechanically downscaled, without cropping, to an opaque
 1024 × 1024 sRGB PNG. The same file is installed at these workspace paths:
 
-- `Feather/Resources/AppIcon.icon/Assets/nullsign.png`
-- `Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png`
-- `Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign_dark.png`
-- `Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign_tint.png`
+- `Feather/Resources/NullSignBlue.icon/Assets/nullsign.png`
+- `Feather/Resources/Assets.xcassets/NullSignBlue.appiconset/nullsign.png`
+- `Feather/Resources/Assets.xcassets/NullSignBlue.appiconset/nullsign_dark.png`
+- `Feather/Resources/Assets.xcassets/NullSignBlue.appiconset/nullsign_tint.png`
+- `Feather/Resources/Assets.xcassets/NullSignBrand.imageset/nullsign.png`
 
-The Icon Composer background also uses charcoal. Existing system appearance
-handling and the in-app template glyph remain intact. Previous artwork is
-recoverable from Git history.
+Build 22 gives the catalogs a fresh `NullSignBlue` name and displays the About
+artwork directly through `NullSignBrand`, rather than the cached system icon
+renderer. The Icon Composer background also uses charcoal. Existing system
+appearance handling and the in-app template glyph remain intact. Previous
+artwork is recoverable from Git history.
 
 `Tools/prepare-app-icon.mjs` handles only format/size packaging of the chosen
 generation. `node Tools/check-app-icon.mjs` verifies dimensions, RGB mode,
-absence of transparency, and byte equality across the four installed assets.
+absence of transparency, and byte equality across the five installed assets.
 The asset check also runs before the GitHub IPA build.
+
+`Tools/check-packaged-icon.mjs` also decodes Xcode's optimized CgBI icon PNGs and
+verifies the actual blue/turquoise pixels inside the IPA. It successfully checked
+the build-21 artifact's 120px icon (1,609 blue pixels and 32 turquoise pixels).
+The macOS workflow applies this check to each packaged build-22 icon.
 
 ## Final edit prompt
 

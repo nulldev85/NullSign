@@ -27,8 +27,23 @@ public struct NBNavigationView<Content>: View where Content: View {
 			_content
 				.navigationTitle(_title)
 				.navigationBarTitleDisplayMode(_mode)
+				.toolbar {
+					if _usesInlineTitle && !_title.isEmpty {
+						ToolbarItem(placement: .principal) {
+							Text(_title)
+								.font(.roundedUI(.headline, weight: .heavy))
+								.lineLimit(1)
+								.minimumScaleFactor(0.8)
+						}
+					}
+				}
 		}
 		.environment(\.font, .roundedUI(.body))
 		.modifier(NBRoundedFontDesign())
+	}
+
+	private var _usesInlineTitle: Bool {
+		if case .inline = _mode { return true }
+		return false
 	}
 }

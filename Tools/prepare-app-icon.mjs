@@ -20,10 +20,11 @@ const icon = await sharp(input)
   .png({ compressionLevel: 9 })
   .toBuffer();
 const targets = [
-  'Feather/Resources/AppIcon.icon/Assets/nullsign.png',
-  'Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png',
-  'Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign_dark.png',
-  'Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign_tint.png'
+  'Feather/Resources/NullSignBlue.icon/Assets/nullsign.png',
+  'Feather/Resources/Assets.xcassets/NullSignBlue.appiconset/nullsign.png',
+  'Feather/Resources/Assets.xcassets/NullSignBlue.appiconset/nullsign_dark.png',
+  'Feather/Resources/Assets.xcassets/NullSignBlue.appiconset/nullsign_tint.png',
+  'Feather/Resources/Assets.xcassets/NullSignBrand.imageset/nullsign.png'
 ];
 for (const target of targets) {
   const destination = path.join(root, target);

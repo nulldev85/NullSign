@@ -70,7 +70,7 @@ struct DiagnosticsView: View {
 			.padding(.bottom, 28)
 		}
 		.nullSignPage()
-		.navigationTitle("Diagnostics")
+		.nullSignNavigationTitle("Diagnostics")
 		.onAppear(perform: _refresh)
 	}
 

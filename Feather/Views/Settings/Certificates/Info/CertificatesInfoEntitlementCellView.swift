@@ -22,10 +22,12 @@ struct CertificatesInfoEntitlementCellView: View {
 		} else {
 			HStack {
 				Text(key)
+					.font(.roundedUI(.body, weight: .bold))
 				Spacer()
 				Text(_formatted(value))
+					.font(.roundedUI(.body))
 					.foregroundStyle(.secondary)
-					.copyableText(_formatted(value))
+					.nullSignCopyableText(_formatted(value))
 			}
 		}
 	}
@@ -37,6 +39,7 @@ struct CertificatesInfoEntitlementCellView: View {
 			}
 		} label: {
 			Text(key)
+				.font(.roundedUI(.body, weight: .bold))
 		}
 	}
 	

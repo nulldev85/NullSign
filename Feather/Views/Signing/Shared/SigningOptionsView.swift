@@ -212,19 +212,10 @@ struct SigningOptionsView: View {
 		selection: Binding<T>,
 		values: [T]
 	) -> some View {
-		HStack(spacing: 12) {
-			SigningRowIcon(systemImage: systemImage)
-			Text(title)
-				.font(.roundedUI(.body, weight: .regular))
-			Spacer(minLength: 8)
-			Picker(title, selection: selection) {
-				ForEach(values, id: \.self) { value in
-					Text(value.localizedDescription).tag(value)
-				}
-			}
-			.labelsHidden()
-			.tint(NullSignStyle.accent)
-		}
+		NullSignChoiceRow(
+			title: title, systemImage: systemImage, selection: selection,
+			values: values, label: { $0.localizedDescription }
+		)
 		.signingDestinationRow()
 	}
 	

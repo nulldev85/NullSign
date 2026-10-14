@@ -25,6 +25,7 @@ struct LibraryView: View {
 	@State private var _isUpdateCheckCompleteVisible = false
 	@State private var _isCertificatesPresenting = false
 	@State private var _isBulkDeleteConfirmationPresented = false
+	@State private var _bulkDeleteAfterDismissal = false
 
 	// Automatic re-checks are throttled so opening the tab doesn't hammer every added source.
 	private let _autoUpdateCheckInterval: TimeInterval = 6 * 60 * 60
@@ -246,17 +247,8 @@ struct LibraryView: View {
 					_pendingDownloadURL = url
 				}
 			}
-			.confirmationDialog(
-				_bulkDeleteTitle,
-				isPresented: $_isBulkDeleteConfirmationPresented,
-				titleVisibility: .visible
-			) {
-				Button(.localized("Delete"), role: .destructive) {
-					_bulkDeleteSelectedApps()
-				}
-				Button(.localized("Cancel"), role: .cancel) {}
-			} message: {
-				Text("The app files are removed from this device.")
+			.sheet(isPresented: $_isBulkDeleteConfirmationPresented, onDismiss: _deleteAfterConfirmation) {
+				_bulkDeleteMenu
 			}
 			.onReceive(NotificationCenter.default.publisher(for: Notification.Name("Feather.installApp"))) { _ in
 				if let latest = _signedApps.first {
@@ -418,6 +410,26 @@ extension LibraryView {
 extension LibraryView {
 	private var _bulkDeleteTitle: String {
 		_selectedAppUUIDs.count == 1 ? "Delete 1 app?" : "Delete \(_selectedAppUUIDs.count) apps?"
+	}
+
+	private var _bulkDeleteMenu: some View {
+		NullSignMenuSheet(title: _bulkDeleteTitle, systemImage: "trash", detail: "The selected app files will be removed from this device. This cannot be undone.") {
+			NullSignSettingsCard {
+				NullSignMenuAction(title: "Delete Selected Apps", systemImage: "trash", isDestructive: true, isDisabled: _selectedAppUUIDs.isEmpty) {
+					_bulkDeleteAfterDismissal = true
+					_isBulkDeleteConfirmationPresented = false
+				}
+			}
+			Button("Cancel") { _isBulkDeleteConfirmationPresented = false }
+				.font(.roundedUI(.body, weight: .bold))
+				.frame(maxWidth: .infinity, minHeight: 44)
+		}
+	}
+
+	private func _deleteAfterConfirmation() {
+		guard _bulkDeleteAfterDismissal else { return }
+		_bulkDeleteAfterDismissal = false
+		_bulkDeleteSelectedApps()
 	}
 
 	private var _allVisibleSelected: Bool {

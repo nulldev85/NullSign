@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png" width="160" alt="NullSign app icon">
+  <img src="Feather/Resources/Assets.xcassets/NullSignBlue.appiconset/nullsign.png" width="160" alt="NullSign app icon">
   <h1>NullSign</h1>
   <p>An on-device IPA signer with a small footprint and no certificate uploads.</p>
 </div>

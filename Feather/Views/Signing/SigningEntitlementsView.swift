@@ -11,6 +11,8 @@ import NimbleViews
 // MARK: - View
 struct SigningEntitlementsView: View {
 	@State private var _isAddingPresenting = false
+	@State private var _actionFile: NullSignFileMenuTarget?
+	@State private var _pendingDeleteFile: URL?
 	
 	@Binding var bindingValue: URL?
 	
@@ -39,11 +41,8 @@ struct SigningEntitlementsView: View {
 							_delete(ent)
 						}
 					}
-					.contextMenu {
-						Button(.localized("Delete"), systemImage: "trash", role: .destructive) {
-							_delete(ent)
-						}
-					}
+					.onLongPressGesture { _actionFile = NullSignFileMenuTarget(url: ent) }
+					.accessibilityAction(named: Text("File Actions")) { _actionFile = NullSignFileMenuTarget(url: ent) }
 				} else {
 					Button {
 						_isAddingPresenting = true
@@ -79,8 +78,14 @@ struct SigningEntitlementsView: View {
 		.listStyle(.plain)
 		.scrollContentBackground(.hidden)
 		.nullSignPage()
-		.navigationTitle(.localized("Entitlements"))
+		.nullSignNavigationTitle(.localized("Entitlements"))
 		.tint(NullSignStyle.accent)
+		.sheet(item: $_actionFile, onDismiss: _deleteRequestedFile) { target in
+			NullSignFileMenu(url: target.url) {
+				_pendingDeleteFile = target.url
+				_actionFile = nil
+			}
+		}
 		.sheet(isPresented: $_isAddingPresenting) {
 			FileImporterRepresentableView(
 				allowedContentTypes:  [.xmlPropertyList, .plist, .entitlements],
@@ -100,5 +105,12 @@ struct SigningEntitlementsView: View {
 		FileManager.default.deleteStored(url) { _ in
 			bindingValue = nil
 		}
+	}
+
+	private func _deleteRequestedFile() {
+		guard let url = _pendingDeleteFile else { return }
+		_pendingDeleteFile = nil
+		guard bindingValue == url else { return }
+		_delete(url)
 	}
 }

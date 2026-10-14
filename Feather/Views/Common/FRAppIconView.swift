@@ -238,7 +238,11 @@ struct FRAppIconView: View {
 
 	var body: some View {
 		Group {
-			if let bundledFallbackAssetName {
+			if app == nil {
+				Image("NullSignBrand")
+					.renderingMode(.original)
+					.appIconStyle(size: size)
+			} else if let bundledFallbackAssetName {
 				Image(bundledFallbackAssetName)
 					.appIconStyle(size: size)
 			} else if let image = loader.image {
@@ -250,7 +254,7 @@ struct FRAppIconView: View {
 			}
 		}
 		.task(id: "\(app?.uuid ?? "self")\(appearance.rawValue)\(selectedColorHex)\(shouldTintIcons)\(shouldChangeIconsBasedOffStyle)") {
-			if bundledFallbackAssetName == nil {
+			if app != nil && bundledFallbackAssetName == nil {
 				_load()
 			} else {
 				loader.cancel()

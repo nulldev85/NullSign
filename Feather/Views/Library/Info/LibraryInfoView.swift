@@ -191,7 +191,7 @@ extension LibraryInfoView {
 				.multilineTextAlignment(.trailing)
 				.lineLimit(2)
 		}
-		.copyableText(desc)
+		.nullSignCopyableText(desc)
 		.signingDestinationRow()
 	}
 

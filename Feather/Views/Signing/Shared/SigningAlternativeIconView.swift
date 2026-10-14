@@ -28,7 +28,7 @@ struct SigningAlternativeIconView: View {
 			}
 		} else {
 			_content
-				.navigationTitle(.localized("Alternative Icons"))
+				.nullSignNavigationTitle(.localized("Alternative Icons"))
 		}
 	}
 }

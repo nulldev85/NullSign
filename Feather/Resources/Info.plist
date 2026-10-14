@@ -47,7 +47,7 @@
 		<dict>
 			<key>CFBundleIconFiles</key>
 			<array>
-				<string>AppIcon</string>
+				<string>NullSignBlue</string>
 			</array>
 			<key>UIPrerenderedIcon</key>
 			<false/>

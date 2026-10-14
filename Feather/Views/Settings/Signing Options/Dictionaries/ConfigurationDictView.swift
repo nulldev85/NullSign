@@ -2,6 +2,9 @@ import SwiftUI
 
 struct ConfigurationDictView: View {
 	@State private var _isAddingPresenting = false
+	@State private var _isRuleMenuPresenting = false
+	@State private var _actionRuleKey: String?
+	@State private var _pendingDeleteRule: String?
 
 	let title: String
 	@Binding var dataDict: [String: String]
@@ -60,9 +63,19 @@ struct ConfigurationDictView: View {
 			.padding(.bottom, 28)
 		}
 		.nullSignPage()
-		.navigationTitle(title)
+		.nullSignNavigationTitle(title)
 		.navigationDestination(isPresented: $_isAddingPresenting) {
 			ConfigurationDictAddView(dataDict: $dataDict)
+		}
+		.sheet(isPresented: $_isRuleMenuPresenting, onDismiss: _deleteRequestedRule) {
+			NullSignMenuSheet(title: "Rule Actions", systemImage: "doc.text", detail: _actionRuleKey) {
+				NullSignSettingsCard {
+					NullSignMenuAction(title: "Delete", systemImage: "trash", isDestructive: true) {
+						_pendingDeleteRule = _actionRuleKey
+						_isRuleMenuPresenting = false
+					}
+				}
+			}
 		}
 	}
 
@@ -83,17 +96,16 @@ struct ConfigurationDictView: View {
 				}
 			}
 			Spacer()
-			Menu {
-				Button("Delete", systemImage: "trash", role: .destructive) {
-					dataDict.removeValue(forKey: key)
-					OptionsManager.shared.saveOptions()
-				}
+			Button {
+				_actionRuleKey = key
+				_isRuleMenuPresenting = true
 			} label: {
 				Image(systemName: "ellipsis")
 					.font(.roundedUI(.body, weight: .semibold))
 					.foregroundStyle(.secondary)
 					.frame(width: 40, height: 40)
 			}
+			.buttonStyle(.plain)
 		}
 		.padding(14)
 		.background(NullSignStyle.panel)
@@ -102,5 +114,12 @@ struct ConfigurationDictView: View {
 				.stroke(NullSignStyle.hairline, lineWidth: 1)
 		}
 		.clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+	}
+
+	private func _deleteRequestedRule() {
+		guard let key = _pendingDeleteRule else { return }
+		_pendingDeleteRule = nil
+		guard dataDict.removeValue(forKey: key) != nil else { return }
+		OptionsManager.shared.saveOptions()
 	}
 }

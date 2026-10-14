@@ -21,11 +21,10 @@ struct InstallationView: View {
 					"Delivery Route",
 					detail: "The route is used only after an app has signed and passed verification."
 				) {
-					Picker("Installation method", selection: $_installationMethod) {
-						Text("iPhone").tag(0)
-						Text("Apple TV / Tunnel").tag(1)
-					}
-					.pickerStyle(.segmented)
+					NullSignSegmentedControl(
+						options: [0, 1], selection: $_installationMethod,
+						title: { $0 == 0 ? "iPhone" : "Apple TV / Tunnel" }
+					)
 				}
 
 				if _installationMethod == 0 {
@@ -39,7 +38,7 @@ struct InstallationView: View {
 			.padding(.bottom, 28)
 		}
 		.nullSignPage()
-		.navigationTitle("Installation")
+		.nullSignNavigationTitle("Installation")
 		.onChange(of: _installationMethod) { newValue in
 			guard newValue == 1 else { return }
 			_showMethodChangedAlert = true

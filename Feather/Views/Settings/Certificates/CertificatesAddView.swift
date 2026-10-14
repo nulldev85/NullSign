@@ -118,6 +118,7 @@ extension CertificatesAddView {
 
 				VStack(alignment: .leading, spacing: 2) {
 					Text(title)
+						.font(.roundedUI(.body, weight: .bold))
 					Text(file?.lastPathComponent ?? "No file selected")
 						.font(.roundedUI(.footnote))
 						.foregroundStyle(NullSignStyle.muted)
@@ -126,6 +127,7 @@ extension CertificatesAddView {
 				}
 				Spacer()
 				Text(file == nil ? "Choose" : "Change")
+					.font(.roundedUI(.subheadline, weight: .bold))
 					.foregroundStyle(NullSignStyle.accent)
 			}
 			.contentShape(Rectangle())
@@ -137,9 +139,11 @@ extension CertificatesAddView {
 	private func _inputField(_ placeholder: String, text: Binding<String>, secure: Bool) -> some View {
 		if secure {
 			SecureField(placeholder, text: text)
+				.font(.roundedUI(.body))
 				.textContentType(.password)
 		} else {
 			TextField(placeholder, text: text)
+				.font(.roundedUI(.body))
 		}
 	}
 

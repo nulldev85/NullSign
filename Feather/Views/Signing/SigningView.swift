@@ -356,7 +356,7 @@ extension SigningView {
 				)}
 				.scrollContentBackground(.hidden)
 				.nullSignPage()
-				.navigationTitle(.localized("Properties"))
+				.nullSignNavigationTitle(.localized("Properties"))
 			}
 		} header: {
 			SigningSectionHeader(title: .localized("Advanced"))

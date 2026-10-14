@@ -31,7 +31,7 @@ struct SourceAppsDetailView: View {
 							if let versions = app.versions, versions.count > 1 {
 								NavigationLink {
 									VersionHistoryView(sourceURL: sourceURL, source: source, app: app, versions: versions)
-										.navigationTitle(.localized("Version History"))
+										.nullSignNavigationTitle(.localized("Version History"))
 										.navigationBarTitleDisplayMode(.inline)
 								} label: {
 									HStack {

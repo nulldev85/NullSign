@@ -133,24 +133,8 @@ struct LibraryCellView: View {
 				}
 			}
 		}
-		.confirmationDialog(
-			.localized("Update Available"),
-			isPresented: $_isSignedUpdateConfirmationPresented,
-			titleVisibility: .visible
-		) {
-			Button(.localized("Install Current Version"), systemImage: "square.and.arrow.down") {
-				selectedInstallAppPresenting = AnyApp(base: app)
-			}
-			if let update = _signedUpdateConfirmation {
-				Button(.localized("Download Update"), systemImage: "arrow.down.circle") {
-					_startUpdateDownload(update)
-				}
-			}
-			Button(.localized("Cancel"), role: .cancel) {}
-		} message: {
-			if let update = _signedUpdateConfirmation {
-				Text("\(update.appName) \(update.remoteVersion)")
-			}
+		.sheet(isPresented: $_isSignedUpdateConfirmationPresented, onDismiss: _performPendingAction) {
+			_signedUpdateMenu
 		}
 		.onReceive(updateManager.$updates) { updates in
 			_update = app.uuid.flatMap { updates[$0] }
@@ -252,6 +236,28 @@ extension LibraryCellView {
 	private enum MenuAction {
 		case info, open, install, sign, export, delete
 		case update(AppUpdate)
+		case downloadUpdate(AppUpdate)
+	}
+
+	private var _signedUpdateMenu: some View {
+		NullSignMenuSheet(
+			title: "Update Available", systemImage: "arrow.down.circle",
+			detail: _signedUpdateConfirmation.map { "\($0.appName) \($0.remoteVersion)" }
+		) {
+			NullSignSettingsCard {
+				NullSignMenuAction(title: "Install Current Version", systemImage: "square.and.arrow.down") {
+					_pendingAction = .install
+					_isSignedUpdateConfirmationPresented = false
+				}
+				if let update = _signedUpdateConfirmation {
+					NullSignSettingsDivider()
+					NullSignMenuAction(title: "Download Update", systemImage: "arrow.down.circle", tint: NullSignStyle.success) {
+						_pendingAction = .downloadUpdate(update)
+						_isSignedUpdateConfirmationPresented = false
+					}
+				}
+			}
+		}
 	}
 
 	@ViewBuilder
@@ -298,6 +304,7 @@ extension LibraryCellView {
 		case .sign: selectedSigningAppPresenting = AnyApp(base: app)
 		case .export: selectedInstallAppPresenting = AnyApp(base: app, archive: true)
 		case .delete: _delete()
+		case .downloadUpdate(let update): _startUpdateDownload(update)
 		case .update(let update):
 			if app.isSigned {
 				_signedUpdateConfirmation = update

@@ -123,7 +123,7 @@ struct AboutView: View {
 			.padding(.bottom, 28)
 		}
 		.nullSignPage()
-		.navigationTitle("About")
+		.nullSignNavigationTitle("About")
 		.navigationBarTitleDisplayMode(.inline)
 		.task {
 			if _selfUpdateState == .idle {

@@ -267,5 +267,6 @@ struct SettingsView: View {
 				CertificatesView()
 			}
 		}
+		.nullSignTypography()
 	}
 }

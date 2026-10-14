@@ -45,6 +45,14 @@ const violations = files.flatMap(file => unroundedFonts(fs.readFileSync(file, 'u
   .map(line => `${path.relative(root, file)}:${line}: use .roundedUI(...) for explicit font overrides`));
 assert.equal(violations.length, 0, violations.join('\n'));
 
+// A rounded parent font does not restyle UIKit's menu/Picker presentation.
+// Ordinary app choices must use branded panels, not merely pass the font lint.
+for (const file of files.filter(file => file.includes(`${path.sep}Feather${path.sep}Views${path.sep}`))) {
+  const code = fs.readFileSync(file, 'utf8');
+  assert(!/\bMenu\s*\{|\.contextMenu\s*\{|\bPicker\s*\(|\.confirmationDialog\s*\(/.test(code),
+    `${path.relative(root, file)}: app-owned menus/selectors must use branded components`);
+}
+
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 const appFonts = read('Feather/Extensions/Font+RoundedUI.swift');
 const componentFonts = read('NimbleKit/Sources/NimbleViews/Extensions/Font+RoundedUI.swift');
@@ -69,6 +77,10 @@ for (const file of [
 const hosted = read('Feather/Views/Sources/Apps/UIKit/SourceAppsTableRepresentableView.swift');
 assert.equal((hosted.match(/\.nullSignTypography\(\)/g) ?? []).length, 3, 'News, app-cell, and section-header hosting roots must install typography.');
 assert(read('NimbleKit/Sources/NimbleViews/Views/NBNavigationView.swift').includes('.modifier(NBRoundedFontDesign())'));
+assert(read('NimbleKit/Sources/NimbleViews/Views/NBNavigationView.swift').includes('.font(.roundedUI(.headline, weight: .heavy))'));
+assert(read('Feather/Views/Settings/Signing Options/ConfigurationView.swift').includes('NullSignChoiceRow('));
+assert(read('Feather/Views/Signing/Shared/SigningOptionsView.swift').includes('NullSignChoiceRow('));
+assert(read('Feather/Views/Settings/Certificates/CertificatesView.swift').includes('NullSignTextPrompt('));
 for (const name of ['NBToolbarButton', 'NBToolbarMenu']) {
   assert(read(`NimbleKit/Sources/NimbleViews/Views/${name}.swift`).includes('.font(.roundedUI(.body, weight: .bold))'));
 }

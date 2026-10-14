@@ -37,8 +37,10 @@ hierarchy to its own catalog, library, and settings data.
   fields and settings rows use minimum heights rather than fixed text heights.
 - Apps source options, repository/app long-press actions, Signer import choices,
   and the signing icon chooser use the same charcoal sheets, grouped cards,
-  rounded fonts, inset dividers, and category-color icon tiles. Native file and
-  photo pickers, error alerts, and safety confirmations remain system-owned.
+  rounded fonts, inset dividers, and category-color icon tiles. Settings selectors,
+  certificate/PPQ/rule actions, copy actions, signing-file menus, and Signer
+  update/bulk-delete choices also use app-owned panels. File/photo pickers and
+  system error/pairing alerts retain their native presentations.
 - Import from URL uses a branded form with explicit Paste/Clear controls,
   keyboard submission, and inline HTTP/HTTPS validation. Links do not need an
   IPA suffix: redirects and query strings continue to work. Clipboard access
@@ -58,6 +60,20 @@ waves and overview symbols are hidden from accessibility and do not intercept ta
 Run `node Tools/check-typography.mjs --self-test` to check the SF Rounded source
 policy and presentation boundaries. This catches explicit default/custom font
 overrides and missing known hosting-root setup; it is not a native rendering test.
+
+Build 22 also rejects native `Menu`, `Picker`, `contextMenu`, and
+`confirmationDialog` usage in app views: a rounded parent font cannot guarantee
+the typography of those native presentations. Inline navigation headings are
+explicit SwiftUI SF Rounded Heavy labels, and certificate/rule fields and
+entitlement labels explicitly select rounded fonts. Custom panels show their
+actual version/build at the bottom.
+
+Build 21's downloaded IPA was audited, not just its source artwork: its Info.plist
+reports `1.4.0 (21)`, and its 120px packaged icon contains the blue mark and
+turquoise dot. Build 22 uses a fresh `NullSignBlue` icon catalog name and a direct
+`NullSignBrand` image for About, avoiding the system icon renderer there. CI
+checks the compiled icon pixels inside the IPA before upload. The bundle ID is
+unchanged; these repairs do not erase app or certificate data.
 
 `NullSignThemePreviews.swift` contains isolated SwiftUI component previews for
 standard and 320-point phone widths and larger accessibility text. These use the

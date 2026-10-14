@@ -9,6 +9,8 @@ struct CertificatesView: View {
 	@State private var _isSelectedInfoPresenting: CertificatePair?
 	@State private var _certToRename: CertificatePair?
 	@State private var _newNickname = ""
+	@State private var _actionCertificate: CertificatePair?
+	@State private var _pendingCertificateAction: (CertificatePair, CertificateAction)?
 
 	@FetchRequest(
 		entity: CertificatePair.entity(),
@@ -63,7 +65,7 @@ struct CertificatesView: View {
 			.padding(.bottom, 24)
 		}
 		.nullSignPage()
-		.navigationTitle("Certificates")
+		.nullSignNavigationTitle("Certificates")
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {
 			ToolbarItem(placement: .topBarTrailing) {
@@ -82,21 +84,65 @@ struct CertificatesView: View {
 			CertificatesAddView()
 				.presentationDetents([.medium, .large])
 		}
-		.alert("Rename Certificate", isPresented: $_isRenamingPresenting, presenting: _certToRename) { cert in
-			TextField("Nickname", text: $_newNickname)
-			Button("Cancel", role: .cancel) { }
-			Button("Save") {
-				guard cert.managedObjectContext != nil, !cert.isDeleted else { return }
-				cert.nickname = _newNickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-					? nil
-					: _newNickname.trimmingCharacters(in: .whitespacesAndNewlines)
-				Storage.shared.saveContext()
-			}
-		}
+		.sheet(item: $_actionCertificate, onDismiss: _performCertificateAction) { cert in _certificateMenu(cert) }
+		.sheet(isPresented: $_isRenamingPresenting) { _renamePrompt }
 	}
 }
 
 extension CertificatesView {
+	private enum CertificateAction { case info, rename, revoke, delete }
+
+	private func _chooseCertificateAction(_ action: CertificateAction, for cert: CertificatePair) {
+		_pendingCertificateAction = (cert, action)
+		_actionCertificate = nil
+	}
+
+	private func _performCertificateAction() {
+		guard let (cert, action) = _pendingCertificateAction else { return }
+		_pendingCertificateAction = nil
+		guard cert.managedObjectContext != nil, !cert.isDeleted else { return }
+		switch action {
+		case .info: _isSelectedInfoPresenting = cert
+		case .rename:
+			_newNickname = cert.nickname ?? ""
+			_certToRename = cert
+			_isRenamingPresenting = true
+		case .revoke: Storage.shared.revokagedCertificate(for: cert)
+		case .delete: if cert.isDefault != true { _delete(cert) }
+		}
+	}
+
+	private func _certificateMenu(_ cert: CertificatePair) -> some View {
+		NullSignMenuSheet(title: cert.nickname ?? "Certificate", systemImage: "checkmark.seal", detail: "Manage this local signing identity.") {
+			NullSignSettingsCard {
+				NullSignMenuAction(title: "Get Info", systemImage: "info.circle") { _chooseCertificateAction(.info, for: cert) }
+				NullSignSettingsDivider()
+				NullSignMenuAction(title: "Rename", systemImage: "pencil", tint: NullSignStyle.purple) { _chooseCertificateAction(.rename, for: cert) }
+				NullSignSettingsDivider()
+				NullSignMenuAction(title: "Check Revocation", systemImage: "checkmark.shield", tint: NullSignStyle.success) { _chooseCertificateAction(.revoke, for: cert) }
+				if cert.isDefault != true {
+					NullSignSettingsDivider()
+					NullSignMenuAction(title: "Delete", systemImage: "trash", isDestructive: true) { _chooseCertificateAction(.delete, for: cert) }
+				}
+			}
+		}
+	}
+
+	@ViewBuilder
+	private var _renamePrompt: some View {
+		if let cert = _certToRename {
+			NullSignTextPrompt(
+				title: "Rename Certificate", detail: "Set a nickname, or leave it empty to use the original certificate name.",
+				placeholder: "Nickname", text: $_newNickname, allowsEmpty: true
+			) {
+				guard cert.managedObjectContext != nil, !cert.isDeleted else { return }
+				let value = _newNickname.trimmingCharacters(in: .whitespacesAndNewlines)
+				cert.nickname = value.isEmpty ? nil : value
+				Storage.shared.saveContext()
+			}
+		}
+	}
+
 	private var _header: some View {
 		NullSignSettingsIntro(
 			systemImage: "checkmark.seal",
@@ -129,12 +175,8 @@ extension CertificatesView {
 			.disabled(!isCompatible)
 			.opacity(isCompatible ? 1 : 0.4)
 
-			Menu {
-				_contextActions(for: cert)
-				if cert.isDefault != true {
-					Divider()
-					_actions(for: cert)
-				}
+			Button {
+				_actionCertificate = cert
 			} label: {
 				Image(systemName: "ellipsis")
 					.font(.roundedUI(size: 15, weight: .bold))
@@ -142,6 +184,7 @@ extension CertificatesView {
 					.frame(width: 46, height: 52)
 					.contentShape(Rectangle())
 			}
+			.buttonStyle(.plain)
 			.accessibilityLabel("Certificate actions")
 		}
 		.nullSignSurface(fill: NullSignStyle.groupedSurface)
@@ -153,28 +196,6 @@ extension CertificatesView {
 		.transaction { $0.animation = nil }
 	}
 
-	@ViewBuilder
-	private func _actions(for cert: CertificatePair) -> some View {
-		Button("Delete", systemImage: "trash", role: .destructive) {
-			_delete(cert)
-		}
-	}
-
-	@ViewBuilder
-	private func _contextActions(for cert: CertificatePair) -> some View {
-		Button("Get Info", systemImage: "info.circle") {
-			_isSelectedInfoPresenting = cert
-		}
-		Button("Rename", systemImage: "pencil") {
-			_newNickname = cert.nickname ?? ""
-			_certToRename = cert
-			_isRenamingPresenting = true
-		}
-		Divider()
-		Button("Check Revocation", systemImage: "checkmark.shield") {
-			Storage.shared.revokagedCertificate(for: cert)
-		}
-	}
 
 	private func _delete(_ cert: CertificatePair) {
 		let selectedIndex = _selectedCertBinding.wrappedValue

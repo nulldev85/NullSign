@@ -104,7 +104,7 @@ struct CertificatesInfoView: View {
 				.font(.roundedUI(.subheadline))
 				.foregroundStyle(.secondary)
 				.multilineTextAlignment(.trailing)
-				.copyableText(value)
+				.nullSignCopyableText(value)
 		}
 	}
 }

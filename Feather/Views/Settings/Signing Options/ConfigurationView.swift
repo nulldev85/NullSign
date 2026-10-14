@@ -5,6 +5,9 @@ struct ConfigurationView: View {
 	@StateObject private var _optionsManager = OptionsManager.shared
 	@State private var _isRandomAlertPresenting = false
 	@State private var _randomString = ""
+	@State private var _isPPQMenuPresenting = false
+	@State private var _didCopyPPQ = false
+	@State private var _editPPQAfterDismissal = false
 
 	var body: some View {
 		ScrollView {
@@ -169,33 +172,25 @@ struct ConfigurationView: View {
 			.padding(.bottom, 28)
 		}
 		.nullSignPage()
-		.navigationTitle("Signing Defaults")
+		.nullSignNavigationTitle("Signing Defaults")
 		.toolbar {
-			NBToolbarMenu(
-				systemImage: "number",
-				style: .icon,
-				placement: .topBarTrailing
-			) {
-				Section("PPQ Suffix") {
-					Button("Change") {
-						_randomString = _optionsManager.options.ppqString
-						_isRandomAlertPresenting = true
-					}
-					Button("Copy") {
-						UIPasteboard.general.string = _optionsManager.options.ppqString
-					}
-				}
+			ToolbarItem(placement: .topBarTrailing) {
+				Button {
+					_didCopyPPQ = false
+					_isPPQMenuPresenting = true
+				} label: { Image(systemName: "number") }
+				.accessibilityLabel("PPQ Suffix Options")
 			}
 		}
-		.alert("PPQ Suffix", isPresented: $_isRandomAlertPresenting) {
-			TextField("String", text: $_randomString)
-			Button("Save") {
+		.sheet(isPresented: $_isPPQMenuPresenting, onDismiss: _openPPQEditor) { _ppqMenu }
+		.sheet(isPresented: $_isRandomAlertPresenting) {
+			NullSignTextPrompt(
+				title: "PPQ Suffix", detail: "This value is appended when PPQ Protection is enabled.",
+				placeholder: "String", text: $_randomString
+			) {
 				let value = _randomString.trimmingCharacters(in: .whitespacesAndNewlines)
 				if !value.isEmpty { _optionsManager.options.ppqString = value }
 			}
-			Button("Cancel", role: .cancel) { }
-		} message: {
-			Text("This value is appended when PPQ Protection is enabled.")
 		}
 		.onChange(of: _optionsManager.options) { _ in
 			_optionsManager.saveOptions()
@@ -204,25 +199,39 @@ struct ConfigurationView: View {
 }
 
 extension ConfigurationView {
+	private var _ppqMenu: some View {
+		NullSignMenuSheet(title: "PPQ Suffix", systemImage: "number", detail: "Manage the suffix used by PPQ Protection.") {
+			NullSignSettingsCard {
+				NullSignMenuAction(title: "Change", systemImage: "pencil", tint: NullSignStyle.purple) {
+					_editPPQAfterDismissal = true
+					_isPPQMenuPresenting = false
+				}
+				NullSignSettingsDivider()
+				NullSignMenuAction(title: _didCopyPPQ ? "Copied" : "Copy", systemImage: _didCopyPPQ ? "checkmark" : "doc.on.doc") {
+					UIPasteboard.general.string = _optionsManager.options.ppqString
+					_didCopyPPQ = true
+				}
+			}
+		}
+	}
+
+	private func _openPPQEditor() {
+		guard _editPPQAfterDismissal else { return }
+		_editPPQAfterDismissal = false
+		_randomString = _optionsManager.options.ppqString
+		_isRandomAlertPresenting = true
+	}
+
 	private func _picker<T: Hashable & LocalizedDescribable>(
 		_ title: String,
 		systemImage: String,
 		selection: Binding<T>,
 		values: [T]
 	) -> some View {
-		HStack(spacing: 12) {
-			NullSignIconTile(systemImage: systemImage)
-			Text(title)
-				.font(.roundedUI(size: 16, weight: .bold))
-			Spacer()
-			Picker(title, selection: selection) {
-				ForEach(values, id: \.self) { value in
-					Text(value.localizedDescription).tag(value)
-				}
-			}
-			.labelsHidden()
-			.tint(NullSignStyle.accent)
-	}
+		NullSignChoiceRow(
+			title: title, systemImage: systemImage, selection: selection,
+			values: values, label: { $0.localizedDescription }
+		)
 	}
 
 	private func _toggle(

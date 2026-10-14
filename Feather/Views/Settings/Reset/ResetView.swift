@@ -119,7 +119,7 @@ struct ResetView: View {
 			.id(_refreshToken)
 		}
 		.nullSignPage()
-		.navigationTitle("Storage & Reset")
+		.nullSignNavigationTitle("Storage & Reset")
 		.navigationBarTitleDisplayMode(.inline)
 		.task(id: _refreshToken) {
 			_cacheSize = await Self.cacheSize()

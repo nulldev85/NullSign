@@ -32,7 +32,7 @@ jobs:
 
       - name: Build unsigned NullSign IPA
         run: |
-          cmp -s Feather/Resources/AppIcon.icon/Assets/nullsign.png Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png
+          cmp -s Feather/Resources/NullSignBlue.icon/Assets/nullsign.png Feather/Resources/Assets.xcassets/NullSignBlue.appiconset/nullsign.png
           make iphoneos
 
       - name: Verify IPA structure
@@ -56,6 +56,10 @@ jobs:
           test -n "$expected_build"
           test "$actual_version" = "$expected_version"
           test "$actual_build" = "$expected_build"
+
+          icon_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName' "$plist_path")"
+          test "$icon_name" = "NullSignBlue"
+          node Tools/check-packaged-icon.mjs "$workdir/Payload/NullSign.app"
           echo "Verified NullSign $actual_version ($actual_build)"
 
       - name: Upload NullSign IPA

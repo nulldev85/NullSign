@@ -32,6 +32,10 @@ struct NullSignMenuSheet<Content: View>: View {
 						NullSignSettingsIntro(systemImage: systemImage, title: title, detail: detail)
 					}
 					content
+					Text("NullSign \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""))")
+						.font(.roundedUI(.caption2))
+						.foregroundStyle(NullSignStyle.faint)
+						.frame(maxWidth: .infinity, alignment: .center)
 				}
 				.padding(.horizontal, 20)
 				.padding(.top, 16)

@@ -5,10 +5,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const targets = [
-  'Feather/Resources/AppIcon.icon/Assets/nullsign.png',
-  'Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png',
-  'Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign_dark.png',
-  'Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign_tint.png'
+  'Feather/Resources/NullSignBlue.icon/Assets/nullsign.png',
+  'Feather/Resources/Assets.xcassets/NullSignBlue.appiconset/nullsign.png',
+  'Feather/Resources/Assets.xcassets/NullSignBlue.appiconset/nullsign_dark.png',
+  'Feather/Resources/Assets.xcassets/NullSignBlue.appiconset/nullsign_tint.png',
+  'Feather/Resources/Assets.xcassets/NullSignBrand.imageset/nullsign.png'
 ];
 let canonical;
 for (const target of targets) {
@@ -30,4 +31,8 @@ for (const target of targets) {
   if (canonical) assert(bytes.equals(canonical), `${target}: icon appearance does not match the canonical icon`);
   else canonical = bytes;
 }
-console.log('App icon checks passed: four matching, opaque 1024px RGB PNG assets.');
+const project = fs.readFileSync(path.join(root, 'Feather.xcodeproj/project.pbxproj'), 'utf8');
+assert.equal((project.match(/ASSETCATALOG_COMPILER_APPICON_NAME = NullSignBlue;/g) ?? []).length, 2);
+const display = fs.readFileSync(path.join(root, 'Feather/Views/Common/FRAppIconView.swift'), 'utf8');
+assert(display.includes('Image("NullSignBrand")') && display.includes('.renderingMode(.original)'));
+console.log('App icon checks passed: five matching, opaque 1024px RGB assets and fresh icon catalog wiring.');

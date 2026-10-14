@@ -37,6 +37,7 @@ struct ConfigurationDictAddView: View {
 							.font(.roundedUI(.caption, weight: .bold))
 							.foregroundStyle(.secondary)
 						TextField("Original value", text: $_newKey)
+							.font(.roundedUI(.body))
 							.textInputAutocapitalization(.never)
 							.autocorrectionDisabled()
 					}
@@ -48,6 +49,7 @@ struct ConfigurationDictAddView: View {
 							.font(.roundedUI(.caption, weight: .bold))
 							.foregroundStyle(.secondary)
 						TextField("New value", text: $_newValue)
+							.font(.roundedUI(.body))
 							.textInputAutocapitalization(.never)
 							.autocorrectionDisabled()
 					}
@@ -58,7 +60,7 @@ struct ConfigurationDictAddView: View {
 			.padding(.bottom, 28)
 		}
 		.nullSignPage()
-		.navigationTitle("New Rule")
+		.nullSignNavigationTitle("New Rule")
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {
 			NBToolbarButton(
