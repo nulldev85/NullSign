@@ -2,7 +2,6 @@ import SwiftUI
 
 struct InstallationView: View {
 	@AppStorage("Feather.installationMethod") private var _installationMethod = 0
-	@State private var _showMethodChangedAlert = false
 
 	var body: some View {
 		ScrollView {
@@ -39,18 +38,6 @@ struct InstallationView: View {
 		}
 		.nullSignPage()
 		.nullSignNavigationTitle("Installation")
-		.onChange(of: _installationMethod) { newValue in
-			guard newValue == 1 else { return }
-			_showMethodChangedAlert = true
-		}
-		.alert("Apple TV & Device", isPresented: $_showMethodChangedAlert) {
-			Button("Use iPhone Instead", role: .destructive) {
-				_installationMethod = 0
-			}
-			Button("Continue", role: .cancel) { }
-		} message: {
-			Text("Apple TV pairing works over Wi-Fi without a VPN or imported pairing file. The pairing file and loopback VPN are only for installing directly on this iPhone.")
-		}
 		.animation(.easeInOut(duration: 0.2), value: _installationMethod)
 	}
 }
