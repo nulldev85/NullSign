@@ -118,19 +118,6 @@
 - (id)imageWithName:(NSString *)name
 		 scaleFactor:(CGFloat)scale
 		 deviceIdiom:(NSInteger)deviceIdiom;
-- (id)_IS_layerStackWithName:(NSString *)name
-					  scale:(CGFloat)scale
-			layoutDirection:(NSInteger)layoutDirection
-				   platform:(NSUInteger)platform;
-- (id)layerStackWithName:(NSString *)name;
-- (id)layerStackWithName:(NSString *)name scaleFactor:(CGFloat)scale;
-- (id)layerStackWithName:(NSString *)name
-			 scaleFactor:(CGFloat)scale
-			 deviceIdiom:(NSInteger)deviceIdiom;
-@end
-
-@interface CUINamedLayerStack : NSObject
-- (CGImageRef)flattenedImage;
 @end
 
 @interface CUINamedImage : NSObject
@@ -141,13 +128,10 @@
 
 static UIImage *FRUIImageFromCoreUIImage(id namedImage) {
 	if (!namedImage) return nil;
-
-	if ([namedImage respondsToSelector:@selector(flattenedImage)]) {
-		CGImageRef flattenedRef = [(CUINamedLayerStack *)namedImage flattenedImage];
-		if (flattenedRef && CGImageGetWidth(flattenedRef) > 1 && CGImageGetHeight(flattenedRef) > 1) {
-			return [UIImage imageWithCGImage:flattenedRef scale:1 orientation:UIImageOrientationUp];
-		}
-	}
+	// A layer-stack descriptor can share a catalog name with a bitmap. Never
+	// treat arbitrary CoreUI objects as images or invoke their flattening API.
+	Class imageClass = objc_lookUpClass("CUINamedImage");
+	if (!imageClass || ![namedImage isKindOfClass:imageClass]) return nil;
 
 	CGImageRef imageRef = nil;
 	if ([namedImage respondsToSelector:@selector(image)]) {
@@ -156,7 +140,8 @@ static UIImage *FRUIImageFromCoreUIImage(id namedImage) {
 	if (!imageRef && [namedImage respondsToSelector:@selector(croppedImage)]) {
 		imageRef = [(CUINamedImage *)namedImage croppedImage];
 	}
-	if (!imageRef || CGImageGetWidth(imageRef) <= 1 || CGImageGetHeight(imageRef) <= 1) {
+	if (!imageRef || CGImageGetWidth(imageRef) <= 1 || CGImageGetHeight(imageRef) <= 1 ||
+		CGImageGetWidth(imageRef) > 4096 || CGImageGetHeight(imageRef) > 4096) {
 		return nil;
 	}
 
@@ -353,10 +338,9 @@ UIImage* tvOSIconTest(NSURL *bundleURL, NSArray<NSString *> *iconNames) {
 		return nil;
 	}
 
-	// The platform-aware layer-stack helpers are supplied by IconServices on
-	// iOS, while CUICatalog itself lives in CoreUI.
+	// Read ordinary compiled bitmaps only. IconServices' foreign layer-stack
+	// flattening would reintroduce the previous crash-prone rendering path.
 	dlopen("/System/Library/PrivateFrameworks/CoreUI.framework/CoreUI", RTLD_LAZY | RTLD_GLOBAL);
-	dlopen("/System/Library/PrivateFrameworks/IconServices.framework/IconServices", RTLD_LAZY | RTLD_GLOBAL);
 
 	Class catalogClass = objc_lookUpClass("CUICatalog");
 	if (!catalogClass) {
@@ -369,64 +353,9 @@ UIImage* tvOSIconTest(NSURL *bundleURL, NSArray<NSString *> *iconNames) {
 		return nil;
 	}
 
-	// IconServices platforms are bit flags: 4 is iOS and 8 is tvOS. Keep the
-	// native and neutral values as compatibility fallbacks across iOS releases.
-	NSArray<NSNumber *> *platforms = @[@8, @4, @0];
-	NSArray<NSNumber *> *scales = @[@0, @1, @2, @3];
-	SEL platformSelector = @selector(_IS_layerStackWithName:scale:layoutDirection:platform:);
-
 	for (NSString *name in iconNames) {
-		// Prefer the pre-flattened tvOS bitmap. This stays entirely inside
-		// CoreUI and avoids UIKit's private flattening category, which is not
-		// safe to invoke from the background renderer used by the app list.
-		UIImage *compiled = FRLargestCatalogImage(catalog, name);
-		if (compiled.size.width > 1 && compiled.size.height > 1) {
-			return compiled;
-		}
-
-		id stack = nil;
-
-		if ([catalog respondsToSelector:platformSelector]) {
-			for (NSNumber *platform in platforms) {
-				for (NSNumber *scale in scales) {
-					stack = [catalog _IS_layerStackWithName:name
-											 scale:scale.doubleValue
-								   layoutDirection:0
-										platform:platform.unsignedIntegerValue];
-					if (stack) break;
-				}
-				if (stack) break;
-			}
-		}
-
-		if (!stack && [catalog respondsToSelector:@selector(layerStackWithName:)]) {
-			stack = [catalog layerStackWithName:name];
-		}
-		if (!stack && [catalog respondsToSelector:@selector(layerStackWithName:scaleFactor:)]) {
-			stack = [catalog layerStackWithName:name scaleFactor:1];
-		}
-		if (!stack && [catalog respondsToSelector:@selector(layerStackWithName:scaleFactor:deviceIdiom:)]) {
-			for (NSNumber *idiom in @[@3, @2, @0, @6]) {
-				for (NSNumber *scale in @[@1, @2, @3]) {
-					stack = [catalog layerStackWithName:name
-									 scaleFactor:scale.doubleValue
-									 deviceIdiom:idiom.integerValue];
-					if (stack) break;
-				}
-				if (stack) break;
-			}
-		}
-
-		if ([stack respondsToSelector:@selector(flattenedImage)]) {
-			CGImageRef imageRef = [(CUINamedLayerStack *)stack flattenedImage];
-			if (imageRef && CGImageGetWidth(imageRef) > 1 && CGImageGetHeight(imageRef) > 1) {
-				return [UIImage imageWithCGImage:imageRef scale:1 orientation:UIImageOrientationUp];
-			}
-		}
-
-		// Some iOS releases can open a tvOS layer stack but cannot flatten it.
-		// The component renditions are still ordinary CoreUI images, so extract
-		// and composite them directly.
+		// Use the pre-flattened bitmap when available, otherwise draw the
+		// ordinary Background/Middle/Foreground images with our own compositor.
 		UIImage *composited = FRCompositeTVIconLayers(catalog, name);
 		if (composited.size.width > 1 && composited.size.height > 1) {
 			return composited;

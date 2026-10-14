@@ -30,6 +30,12 @@ jobs:
       - name: Verify icon styling
         run: node Tools/check-icon-style.mjs
 
+      - name: Verify tvOS icon selection
+        run: |
+          node Tools/check-tvos-icon-policy.mjs
+          xcrun swiftc Feather/Utilities/TVIconSelection.swift Tools/test-tvos-icon-selection.swift -o "$RUNNER_TEMP/test-tvos-icon-selection"
+          "$RUNNER_TEMP/test-tvos-icon-selection"
+
       - name: Verify app icon assets
         run: node Tools/check-app-icon.mjs
 

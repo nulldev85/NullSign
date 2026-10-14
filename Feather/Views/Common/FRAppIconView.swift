@@ -44,11 +44,15 @@ private actor FRIconRenderer {
 	func render(bundleURL: URL) -> UIImage? {
 		// The bundle can be deleted between a row appearing and this running;
 		// never hand IconServices a bundle that is no longer on disk.
-		guard FileManager.default.fileExists(atPath: bundleURL.appendingPathComponent("Info.plist").path) else {
+		guard let info = NSDictionary(contentsOf: bundleURL.appendingPathComponent("Info.plist")) as? [String: Any] else {
 			return nil
 		}
 
-		return tvOSIcon(in: bundleURL) ?? iconTest(bundleURL)
+		// An unreadable tvOS catalog must not enter IconServices' iOS recipe.
+		if TVIconSelection.isTVApp(info) {
+			return tvOSIcon(in: bundleURL, info: info)
+		}
+		return iconTest(bundleURL)
 	}
 }
 
@@ -86,118 +90,25 @@ final class FRAppIconLoader: ObservableObject {
 	}
 }
 
-/// tvOS app icons are layered brand assets rather than the single iOS icon
-/// IconServices expects. Resolve both the tvOS string-style Info.plist entry
-/// and the individual layers compiled into Assets.car, then fall back to loose
-/// artwork for older packages.
-private func tvOSIcon(in bundleURL: URL) -> UIImage? {
-	guard let bundle = Bundle(url: bundleURL) else { return nil }
-	let families = bundle.object(forInfoDictionaryKey: "UIDeviceFamily") as? [Int] ?? []
-	let platforms = bundle.object(forInfoDictionaryKey: "CFBundleSupportedPlatforms") as? [String] ?? []
-	guard families.contains(3) || platforms.contains(where: { $0.localizedCaseInsensitiveContains("appletv") }) else {
-		return nil
-	}
-
-	var names: [String] = []
-	if let icons = bundle.object(forInfoDictionaryKey: "CFBundleIcons") as? [String: Any] {
-		// tvOS writes the primary icon as a brand-asset name, unlike the nested
-		// dictionary used by iOS.
-		if let primaryName = icons["CFBundlePrimaryIcon"] as? String {
-			names.append(primaryName)
-		} else if let primary = icons["CFBundlePrimaryIcon"] as? [String: Any] {
-			if let name = primary["CFBundleIconName"] as? String { names.append(name) }
-			if let files = primary["CFBundleIconFiles"] as? [String] {
-				names.append(contentsOf: files.reversed())
-			}
-		}
-	}
-	names.append(contentsOf: ["App Icon - Small", "App Icon - Large", "App Icon", "AppIcon"])
-	let uniqueNames = _uniqueIconNames(names)
-
-	// Read and flatten the tvOS layer stack directly from the imported app's
-	// Assets.car. Public UIImage lookup cannot cross from iOS into another
-	// bundle's tvOS brand assets.
-	if let image = tvOSIconTest(bundleURL, uniqueNames), image.size.width > 1 {
+/// Read the package's own bitmap renditions. Do not ask UIKit/IconServices to
+/// flatten a foreign tvOS layer stack, or substitute bundled copies of an icon.
+private func tvOSIcon(in bundleURL: URL, info: [String: Any]) -> UIImage? {
+	let names = TVIconSelection.assetNames(in: info)
+	if let image = tvOSIconTest(bundleURL, names), image.size.width > 1 {
 		return image
 	}
 
-	for name in uniqueNames {
-		if let image = _tvOSAsset(named: name, in: bundle) {
-			return image
-		}
-	}
-
-	let keys: [URLResourceKey] = [.isRegularFileKey, .fileSizeKey]
-	let candidates = (FileManager.default.enumerator(
-		at: bundleURL,
-		includingPropertiesForKeys: keys,
-		options: [.skipsHiddenFiles]
-	) as? FileManager.DirectoryEnumerator)?
-		.compactMap { $0 as? URL }
-		.filter {
-			let path = $0.path.lowercased()
-			let name = $0.lastPathComponent.lowercased()
-			return $0.pathExtension.lowercased() == "png" &&
-				!path.contains("/frameworks/") &&
-				!path.contains("/plugins/") &&
-				!name.contains("top shelf") &&
-				!name.contains("topshelf") &&
-				!name.contains("launch") &&
-				!name.contains("splash")
-		} ?? []
-
-	return candidates
-		.compactMap { url -> (UIImage, CGFloat)? in
-			guard let image = UIImage(contentsOfFile: url.path), image.size.width > 1, image.size.height > 1 else {
-				return nil
-			}
-			let iconBonus: CGFloat = url.lastPathComponent.localizedCaseInsensitiveContains("icon") ? 1_000_000_000 : 0
-			return (image, iconBonus + image.size.width * image.size.height)
-		}
-		.max(by: { $0.1 < $1.1 })?.0
-}
-
-private func _uniqueIconNames(_ names: [String]) -> [String] {
-	var seen = Set<String>()
-	return names.filter { !$0.isEmpty && seen.insert($0).inserted }
-}
-
-private func _tvOSAsset(named name: String, in bundle: Bundle) -> UIImage? {
-	if let image = UIImage(named: name, in: bundle, compatibleWith: nil), image.size.width > 1 {
-		return image
-	}
-
-	// A compiled .brandassets icon exposes each layer as
-	// "<brand name>/<layer>/Content". UIKit does not synthesize the complete
-	// stack when loading another app's bundle, so composite those renditions.
-	let layerRoles = ["Background", "Middle", "Foreground"]
-	let layers = layerRoles.compactMap { role -> UIImage? in
-		for candidate in ["\(name)/\(role)/Content", "\(name)/\(role)"] {
-			if let image = UIImage(named: candidate, in: bundle, compatibleWith: nil), image.size.width > 1 {
+	let root = bundleURL.standardizedFileURL.resolvingSymlinksInPath().path + "/"
+	for name in names {
+		for file in TVIconSelection.looseFileNames(for: name) {
+			let url = bundleURL.appendingPathComponent(file).standardizedFileURL.resolvingSymlinksInPath()
+			guard url.path.hasPrefix(root) else { continue }
+			if let image = UIImage(contentsOfFile: url.path), image.size.width > 1, image.size.height > 1 {
 				return image
 			}
 		}
-		return nil
 	}
-
-	guard !layers.isEmpty else { return nil }
-	guard let canvasSize = layers.max(by: {
-		$0.size.width * $0.size.height < $1.size.width * $1.size.height
-	})?.size else {
-		return nil
-	}
-
-	let format = UIGraphicsImageRendererFormat.default()
-	format.scale = 1
-	format.opaque = false
-	return UIGraphicsImageRenderer(size: canvasSize, format: format).image { _ in
-		for layer in layers {
-			let scale = min(canvasSize.width / layer.size.width, canvasSize.height / layer.size.height)
-			let size = CGSize(width: layer.size.width * scale, height: layer.size.height * scale)
-			let origin = CGPoint(x: (canvasSize.width - size.width) / 2, y: (canvasSize.height - size.height) / 2)
-			layer.draw(in: CGRect(origin: origin, size: size))
-		}
-	}
+	return nil
 }
 
 struct FRAppIconView: View {
@@ -220,30 +131,11 @@ struct FRAppIconView: View {
 		colorScheme == .dark ? .dark : .light
 	}
 
-	/// These apps are distributed by feeds that omit icon metadata, and their
-	/// tvOS artwork lives in a foreign CoreUI catalog. Bundled copies of the
-	/// verified artwork avoid touching that private catalog during app launch.
-	private var bundledFallbackAssetName: String? {
-		switch app?.identifier?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
-		case "com.nulldev85.nullsports":
-			return "LineupTV"
-		case "com.stadiumsync.mobile":
-			return "StadiumSync"
-		case "com.stadiumsync.mobile.tv":
-			return "StadiumSyncTV"
-		default:
-			return nil
-		}
-	}
-
 	var body: some View {
 		Group {
 			if app == nil {
 				Image("NullSignBrand")
 					.renderingMode(.original)
-					.appIconStyle(size: size)
-			} else if let bundledFallbackAssetName {
-				Image(bundledFallbackAssetName)
 					.appIconStyle(size: size)
 			} else if let image = loader.image {
 				Image(uiImage: image)
@@ -254,7 +146,7 @@ struct FRAppIconView: View {
 			}
 		}
 		.task(id: "\(app?.uuid ?? "self")\(appearance.rawValue)\(selectedColorHex)\(shouldTintIcons)\(shouldChangeIconsBasedOffStyle)") {
-			if app != nil && bundledFallbackAssetName == nil {
+			if app != nil {
 				_load()
 			} else {
 				loader.cancel()
