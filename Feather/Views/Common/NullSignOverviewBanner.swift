@@ -42,44 +42,16 @@ struct NullSignOverviewBanner: View {
 		.frame(maxWidth: .infinity, alignment: .leading)
 		.background(NullSignStyle.canvas)
 		.overlay(alignment: .bottom) {
-			ZStack(alignment: .bottom) {
-				NullSignOverviewWave(crest: 0.18)
-					.fill(NullSignStyle.groupedSurface)
-					.frame(height: 52)
-				NullSignOverviewWave(crest: 0.55)
-					.fill(NullSignStyle.raisedPanel.opacity(0.45))
-					.frame(height: 38)
-				RoundedRectangle(cornerRadius: 32, style: .continuous)
-					.fill(NullSignStyle.canvas)
-					.frame(height: 60)
-					.offset(y: 34)
-			}
-			.frame(height: 60)
-			.clipped()
-			.allowsHitTesting(false)
-			.accessibilityHidden(true)
+			// Show only the card's top edge and its complete rounded corners.
+			// No filled wave extends beyond the outline into the overview.
+			RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous)
+				.strokeBorder(NullSignStyle.faint.opacity(0.35), lineWidth: 1)
+				.frame(height: 60)
+				.offset(y: 34)
+				.clipped()
+				.allowsHitTesting(false)
+				.accessibilityHidden(true)
 		}
 		.accessibilityElement(children: .combine)
-	}
-}
-
-private struct NullSignOverviewWave: Shape {
-	var crest: CGFloat
-
-	func path(in rect: CGRect) -> Path {
-		var path = Path()
-		path.move(to: CGPoint(x: 0, y: rect.height * 0.55))
-		path.addQuadCurve(
-			to: CGPoint(x: rect.width * 0.5, y: rect.height * 0.48),
-			control: CGPoint(x: rect.width * 0.22, y: rect.height * crest)
-		)
-		path.addQuadCurve(
-			to: CGPoint(x: rect.width, y: rect.height * 0.3),
-			control: CGPoint(x: rect.width * 0.75, y: rect.height)
-		)
-		path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-		path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
-		path.closeSubpath()
-		return path
 	}
 }

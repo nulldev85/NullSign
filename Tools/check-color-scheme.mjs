@@ -37,7 +37,10 @@ for (const file of swiftFiles(path.join(root, 'Feather/Views'))) {
 }
 const banner = read('Feather/Views/Common/NullSignOverviewBanner.swift');
 assert(banner.includes('.background(NullSignStyle.canvas)'));
-assert(banner.includes('.fill(NullSignStyle.groupedSurface)') && banner.includes('.fill(NullSignStyle.canvas)'));
+assert(banner.includes('RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous)'));
+assert(banner.includes('.strokeBorder(NullSignStyle.faint.opacity(0.35), lineWidth: 1)'));
+assert(!/NullSignOverviewWave|\.fill\(/.test(banner), 'Overview must outline the card, not draw filled waves.');
+assert(banner.includes('.clipped()') && banner.includes('.allowsHitTesting(false)'));
 assert(!/\.fill\(NullSignStyle\.(accent|teal)|NullSignStyle\.yellow/.test(banner), 'Overview chrome must be charcoal, with category-colored glyphs.');
 assert(banner.includes('NullSignStyle.categoryColor(for: systemImage)'));
 assert(read('Feather/Views/TabView/VariedTabbarView.swift').includes('.background(NullSignStyle.canvas)'));
