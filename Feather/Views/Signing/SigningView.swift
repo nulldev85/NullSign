@@ -20,6 +20,8 @@ struct SigningView: View {
 	@State private var _isAltPickerPresenting = false
 	@State private var _isFilePickerPresenting = false
 	@State private var _isImagePickerPresenting = false
+	@State private var _isIconMenuPresenting = false
+	@State private var _pendingIconPicker: IconPicker?
 	@State private var _isSigning = false
 	@State private var _selectedPhoto: PhotosPickerItem? = nil
 	@State var appIcon: UIImage?
@@ -109,6 +111,20 @@ struct SigningView: View {
 					appIcon = nil
 				}
 			}
+			.sheet(isPresented: $_isIconMenuPresenting, onDismiss: _openPendingIconPicker) {
+				NullSignMenuSheet(
+					title: .localized("Change App Icon"), systemImage: "app.dashed",
+					detail: "Choose artwork for this signing session. The original app stays unchanged."
+				) {
+					NullSignSettingsCard {
+						NullSignMenuAction(title: .localized("Select Alternative Icon"), systemImage: "app.dashed", tint: NullSignStyle.purple) { _chooseIconPicker(.alternative) }
+						NullSignSettingsDivider()
+						NullSignMenuAction(title: .localized("Choose from Files"), systemImage: "folder", tint: NullSignStyle.warning) { _chooseIconPicker(.files) }
+						NullSignSettingsDivider()
+						NullSignMenuAction(title: .localized("Choose from Photos"), systemImage: "photo", tint: NullSignStyle.success) { _chooseIconPicker(.photos) }
+					}
+				}
+			}
 			.sheet(isPresented: $_isAltPickerPresenting) { SigningAlternativeIconView(app: app, appIcon: $appIcon, isModifing: .constant(true)) }
 			.sheet(isPresented: $_isFilePickerPresenting) {
 				FileImporterRepresentableView(
@@ -170,10 +186,8 @@ struct SigningView: View {
 extension SigningView {
 	/// The header icon doubles as the icon picker.
 	private func _iconMenu(for app: AppInfoPresentable) -> some View {
-		Menu {
-			Button(.localized("Select Alternative Icon"), systemImage: "app.dashed") { _isAltPickerPresenting = true }
-			Button(.localized("Choose from Files"), systemImage: "folder") { _isFilePickerPresenting = true }
-			Button(.localized("Choose from Photos"), systemImage: "photo") { _isImagePickerPresenting = true }
+		Button {
+			_isIconMenuPresenting = true
 		} label: {
 			Group {
 				if let icon = appIcon {
@@ -193,7 +207,27 @@ extension SigningView {
 					.offset(x: 6, y: 6)
 			}
 		}
+		.buttonStyle(NullSignPressableStyle())
 		.accessibilityLabel("Change app icon")
+	}
+
+	private enum IconPicker {
+		case alternative, files, photos
+	}
+
+	private func _chooseIconPicker(_ picker: IconPicker) {
+		_pendingIconPicker = picker
+		_isIconMenuPresenting = false
+	}
+
+	private func _openPendingIconPicker() {
+		guard let picker = _pendingIconPicker else { return }
+		_pendingIconPicker = nil
+		switch picker {
+		case .alternative: _isAltPickerPresenting = true
+		case .files: _isFilePickerPresenting = true
+		case .photos: _isImagePickerPresenting = true
+		}
 	}
 
 	@ViewBuilder

@@ -16,6 +16,7 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 	@Binding var sortOption: SourceAppsView.SortOption
 	@Binding var sortAscending: Bool
 	var onSelect: (SourceAppsView.SourceAppRoute) -> Void
+	var onActions: (SourceAppsView.SourceAppRoute) -> Void
 	
 	func makeUIView(context: Context) -> UITableView {
 		let tableView = UITableView(frame: .zero, style: .plain)
@@ -30,6 +31,9 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 		tableView.register(UITableViewHeaderFooterView.self, forHeaderFooterViewReuseIdentifier: "SectionHeader")
 		
 		tableView.allowsSelection = true
+		tableView.addGestureRecognizer(UILongPressGestureRecognizer(
+			target: context.coordinator, action: #selector(Coordinator.presentActions(_:))
+		))
 		
 		if
 			let firstSource = sourceContexts.first,
@@ -63,6 +67,8 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 		context.coordinator.searchText = searchText
 		context.coordinator.sortOption = sortOption
 		context.coordinator.sortAscending = sortAscending
+		context.coordinator.onSelect = onSelect
+		context.coordinator.onActions = onActions
 		
 		if sourcesChanged || searchChanged || sortOptionChanged || sortDirectionChanged {
 			context.coordinator.invalidateCache(
@@ -77,7 +83,8 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 			searchText: searchText,
 			sortOption: sortOption,
 			sortAscending: sortAscending,
-			onSelect: onSelect
+			onSelect: onSelect,
+			onActions: onActions
 		)
 	}
 }
@@ -88,7 +95,8 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 	var searchText: String
 	var sortOption: SourceAppsView.SortOption
 	var sortAscending: Bool
-	let onSelect: (SourceAppsView.SourceAppRoute) -> Void
+	var onSelect: (SourceAppsView.SourceAppRoute) -> Void
+	var onActions: (SourceAppsView.SourceAppRoute) -> Void
 	
 	private var _groupedAppsByNameFirstLetter: [String: [SourceAppEntry]] = [:]
 	private var _groupedAppsByDate: [String: [SourceAppEntry]] = [:]
@@ -125,13 +133,15 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 		searchText: String,
 		sortOption: SourceAppsView.SortOption,
 		sortAscending: Bool,
-		onSelect: @escaping (SourceAppsView.SourceAppRoute) -> Void
+		onSelect: @escaping (SourceAppsView.SourceAppRoute) -> Void,
+		onActions: @escaping (SourceAppsView.SourceAppRoute) -> Void
 	) {
 		self.sourceContexts = sourceContexts
 		self.searchText = searchText
 		self.sortOption = sortOption
 		self.sortAscending = sortAscending
 		self.onSelect = onSelect
+		self.onActions = onActions
 		super.init()
 		
 		invalidateCache()
@@ -244,6 +254,9 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 		cell.selectionStyle = .none
 		cell.contentConfiguration = UIHostingConfiguration {
 			SourceAppsCellView(sourceURL: entry.sourceURL, source: entry.source, app: entry.app)
+				.accessibilityAction(named: Text(.localized("App Actions"))) {
+					self.onActions(SourceAppsView.SourceAppRoute(sourceURL: entry.sourceURL, source: entry.source, app: entry.app))
+				}
 		}
 		.margins(.all, 0)
 		.background(Color.clear)
@@ -295,75 +308,31 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 		_sortedSectionTitles.firstIndex(of: title) ?? 0
 	}
 	
-	func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
-		let entry: SourceAppEntry
-		switch sortOption {
-		case .default: entry = _sortedApps[indexPath.row]
-		case .name: entry = _groupedAppsByNameFirstLetter[_sortedSectionTitles[indexPath.section]]?[indexPath.row] ?? _sortedApps[indexPath.row]
-		case .date: entry = _groupedAppsByDate[_sortedSectionTitles[indexPath.section]]?[indexPath.row] ?? _sortedApps[indexPath.row]
-		}
-		
-		return UIContextMenuConfiguration(
-			identifier: nil,
-			previewProvider: nil
-		) { _ in
-			let versionsMenu = UIMenu(
-				title: .localized("Copy Download URLs"),
-				image: UIImage(systemName: "list.bullet"),
-				children: self._contextActions(for: entry.app, with: { _, url in
-					UIPasteboard.general.string = url?.absoluteString
-				}, image: UIImage(systemName: "doc.on.clipboard"))
-			)
-			
-			let downloadsMenu = UIMenu(
-				title: .localized("Previous Versions"),
-				image: UIImage(systemName: "square.and.arrow.down.on.square"),
-				children: self._contextActions(for: entry.app, with: { version, url in
-					if let url {
-						_ = DownloadManager.shared.startDownload(
-							from: url,
-							id: entry.app.currentUniqueId,
-							sourceProvenance: SourceAppProvenance(
-								sourceURL: entry.sourceURL,
-								repository: entry.source,
-								app: entry.app,
-								version: version
-							)
-						)
-					}
-				}, image: UIImage(systemName: "arrow.down"))
-			)
-			
-			return UIMenu(children: [downloadsMenu, versionsMenu])
-		}
+	// The native UIMenu cannot share the app's rounded fonts and card palette.
+	@objc func presentActions(_ gesture: UILongPressGestureRecognizer) {
+		guard gesture.state == .began,
+			let tableView = gesture.view as? UITableView,
+			let indexPath = tableView.indexPathForRow(at: gesture.location(in: tableView)),
+			let entry = entry(at: indexPath)
+		else { return }
+		UIImpactFeedbackGenerator(style: .light).impactOccurred()
+		onActions(SourceAppsView.SourceAppRoute(sourceURL: entry.sourceURL, source: entry.source, app: entry.app))
 	}
-	
-	// MARK: Actions
-	
-	private func _contextActions(
-		for app: ASRepository.App,
-		with action: @escaping (ASRepository.App.Version?, URL?) -> Void,
-		image: UIImage?
-	) -> [UIAction] {
-		if let versions = app.versions, !versions.isEmpty {
-			return versions.map { version in
-				UIAction(
-					title: version.version,
-					image: image
-				) { _ in
-					action(version, version.downloadURL)
-				}
-			}
-		} else {
-			return [
-				UIAction(
-					title: app.currentVersion ?? "",
-					image: image
-				) { _ in
-					action(nil, app.currentDownloadUrl)
-				}
-			]
+
+	/// A refresh/search can change sections while a long press is in progress.
+	private func entry(at indexPath: IndexPath) -> SourceAppEntry? {
+		let apps: [SourceAppEntry]
+		switch sortOption {
+		case .default: apps = _sortedApps
+		case .name, .date:
+			guard _sortedSectionTitles.indices.contains(indexPath.section) else { return nil }
+			let section = _sortedSectionTitles[indexPath.section]
+			apps = sortOption == .name
+				? (_groupedAppsByNameFirstLetter[section] ?? [])
+				: (_groupedAppsByDate[section] ?? [])
 		}
+		guard apps.indices.contains(indexPath.row) else { return nil }
+		return apps[indexPath.row]
 	}
 }}
 

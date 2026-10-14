@@ -2,10 +2,14 @@ import SwiftUI
 import AltSourceKit
 
 struct SourcesCellView: View {
+	@State private var _isActionsPresenting = false
+	@State private var _didCopyURL = false
+	@State private var _deleteAfterDismissal = false
 	let source: AltSource
 	let repository: ASRepository?
 	let isFetching: Bool
 	let didFail: Bool
+	let onSelect: () -> Void
 
 	var body: some View {
 		HStack(spacing: 12) {
@@ -40,16 +44,58 @@ struct SourcesCellView: View {
 		.padding(16)
 		.nullSignSurface()
 		.contentShape(RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous))
-		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous))
 		.swipeActions {
 			_actions(for: source)
 			_contextActions(for: source)
 		}
-		.contextMenu {
-			_contextActions(for: source)
-			Divider()
-			_actions(for: source)
+		.gesture(
+			LongPressGesture().exclusively(before: TapGesture()).onEnded { value in
+				switch value {
+				case .first:
+					_didCopyURL = false
+					UIImpactFeedbackGenerator(style: .light).impactOccurred()
+					_isActionsPresenting = true
+				case .second: onSelect()
+				}
+			}
+		)
+		.accessibilityElement(children: .combine)
+		.accessibilityAddTraits(.isButton)
+		.accessibilityAction { onSelect() }
+		.accessibilityAction(named: Text(.localized("Repository Actions"))) {
+			_didCopyURL = false
+			_isActionsPresenting = true
 		}
+		.sheet(isPresented: $_isActionsPresenting, onDismiss: _deleteRequestedSource) {
+			NullSignMenuSheet(
+				title: source.name ?? repository?.name ?? .localized("Repository"),
+				systemImage: "externaldrive.connected.to.line.below", detail: _displayHost
+			) {
+				NullSignSettingsCard {
+					NullSignMenuAction(
+						title: _didCopyURL ? .localized("Copied") : .localized("Copy Source URL"),
+						systemImage: _didCopyURL ? "checkmark" : "doc.on.clipboard",
+						isDisabled: source.sourceURL == nil
+					) {
+						UIPasteboard.general.string = source.sourceURL?.absoluteString
+						_didCopyURL = true
+						UINotificationFeedbackGenerator().notificationOccurred(.success)
+					}
+					NullSignSettingsDivider()
+					NullSignMenuAction(title: .localized("Delete"), systemImage: "trash", isDestructive: true) {
+						_deleteAfterDismissal = true
+						_isActionsPresenting = false
+					}
+				}
+			}
+		}
+	}
+
+	private func _deleteRequestedSource() {
+		guard _deleteAfterDismissal else { return }
+		_deleteAfterDismissal = false
+		guard source.managedObjectContext != nil, !source.isDeleted else { return }
+		Storage.shared.deleteSource(for: source)
 	}
 
 	@ViewBuilder

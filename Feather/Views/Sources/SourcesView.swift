@@ -6,6 +6,7 @@ import NimbleViews
 struct SourcesView: View {
 	@StateObject var viewModel = SourcesViewModel.shared
 	@State private var _isAddingPresenting = false
+	@State private var _selectedSource: AltSource?
 	@State private var _searchText = ""
 
 	@FetchRequest(
@@ -72,21 +73,13 @@ struct SourcesView: View {
 						.nullSignListRow(top: 20, bottom: 8, horizontal: 24)
 
 					ForEach(filteredSources) { source in
-						ZStack {
-							NavigationLink {
-								SourceAppsView(object: [source], viewModel: viewModel)
-							} label: {
-								EmptyView()
-							}
-							.opacity(0)
-
-							SourcesCellView(
-								source: source,
-								repository: viewModel.sources[source],
-								isFetching: viewModel.isFetching,
-								didFail: source.sourceURL.map(viewModel.failedSourceURLs.contains) ?? false
-							)
-						}
+						SourcesCellView(
+							source: source,
+							repository: viewModel.sources[source],
+							isFetching: viewModel.isFetching,
+							didFail: source.sourceURL.map(viewModel.failedSourceURLs.contains) ?? false,
+							onSelect: { _selectedSource = source }
+						)
 						.nullSignListRow()
 					}
 
@@ -123,6 +116,9 @@ struct SourcesView: View {
 			}
 			.sheet(isPresented: $_isAddingPresenting) {
 				SourcesAddView()
+			}
+			.navigationDestinationIfAvailable(item: $_selectedSource) { source in
+				SourceAppsView(object: [source], viewModel: viewModel)
 			}
 		}
 		.tint(.white)

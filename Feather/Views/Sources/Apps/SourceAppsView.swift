@@ -25,6 +25,9 @@ struct SourceAppsView: View {
 
 	@State private var _sortOption: SortOption = .default
 	@State private var _selectedRoute: SourceAppRoute?
+	@State private var _selectedActionRoute: SourceAppRoute?
+	@State private var _isSourceMenuPresenting = false
+	@State private var _didCopySourceURL = false
 	@State private var _searchText = ""
 	@State private var _sourceContexts: [SourceRepositoryContext]?
 	@State private var _isRetrying = false
@@ -58,7 +61,8 @@ struct SourceAppsView: View {
 					searchText: $_searchText,
 					sortOption: $_sortOption,
 					sortAscending: $_sortAscending,
-					onSelect: { _selectedRoute = $0 }
+					onSelect: { _selectedRoute = $0 },
+					onActions: { _selectedActionRoute = $0 }
 				)
 				.ignoresSafeArea(edges: .bottom)
 
@@ -88,26 +92,41 @@ struct SourceAppsView: View {
 		.toolbarBackground(.visible, for: .navigationBar)
 		.toolbarColorScheme(.dark, for: .navigationBar)
 		.searchable(text: $_searchText, placement: .platform(), prompt: .localized("Search apps"))
-		.toolbarTitleMenu {
-			if let context = _sourceContexts?.first, _sourceContexts?.count == 1 {
-				if let url = context.repository.website {
-					Button(.localized("Visit Website"), systemImage: "globe") { UIApplication.open(url) }
+		.toolbar {
+			ToolbarItem(placement: .topBarTrailing) {
+				Button {
+					_didCopySourceURL = false
+					_isSourceMenuPresenting = true
+				} label: {
+					Image(systemName: "arrow.up.arrow.down")
 				}
-				Divider()
-			}
-
-			Button(.localized("Copy Source URL"), systemImage: "doc.on.doc") {
-				_copySourceURLs()
+				.accessibilityLabel(.localized("Source Options"))
 			}
 		}
-		.toolbar {
-			NBToolbarMenu(
-				systemImage: "arrow.up.arrow.down",
-				style: .icon,
-				placement: .topBarTrailing
+		.sheet(isPresented: $_isSourceMenuPresenting) {
+			NullSignMenuSheet(
+				title: .localized("Source Options"), systemImage: "slider.horizontal.3", detail: _navigationTitle
 			) {
 				_sortActions()
+				NullSignSettingsSection(.localized("Repository")) {
+					if let context = _sourceContexts?.first, _sourceContexts?.count == 1,
+					   let url = context.repository.website {
+						NullSignMenuAction(title: .localized("Visit Website"), systemImage: "globe", tint: NullSignStyle.success) {
+							_isSourceMenuPresenting = false
+							UIApplication.open(url)
+						}
+						NullSignSettingsDivider()
+					}
+					NullSignMenuAction(
+						title: _didCopySourceURL ? .localized("Copied") : .localized("Copy Source URL"),
+						systemImage: _didCopySourceURL ? "checkmark" : "doc.on.doc",
+						isDisabled: object.compactMap(\.sourceURL).isEmpty
+					) { _copySourceURLs() }
+				}
 			}
+		}
+		.sheet(item: $_selectedActionRoute) { route in
+			SourceAppActionsView(route: route)
 		}
 		.tint(NullSignStyle.accent)
 		.onAppear {
@@ -145,12 +164,10 @@ struct SourceAppsView: View {
 
 	private func _copySourceURLs() {
 		let urls = object.compactMap(\.sourceURL)
-		guard !urls.isEmpty else {
-			UIAlertController.showAlertWithOk(title: .localized("Error"), message: .localized("No sources to copy"))
-			return
-		}
+		guard !urls.isEmpty else { return }
 		UIPasteboard.general.string = urls.map(\.absoluteString).joined(separator: "\n")
-		UIAlertController.showAlertWithOk(title: .localized("Copied"), message: .localized("Sources copied to clipboard"))
+		_didCopySourceURL = true
+		UINotificationFeedbackGenerator().notificationOccurred(.success)
 	}
 
 	struct SourceRepositoryContext: Equatable {
@@ -185,23 +202,23 @@ struct SourceAppsView: View {
 extension SourceAppsView {
 	@ViewBuilder
 	private func _sortActions() -> some View {
-		Section(.localized("Sort by")) {
-			ForEach(SortOption.allCases, id: \.rawValue) { option in
-				Button {
+		NullSignSettingsSection(.localized("Sort by")) {
+			ForEach(Array(SortOption.allCases.enumerated()), id: \.element.rawValue) { index, option in
+				if index > 0 { NullSignSettingsDivider() }
+				NullSignMenuAction(
+					title: option.displayName,
+					systemImage: option == .name ? "textformat.abc" : (option == .date ? "calendar" : "list.bullet"),
+					detail: _sortOption == option ? (_sortAscending ? .localized("Ascending") : .localized("Descending")) : nil,
+					tint: NullSignStyle.purple, isSelected: _sortOption == option,
+					selectionImage: _sortAscending ? "chevron.up" : "chevron.down"
+				) {
 					if _sortOption == option {
 						_sortAscending.toggle()
 					} else {
 						_sortOption = option
 						_sortAscending = true
 					}
-				} label: {
-					HStack {
-						Text(option.displayName)
-						Spacer()
-						if _sortOption == option {
-							Image(systemName: _sortAscending ? "chevron.up" : "chevron.down")
-						}
-					}
+					_isSourceMenuPresenting = false
 				}
 			}
 		}

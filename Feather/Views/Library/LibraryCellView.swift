@@ -18,6 +18,8 @@ struct LibraryCellView: View {
 	@State private var _update: AppUpdate?
 	@State private var _signedUpdateConfirmation: AppUpdate?
 	@State private var _isSignedUpdateConfirmationPresented = false
+	@State private var _isActionsPresenting = false
+	@State private var _pendingAction: MenuAction?
 
 	var app: AppInfoPresentable
 	var isSelecting: Bool
@@ -94,14 +96,19 @@ struct LibraryCellView: View {
 			}
 		}
 		.contentShape(_cardShape)
-		.contentShape(.contextMenuPreview, _cardShape)
-		.onTapGesture {
-			if isSelecting {
-				_toggleSelection()
-			} else {
-				selectedInfoAppPresenting = AnyApp(base: app)
+		.gesture(
+			LongPressGesture().exclusively(before: TapGesture()).onEnded { value in
+				switch value {
+				case .first:
+					guard !isSelecting else { return }
+					UIImpactFeedbackGenerator(style: .light).impactOccurred()
+					_isActionsPresenting = true
+				case .second:
+					if isSelecting { _toggleSelection() }
+					else { selectedInfoAppPresenting = AnyApp(base: app) }
+				}
 			}
-		}
+		)
 		.swipeActions(edge: .trailing, allowsFullSwipe: true) {
 			if !isSelecting {
 				Button(role: .destructive) {
@@ -112,19 +119,17 @@ struct LibraryCellView: View {
 				.tint(NullSignStyle.danger)
 			}
 		}
-		.contextMenu {
-			if !isSelecting {
-				_contextActions(for: app)
-				Divider()
-				_contextActionsExtra(for: app)
-				Divider()
-				Button(role: .destructive) {
-					// Let the menu finish dismissing before the row goes away.
-					DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-						_delete()
-					}
-				} label: {
-					Label(.localized("Delete"), systemImage: "trash")
+		.accessibilityAction(named: Text(.localized("App Actions"))) {
+			guard !isSelecting else { return }
+			_isActionsPresenting = true
+		}
+		.sheet(isPresented: $_isActionsPresenting, onDismiss: _performPendingAction) {
+			NullSignMenuSheet(
+				title: app.name ?? .localized("App Actions"), systemImage: "app.badge",
+				detail: app.identifier
+			) {
+				NullSignSettingsCard {
+					_menuActions
 				}
 			}
 		}
@@ -244,47 +249,61 @@ extension LibraryCellView {
 		Storage.shared.deleteApp(for: app)
 	}
 
-	@ViewBuilder
-	private func _contextActions(for app: AppInfoPresentable) -> some View {
-		Button(.localized("Get Info"), systemImage: "info.circle") {
-			selectedInfoAppPresenting = AnyApp(base: app)
-		}
+	private enum MenuAction {
+		case info, open, install, sign, export, delete
+		case update(AppUpdate)
 	}
 
 	@ViewBuilder
-	private func _contextActionsExtra(for app: AppInfoPresentable) -> some View {
+	private var _menuActions: some View {
+		NullSignMenuAction(title: .localized("Get Info"), systemImage: "info.circle") { _chooseAction(.info) }
+		NullSignSettingsDivider()
 		if let update = _update {
-			Button(.localized("Update"), systemImage: "arrow.down.circle") {
-				if app.isSigned {
-					_signedUpdateConfirmation = update
-					_isSignedUpdateConfirmationPresented = true
-				} else {
-					_startUpdateDownload(update)
-				}
+			NullSignMenuAction(title: .localized("Update"), systemImage: "arrow.down.circle", tint: NullSignStyle.success) {
+				_chooseAction(.update(update))
+			}
+			NullSignSettingsDivider()
+		}
+		if app.isSigned {
+			if app.identifier != nil {
+				NullSignMenuAction(title: .localized("Open"), systemImage: "app.badge.checkmark", tint: NullSignStyle.success) { _chooseAction(.open) }
+				NullSignSettingsDivider()
 			}
 		}
-
+		NullSignMenuAction(title: .localized("Install"), systemImage: "square.and.arrow.down") { _chooseAction(.install) }
+		NullSignSettingsDivider()
+		NullSignMenuAction(title: app.isSigned ? .localized("Re-sign") : .localized("Sign"), systemImage: "signature", tint: NullSignStyle.purple) { _chooseAction(.sign) }
 		if app.isSigned {
-			if let id = app.identifier {
-				Button(.localized("Open"), systemImage: "app.badge.checkmark") {
-					UIApplication.openApp(with: id)
-				}
-			}
-			Button(.localized("Install"), systemImage: "square.and.arrow.down") {
-				selectedInstallAppPresenting = AnyApp(base: app)
-			}
-			Button(.localized("Re-sign"), systemImage: "signature") {
-				selectedSigningAppPresenting = AnyApp(base: app)
-			}
-			Button(.localized("Export"), systemImage: "square.and.arrow.up") {
-				selectedInstallAppPresenting = AnyApp(base: app, archive: true)
-			}
-		} else {
-			Button(.localized("Install"), systemImage: "square.and.arrow.down") {
-				selectedInstallAppPresenting = AnyApp(base: app)
-			}
-			Button(.localized("Sign"), systemImage: "signature") {
-				selectedSigningAppPresenting = AnyApp(base: app)
+			NullSignSettingsDivider()
+			NullSignMenuAction(title: .localized("Export"), systemImage: "square.and.arrow.up", tint: NullSignStyle.warning) { _chooseAction(.export) }
+		}
+		NullSignSettingsDivider()
+		NullSignMenuAction(title: .localized("Delete"), systemImage: "trash", isDestructive: true) { _chooseAction(.delete) }
+	}
+
+	private func _chooseAction(_ action: MenuAction) {
+		_pendingAction = action
+		_isActionsPresenting = false
+	}
+
+	/// Dismiss before presenting signing/install/info UI or deleting this row.
+	private func _performPendingAction() {
+		guard let action = _pendingAction else { return }
+		_pendingAction = nil
+		switch action {
+		case .info: selectedInfoAppPresenting = AnyApp(base: app)
+		case .open:
+			if let id = app.identifier { UIApplication.openApp(with: id) }
+		case .install: selectedInstallAppPresenting = AnyApp(base: app)
+		case .sign: selectedSigningAppPresenting = AnyApp(base: app)
+		case .export: selectedInstallAppPresenting = AnyApp(base: app, archive: true)
+		case .delete: _delete()
+		case .update(let update):
+			if app.isSigned {
+				_signedUpdateConfirmation = update
+				_isSignedUpdateConfirmationPresented = true
+			} else {
+				_startUpdateDownload(update)
 			}
 		}
 	}

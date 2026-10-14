@@ -18,8 +18,10 @@ struct LibraryView: View {
 	@State private var _selectedSigningAppPresenting: AnyApp?
 	@State private var _selectedInstallAppPresenting: AnyApp?
 	@State private var _isImportingPresenting = false
+	@State private var _isImportMenuPresenting = false
+	@State private var _pendingImportDestination: ImportDestination?
 	@State private var _isDownloadingPresenting = false
-	@State private var _alertDownloadString: String = "" // for _isDownloadingPresenting
+	@State private var _pendingDownloadURL: URL?
 	@State private var _isUpdateCheckCompleteVisible = false
 	@State private var _isCertificatesPresenting = false
 	@State private var _isBulkDeleteConfirmationPresented = false
@@ -175,8 +177,8 @@ struct LibraryView: View {
 					}
 
 					if !_isSelecting {
-						Menu {
-							_importActions()
+						Button {
+							_isImportMenuPresenting = true
 						} label: {
 							Image(systemName: "plus")
 						}
@@ -221,18 +223,27 @@ struct LibraryView: View {
 				)
 				.ignoresSafeArea()
 			}
-			.alert(.localized("Import from URL"), isPresented: $_isDownloadingPresenting) {
-				TextField(.localized("URL"), text: $_alertDownloadString)
-					.textInputAutocapitalization(.never)
-				Button(.localized("Cancel"), role: .cancel) {
-					_alertDownloadString = ""
-				}
-				Button(.localized("OK")) {
-					let trimmed = _alertDownloadString.trimmingCharacters(in: .whitespacesAndNewlines)
-					if let url = URL(string: trimmed), url.scheme != nil {
-						_ = downloadManager.startDownload(from: url, id: "FeatherManualDownload_\(UUID().uuidString)")
+			.sheet(isPresented: $_isImportMenuPresenting, onDismiss: _openPendingImport) {
+				NullSignMenuSheet(
+					title: .localized("Import"), systemImage: "tray.and.arrow.down",
+					detail: "Choose how to add an app to your signing library."
+				) {
+					NullSignSettingsCard {
+						NullSignMenuAction(
+							title: .localized("Import from Files"), systemImage: "folder.fill",
+							detail: "Choose one or more IPA or TIPA files.", tint: NullSignStyle.warning
+						) { _chooseImport(.files) }
+						NullSignSettingsDivider()
+						NullSignMenuAction(
+							title: .localized("Import from URL"), systemImage: "link",
+							detail: "Download an app from a direct link."
+						) { _chooseImport(.url) }
 					}
-					_alertDownloadString = ""
+				}
+			}
+			.sheet(isPresented: $_isDownloadingPresenting, onDismiss: _startPendingURLDownload) {
+				ImportURLView { url in
+					_pendingDownloadURL = url
 				}
 			}
 			.confirmationDialog(
@@ -377,14 +388,29 @@ extension LibraryView {
 		.padding(.bottom, 8)
 	}
 
-	@ViewBuilder
-	private func _importActions() -> some View {
-		Button(.localized("Import from Files"), systemImage: "folder") {
-			_isImportingPresenting = true
+	private enum ImportDestination {
+		case files, url
+	}
+
+	private func _chooseImport(_ destination: ImportDestination) {
+		_pendingImportDestination = destination
+		_isImportMenuPresenting = false
+	}
+
+	/// Present the next sheet only after the choices panel has finished dismissing.
+	private func _openPendingImport() {
+		guard let destination = _pendingImportDestination else { return }
+		_pendingImportDestination = nil
+		switch destination {
+		case .files: _isImportingPresenting = true
+		case .url: _isDownloadingPresenting = true
 		}
-		Button(.localized("Import from URL"), systemImage: "globe") {
-			_isDownloadingPresenting = true
-		}
+	}
+
+	private func _startPendingURLDownload() {
+		guard let url = _pendingDownloadURL else { return }
+		_pendingDownloadURL = nil
+		_ = downloadManager.startDownload(from: url, id: "FeatherManualDownload_\(UUID().uuidString)")
 	}
 }
 

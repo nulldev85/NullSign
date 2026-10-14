@@ -122,6 +122,22 @@ struct NullSignThemePreviews: PreviewProvider {
 				.environment(\.dynamicTypeSize, .accessibility1)
 				.previewLayout(.fixed(width: 320, height: 844))
 				.previewDisplayName("Settings · accessibility text")
+			NullSignMenuSheet(title: "Import", systemImage: "tray.and.arrow.down", detail: "Choose how to add an app to your signing library.") {
+				NullSignSettingsCard {
+					NullSignMenuAction(title: "Import from Files", systemImage: "folder.fill", detail: "Choose one or more IPA or TIPA files.", tint: NullSignStyle.warning) { }
+					NullSignSettingsDivider()
+					NullSignMenuAction(title: "Import from URL", systemImage: "link", detail: "Download an app from a direct link.") { }
+				}
+			}
+			.previewLayout(.fixed(width: 390, height: 500))
+			.previewDisplayName("Import choices · menu")
+			ImportURLView { _ in }
+				.previewLayout(.fixed(width: 390, height: 844))
+				.previewDisplayName("Import URL · standard")
+			ImportURLView { _ in }
+				.environment(\.dynamicTypeSize, .accessibility1)
+				.previewLayout(.fixed(width: 320, height: 844))
+				.previewDisplayName("Import URL · accessibility text")
 		}
 	}
 }

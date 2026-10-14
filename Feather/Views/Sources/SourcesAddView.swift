@@ -40,11 +40,16 @@ struct SourcesAddView: View {
 		NBNavigationView(.localized("Add Source"), displayMode: .inline) {
 			ScrollView {
 				LazyVStack(alignment: .leading, spacing: 24) {
+					NullSignSettingsIntro(
+						systemImage: "externaldrive.connected.to.line.below",
+						title: .localized("Add Source"),
+						detail: "Add a repository by URL, move a source list, or choose a featured source."
+					)
 					_urlSection
 					_transferSection
 					_featuredSection
 				}
-				.padding(.horizontal, 16)
+				.padding(.horizontal, 20)
 				.padding(.top, 12)
 				.padding(.bottom, 32)
 			}
@@ -58,6 +63,9 @@ struct SourcesAddView: View {
 				await _fetchRecommendedRepositories()
 			}
 		}
+		.environment(\.font, .roundedUI(.body))
+		.preferredColorScheme(.dark)
+		.modifier(NullSignSheetChrome())
 	}
 
 	private var _urlSection: some View {
@@ -85,7 +93,7 @@ struct SourcesAddView: View {
 					.buttonStyle(.plain)
 				}
 				.padding(.horizontal, 12)
-				.frame(height: 44)
+				.frame(minHeight: 50)
 				.background(NullSignStyle.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
 				Button(action: _saveSource) {
@@ -100,7 +108,8 @@ struct SourcesAddView: View {
 				.buttonStyle(NullSignPrimaryButtonStyle(height: 46))
 				.disabled(_trimmedURL.isEmpty || _isBusy)
 			}
-			.sourcePanel()
+			.padding(16)
+			.nullSignSurface(fill: NullSignStyle.groupedSurface)
 		}
 	}
 
@@ -129,7 +138,8 @@ struct SourcesAddView: View {
 					action: _exportSources
 				)
 			}
-			.sourcePanel(padding: 4)
+			.padding(8)
+			.nullSignSurface(fill: NullSignStyle.groupedSurface)
 		}
 	}
 
@@ -144,7 +154,8 @@ struct SourcesAddView: View {
 			if _isLoadingFeatured {
 				SourceLoadingState(label: "Checking featured sources")
 					.frame(maxWidth: .infinity)
-					.sourcePanel()
+					.padding(16)
+					.nullSignSurface(fill: NullSignStyle.groupedSurface)
 			} else if _filteredRecommendedSourcesData.isEmpty {
 				HStack(spacing: 11) {
 					Image(systemName: "checkmark.circle")
@@ -154,7 +165,8 @@ struct SourcesAddView: View {
 						.foregroundStyle(.secondary)
 				}
 				.frame(maxWidth: .infinity, alignment: .leading)
-				.sourcePanel()
+				.padding(16)
+				.nullSignSurface(fill: NullSignStyle.groupedSurface)
 			} else {
 				VStack(spacing: 0) {
 					ForEach(_filteredRecommendedSourcesData.indices, id: \.self) { index in
@@ -165,7 +177,7 @@ struct SourcesAddView: View {
 						}
 					}
 				}
-				.sourcePanel(padding: 0)
+				.nullSignSurface(fill: NullSignStyle.groupedSurface)
 			}
 		}
 	}
@@ -179,7 +191,7 @@ struct SourcesAddView: View {
 	) -> some View {
 		Button(action: action) {
 			HStack(spacing: 12) {
-				NullSignIconTile(systemImage: icon)
+				NullSignIconTile(systemImage: icon, tint: NullSignStyle.categoryColor(for: icon), size: 32, filled: true)
 				VStack(alignment: .leading, spacing: 2) {
 					Text(title)
 						.font(.roundedUI(size: 15, weight: .bold))

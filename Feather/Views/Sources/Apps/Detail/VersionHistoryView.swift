@@ -3,6 +3,7 @@ import AltSourceKit
 
 struct VersionHistoryView: View {
 	@Environment(\.dismiss) private var dismiss
+	@State private var copiedURL: URL?
 
 	let sourceURL: URL?
 	let source: ASRepository
@@ -21,15 +22,23 @@ struct VersionHistoryView: View {
 						)
 
 						if let url = version.downloadURL {
-							Button { _download(version, from: url) } label: {
-								Image(systemName: "arrow.down")
-									.font(.system(size: 13, weight: .semibold))
-							}
-							.buttonStyle(NullSignPrimaryButtonStyle(height: 34))
-							.contextMenu {
-								Button(.localized("Copy Download URL"), systemImage: "doc.on.clipboard") {
-									UIPasteboard.general.string = url.absoluteString
+							VStack(spacing: 8) {
+								Button { _download(version, from: url) } label: {
+									Image(systemName: "arrow.down")
+										.font(.system(size: 13, weight: .semibold))
 								}
+								.buttonStyle(NullSignPrimaryButtonStyle(height: 34))
+								.accessibilityLabel(.localized("Download Version %1$@", arguments: version.version))
+								Button {
+									UIPasteboard.general.string = url.absoluteString
+									copiedURL = url
+									UINotificationFeedbackGenerator().notificationOccurred(.success)
+								} label: {
+									Image(systemName: copiedURL == url ? "checkmark" : "doc.on.clipboard")
+										.font(.system(size: 13, weight: .semibold))
+								}
+								.buttonStyle(NullSignSecondaryButtonStyle(height: 34))
+								.accessibilityLabel(copiedURL == url ? .localized("Copied") : .localized("Copy Download URL"))
 							}
 						}
 					}
