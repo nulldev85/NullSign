@@ -52,8 +52,9 @@ public struct NBSection<Content, Footer>: View
 						.offset(y: -2)
 				}
 					
-				Text(_headerText)
-					.font(.roundedUI(.title2, weight: .heavy))
+				Text(_headerText.uppercased())
+					.font(.roundedUI(.subheadline, weight: .heavy))
+					.tracking(0.35)
 					.foregroundStyle(.primary)
 						
 					
@@ -91,5 +92,6 @@ public struct NBSection<Content, Footer>: View
 			_content
 		}
 		.headerProminence(.increased)
+		.textCase(nil)
 	}
 }

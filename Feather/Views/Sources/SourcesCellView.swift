@@ -37,10 +37,10 @@ struct SourcesCellView: View {
 				.font(.footnote.weight(.semibold))
 				.foregroundStyle(NullSignStyle.faint)
 		}
-		.padding(12)
+		.padding(16)
 		.nullSignSurface()
-		.contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 16, style: .continuous))
+		.contentShape(RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous))
+		.contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous))
 		.swipeActions {
 			_actions(for: source)
 			_contextActions(for: source)
@@ -92,7 +92,7 @@ extension SourcesCellView {
 		Button(.localized("Delete"), systemImage: "trash", role: .destructive) {
 			Storage.shared.deleteSource(for: source)
 		}
-		.tint(NullSignStyle.accent)
+		.tint(NullSignStyle.danger)
 	}
 
 	@ViewBuilder
@@ -101,6 +101,6 @@ extension SourcesCellView {
 			UIPasteboard.general.string = source.sourceURL?.absoluteString
 			UINotificationFeedbackGenerator().notificationOccurred(.success)
 		}
-		.tint(Color(white: 0.22))
+		.tint(NullSignStyle.accent)
 	}
 }

@@ -118,7 +118,7 @@ struct ResetView: View {
 			.padding(.bottom, 28)
 			.id(_refreshToken)
 		}
-		.background(Color.black)
+		.nullSignPage()
 		.navigationTitle("Storage & Reset")
 		.navigationBarTitleDisplayMode(.inline)
 		.task(id: _refreshToken) {

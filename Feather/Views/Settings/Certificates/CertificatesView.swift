@@ -62,7 +62,7 @@ struct CertificatesView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 24)
 		}
-		.background(Color.black)
+		.nullSignPage()
 		.navigationTitle("Certificates")
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {
@@ -111,7 +111,7 @@ extension CertificatesView {
 	private func _cellButton(for cert: CertificatePair, at index: Int) -> some View {
 		let isSelected = _selectedCertBinding.wrappedValue == index
 		let isCompatible = _platform.map { Storage.shared.certificate(cert, supports: $0) } ?? true
-		let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+		let shape = RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous)
 
 		HStack(spacing: 0) {
 			Button {
@@ -144,7 +144,7 @@ extension CertificatesView {
 			}
 			.accessibilityLabel("Certificate actions")
 		}
-		.nullSignSurface()
+		.nullSignSurface(fill: NullSignStyle.groupedSurface)
 		.overlay {
 			if isSelected {
 				shape.strokeBorder(NullSignStyle.accent, lineWidth: 2)

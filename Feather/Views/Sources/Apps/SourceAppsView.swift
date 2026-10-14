@@ -84,6 +84,9 @@ struct SourceAppsView: View {
 			}
 		}
 		.navigationTitle(_navigationTitle)
+		.toolbarBackground(NullSignStyle.ink, for: .navigationBar)
+		.toolbarBackground(.visible, for: .navigationBar)
+		.toolbarColorScheme(.dark, for: .navigationBar)
 		.searchable(text: $_searchText, placement: .platform(), prompt: .localized("Search apps"))
 		.toolbarTitleMenu {
 			if let context = _sourceContexts?.first, _sourceContexts?.count == 1 {

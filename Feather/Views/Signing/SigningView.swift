@@ -62,7 +62,7 @@ struct SigningView: View {
 					.listRowBackground(NullSignStyle.panel)
 			}
 			.scrollContentBackground(.hidden)
-			.background(Color.black)
+			.nullSignPage()
 			.tint(NullSignStyle.accent)
 			.safeAreaInset(edge: .bottom, spacing: 0) {
 				Button {
@@ -86,7 +86,7 @@ struct SigningView: View {
 				.padding(.bottom, 8)
 				.background(
 					LinearGradient(
-						colors: [Color.black.opacity(0), Color.black.opacity(0.85), Color.black],
+						colors: [NullSignStyle.canvas.opacity(0), NullSignStyle.canvas.opacity(0.85), NullSignStyle.canvas],
 						startPoint: .top,
 						endPoint: .bottom
 					)
@@ -321,7 +321,7 @@ extension SigningView {
 					temporaryOptions: _optionsManager.options
 				)}
 				.scrollContentBackground(.hidden)
-				.background(Color.black)
+				.nullSignPage()
 				.navigationTitle(.localized("Properties"))
 			}
 		} header: {

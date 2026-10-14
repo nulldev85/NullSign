@@ -29,9 +29,9 @@ struct NullSignApp: App {
 					.onOpenURL(perform: _handleURL)
 					.transition(.move(edge: .top).combined(with: .opacity))
 			}
-			.background(Color.black.ignoresSafeArea())
+			.background(NullSignStyle.canvas.ignoresSafeArea())
 			.preferredColorScheme(.dark)
-			.tint(.white)
+			.tint(NullSignStyle.accent)
 			.environment(\.font, .roundedUI(.body))
 			.modifier(NullSignRoundedFontDesign())
 			.onReceive(NotificationCenter.default.publisher(for: .heartbeatInvalidHost)) { _ in
@@ -45,9 +45,9 @@ struct NullSignApp: App {
 			// dear god help me
 			.onAppear {
 				UserDefaults.standard.set(UIUserInterfaceStyle.dark.rawValue, forKey: "Feather.userInterfaceStyle")
-				UserDefaults.standard.set("#FFFFFF", forKey: "Feather.userTintColor")
+				UserDefaults.standard.set("#0094FF", forKey: "Feather.userTintColor")
 				UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = .dark
-				UIApplication.topViewController()?.view.window?.tintColor = .white
+				UIApplication.topViewController()?.view.window?.tintColor = UIColor(NullSignStyle.accent)
 			}
 		}
 	}
@@ -151,9 +151,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 		_ application: UIApplication,
 		didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
 	) -> Bool {
-		UIView.appearance().tintColor = .white
-		UITableView.appearance().backgroundColor = .black
-		UICollectionView.appearance().backgroundColor = .black
+		UIView.appearance().tintColor = UIColor(NullSignStyle.accent)
+		UITableView.appearance().backgroundColor = UIColor(NullSignStyle.canvas)
+		UICollectionView.appearance().backgroundColor = UIColor(NullSignStyle.canvas)
 		_configureRoundedNavigationTitles()
 		_createPipeline()
 		_createDocumentsDirectories()

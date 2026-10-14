@@ -29,8 +29,18 @@ struct SourcesView: View {
 	var body: some View {
 		let filteredSources = _filteredSources
 
-		NBNavigationView("Apps") {
+		NBNavigationView("Apps", displayMode: .inline) {
 			List {
+				NullSignOverviewBanner(
+					title: "Your catalog",
+					value: viewModel.isFetching && _loadedAppCount == 0 ? "…" : _loadedAppCount.formatted(),
+					detail: viewModel.isFetching && _loadedAppCount == 0
+						? "Updating your repositories…"
+						: "Apps from \(_sources.count) \(_sources.count == 1 ? "repository" : "repositories")",
+					systemImage: "square.grid.2x2.fill"
+				)
+				.nullSignListRow(top: 0, bottom: 0, horizontal: 0)
+
 				if _sources.isEmpty {
 					SourceEmptyState(
 						icon: "square.grid.2x2",
@@ -58,8 +68,8 @@ struct SourcesView: View {
 						.nullSignListRow(top: 6, bottom: 4)
 					}
 
-					NullSignSectionLabel(title: .localized("Repositories"), prominent: true)
-						.nullSignListRow(top: 18, bottom: 4, horizontal: 20)
+					NullSignSectionLabel(title: .localized("Repositories"), prominent: true, systemImage: "externaldrive.connected.to.line.below")
+						.nullSignListRow(top: 20, bottom: 8, horizontal: 24)
 
 					ForEach(filteredSources) { source in
 						ZStack {
@@ -94,6 +104,9 @@ struct SourcesView: View {
 			.environment(\.defaultMinListRowHeight, 0)
 			.scrollContentBackground(.hidden)
 			.background(Color.black)
+			.toolbarBackground(NullSignStyle.sky, for: .navigationBar)
+			.toolbarBackground(.visible, for: .navigationBar)
+			.toolbarColorScheme(.dark, for: .navigationBar)
 			.scrollDismissesKeyboard(.interactively)
 			.toolbar {
 				ToolbarItem(placement: .topBarTrailing) {
@@ -128,7 +141,7 @@ struct SourcesView: View {
 
 		return HStack(spacing: 14) {
 			if iconURLs.isEmpty {
-				NullSignIconTile(systemImage: "square.grid.2x2", size: 48)
+				NullSignIconTile(systemImage: "square.grid.2x2.fill", tint: NullSignStyle.accent, size: 48, filled: true)
 			} else {
 				SourceIconStack(urls: iconURLs, size: 40)
 			}
@@ -150,7 +163,7 @@ struct SourcesView: View {
 		}
 		.padding(14)
 		.nullSignSurface()
-		.contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+		.contentShape(RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous))
 	}
 
 	private var _catalogSummary: String {

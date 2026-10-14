@@ -91,8 +91,17 @@ struct LibraryView: View {
 		let showsSigned = !filteredSignedApps.isEmpty && (_selectedScope == .all || _selectedScope == .signed)
 		let showsImported = !filteredImportedApps.isEmpty && (_selectedScope == .all || _selectedScope == .imported)
 
-		NBNavigationView("Signer") {
+		NBNavigationView("Signer", displayMode: .inline) {
 			List {
+				NullSignOverviewBanner(
+					title: "On this device",
+					value: (_signedApps.count + _importedApps.count).formatted(),
+					detail: "\(_signedApps.count) signed · \(_importedApps.count) imported",
+					systemImage: "checkmark.seal.fill",
+					iconColor: NullSignStyle.yellow
+				)
+				.nullSignListRow(top: 0, bottom: 0, horizontal: 0)
+
 				NullSignIdentityCard(certificate: NullSignIdentity.activeCertificate(in: _certificates)) {
 					_isCertificatesPresenting = true
 				}
@@ -103,16 +112,16 @@ struct LibraryView: View {
 						.nullSignListRow(top: 6, bottom: 4)
 
 					if showsSigned {
-						NullSignSectionLabel(title: .localized("Signed"), prominent: true)
-							.nullSignListRow(top: 18, bottom: 4, horizontal: 20)
+						NullSignSectionLabel(title: .localized("Signed"), count: filteredSignedApps.count, prominent: true, systemImage: "checkmark.seal")
+							.nullSignListRow(top: 20, bottom: 8, horizontal: 24)
 						ForEach(filteredSignedApps, id: \.objectID) { app in
 							_cell(for: app)
 						}
 					}
 
 					if showsImported {
-						NullSignSectionLabel(title: .localized("Imported"), prominent: true)
-							.nullSignListRow(top: 18, bottom: 4, horizontal: 20)
+						NullSignSectionLabel(title: .localized("Imported"), count: filteredImportedApps.count, prominent: true, systemImage: "tray.and.arrow.down")
+							.nullSignListRow(top: 20, bottom: 8, horizontal: 24)
 						ForEach(filteredImportedApps, id: \.objectID) { app in
 							_cell(for: app)
 						}
@@ -132,6 +141,9 @@ struct LibraryView: View {
 			.environment(\.defaultMinListRowHeight, 0)
 			.scrollContentBackground(.hidden)
 			.background(Color.black)
+			.toolbarBackground(NullSignStyle.sky, for: .navigationBar)
+			.toolbarBackground(.visible, for: .navigationBar)
+			.toolbarColorScheme(.dark, for: .navigationBar)
 			.scrollDismissesKeyboard(.interactively)
 			.toolbar {
 				ToolbarItem(placement: .topBarLeading) {
@@ -252,6 +264,7 @@ struct LibraryView: View {
 				await _autoCheckForUpdatesIfNeeded()
 			}
 		}
+		.tint(.white)
 	}
 }
 
@@ -351,7 +364,7 @@ extension LibraryView {
 			} label: {
 				Text(.localized("Delete"))
 			}
-			.buttonStyle(NullSignPrimaryButtonStyle(height: 36))
+			.buttonStyle(NullSignPrimaryButtonStyle(height: 36, tint: NullSignStyle.danger))
 			.disabled(_selectedAppUUIDs.isEmpty)
 		}
 		.padding(.leading, 18)

@@ -122,7 +122,7 @@ struct AboutView: View {
 			.padding(.top, 16)
 			.padding(.bottom, 28)
 		}
-		.background(Color.black)
+		.nullSignPage()
 		.navigationTitle("About")
 		.navigationBarTitleDisplayMode(.inline)
 		.task {

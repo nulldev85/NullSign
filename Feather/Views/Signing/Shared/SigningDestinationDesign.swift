@@ -28,7 +28,12 @@ struct SigningRowIcon: View {
 	var tint: Color = .white
 
 	var body: some View {
-		NullSignIconTile(systemImage: systemImage, tint: tint, size: 30)
+		NullSignIconTile(
+			systemImage: systemImage,
+			tint: tint == .white ? NullSignStyle.categoryColor(for: systemImage) : tint,
+			size: 30,
+			filled: true
+		)
 	}
 }
 

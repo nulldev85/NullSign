@@ -23,7 +23,7 @@ struct CertificatesCellView: View {
 					progress: validity.progress,
 					size: 40,
 					lineWidth: 3.5,
-					tint: validity.tint == NullSignStyle.success ? .white : validity.tint
+					tint: validity.tint
 				)
 				Text(validity.value)
 					.font(.roundedUI(size: 12, weight: .bold))

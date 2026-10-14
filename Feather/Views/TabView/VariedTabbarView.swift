@@ -61,23 +61,22 @@ struct VariedTabbarView: View {
 	}
 }
 
-/// A floating dock of equal-width glyphs. The active tab's glyph turns red;
-/// nothing else changes.
+/// A labeled floating dock with a dark selected capsule and electric-blue emphasis.
 private struct NullSignDock: View {
 	@Binding var selection: TabEnum
 	let onReselect: (TabEnum) -> Void
 	@Environment(\.accessibilityReduceMotion) private var _reduceMotion
 
 	var body: some View {
-		HStack(spacing: 4) {
+		HStack(spacing: 2) {
 			ForEach(TabEnum.defaultTabs, id: \.self) { tab in
 				_item(for: tab)
 			}
 		}
 		.padding(5)
 		.modifier(NullSignDockChrome())
-		.frame(maxWidth: 360)
-		.padding(.horizontal, 24)
+		.frame(maxWidth: 420)
+		.padding(.horizontal, 20)
 		.padding(.top, 6)
 		.padding(.bottom, 4)
 	}
@@ -96,12 +95,24 @@ private struct NullSignDock: View {
 				selection = tab
 			}
 		} label: {
-			Image(systemName: tab.icon)
-				.font(.system(size: 20, weight: .semibold))
-				.foregroundStyle(isSelected ? NullSignStyle.accent : NullSignStyle.muted)
-				.frame(maxWidth: .infinity)
-				.frame(height: 44)
-				.contentShape(Rectangle())
+			VStack(spacing: 3) {
+				Image(systemName: tab.icon)
+					.font(.system(size: 22, weight: .semibold))
+					.accessibilityHidden(true)
+				Text(tab.title)
+					.font(.roundedUI(.caption2, weight: .heavy))
+					.lineLimit(1)
+					.minimumScaleFactor(0.8)
+			}
+			.foregroundStyle(isSelected ? NullSignStyle.accent : Color.white)
+			.frame(maxWidth: .infinity)
+			.frame(minHeight: 52)
+			.background {
+				if isSelected {
+					Capsule().fill(Color.black.opacity(0.6))
+				}
+			}
+			.contentShape(Capsule())
 		}
 		.buttonStyle(.plain)
 		.accessibilityLabel(tab.title)
@@ -116,11 +127,12 @@ private struct NullSignDockChrome: ViewModifier {
 		if #available(iOS 26.0, *) {
 			content
 				.glassEffect(in: Capsule())
+				.overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
 		} else {
 			content
 				.background(.ultraThinMaterial, in: Capsule())
-				.background(Color.black.opacity(0.5), in: Capsule())
-				.overlay(Capsule().strokeBorder(NullSignStyle.hairline, lineWidth: 1))
+				.background(NullSignStyle.groupedSurface.opacity(0.85), in: Capsule())
+				.overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
 		}
 	}
 }

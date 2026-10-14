@@ -52,7 +52,7 @@ struct LibraryInfoView: View {
 			}
 			.listStyle(.plain)
 			.scrollContentBackground(.hidden)
-			.background(Color.black)
+			.nullSignPage()
 			.tint(NullSignStyle.accent)
 			.toolbar {
 				NBToolbarButton(role: .close)

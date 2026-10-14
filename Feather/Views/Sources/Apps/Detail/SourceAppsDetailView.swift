@@ -79,12 +79,14 @@ struct SourceAppsDetailView: View {
 		}
 		.background(Color.black)
 		.navigationBarTitleDisplayMode(.inline)
+		.toolbarBackground(NullSignStyle.ink, for: .navigationBar)
+		.toolbarBackground(.visible, for: .navigationBar)
 		.toolbar {
 			NBToolbarButton(systemImage: "square.and.arrow.up", placement: .topBarTrailing) {
 				_share()
 			}
 		}
-		.tint(.white)
+		.tint(NullSignStyle.accent)
 		.fullScreenCover(isPresented: $_isScreenshotPreviewPresented) {
 			if let screenshots = app.screenshotURLs {
 				ScreenshotPreviewView(screenshotURLs: screenshots, initialIndex: _selectedScreenshotIndex)

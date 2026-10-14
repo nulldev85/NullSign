@@ -68,7 +68,7 @@ struct CertificatesAddView: View {
 				.padding(.top, 12)
 				.padding(.bottom, 28)
 			}
-			.background(Color.black)
+			.nullSignPage()
 			.toolbar {
 				NBToolbarButton(role: .cancel)
 				NBToolbarButton(

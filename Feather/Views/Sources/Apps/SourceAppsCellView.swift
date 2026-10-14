@@ -40,10 +40,10 @@ struct SourceAppsCellView: View {
 
 			DownloadButtonView(sourceURL: sourceURL, source: source, app: app)
 		}
-		.padding(12)
+		.padding(14)
 		.nullSignSurface()
-		.padding(.horizontal, 16)
-		.padding(.vertical, 5)
+		.padding(.horizontal, 20)
+		.padding(.vertical, 6)
 	}
 
 	private var _footnote: String {

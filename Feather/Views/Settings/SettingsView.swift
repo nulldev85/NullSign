@@ -14,9 +14,9 @@ struct NullSignSettingsCard<Content: View>: View {
 		VStack(spacing: 0) {
 			content
 		}
-		.padding(.horizontal, 14)
-		.padding(.vertical, 12)
-		.nullSignSurface()
+		.padding(.horizontal, 18)
+		.padding(.vertical, 8)
+		.nullSignSurface(fill: NullSignStyle.groupedSurface)
 	}
 }
 
@@ -32,7 +32,7 @@ struct NullSignSettingsSection<Content: View>: View {
 	}
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 8) {
+		VStack(alignment: .leading, spacing: 10) {
 			NullSignSectionLabel(title: title)
 				.padding(.horizontal, 4)
 
@@ -68,14 +68,20 @@ struct NullSignSettingsRow: View {
 				if isBusy {
 					ProgressView()
 						.controlSize(.small)
-						.frame(width: 30, height: 30)
+						.frame(width: 32, height: 32)
 				} else {
-					NullSignIconTile(systemImage: systemImage, tint: tint)
+					NullSignIconTile(
+						systemImage: systemImage,
+						tint: tint == .white ? NullSignStyle.categoryColor(for: systemImage) : tint,
+						size: 32,
+						filled: true
+					)
 				}
 			}
 
 			VStack(alignment: .leading, spacing: detail == nil ? 0 : 2) {
 				Text(title)
+					.font(.roundedUI(.body, weight: .bold))
 					.foregroundStyle(.white)
 				if let detail {
 					Text(detail)
@@ -89,7 +95,11 @@ struct NullSignSettingsRow: View {
 
 			if let value {
 				Text(value)
+					.font(.roundedUI(.subheadline, weight: .bold))
 					.foregroundStyle(NullSignStyle.muted)
+					.lineLimit(1)
+					.minimumScaleFactor(0.8)
+					.layoutPriority(-1)
 			}
 			if showsChevron {
 				Image(systemName: "chevron.right")
@@ -97,7 +107,7 @@ struct NullSignSettingsRow: View {
 					.foregroundStyle(NullSignStyle.faint)
 			}
 		}
-		.frame(minHeight: 40)
+		.frame(minHeight: 52)
 		.contentShape(Rectangle())
 	}
 }
@@ -107,8 +117,8 @@ struct NullSignSettingsDivider: View {
 		Rectangle()
 			.fill(NullSignStyle.hairline)
 			.frame(height: 1)
-			.padding(.leading, 42)
-			.padding(.vertical, 8)
+			.padding(.leading, 44)
+			.padding(.vertical, 2)
 	}
 }
 
@@ -121,7 +131,7 @@ struct NullSignSettingsIntro: View {
 
 	var body: some View {
 		HStack(alignment: .top, spacing: 14) {
-			NullSignIconTile(systemImage: systemImage, size: 40)
+			NullSignIconTile(systemImage: systemImage, tint: NullSignStyle.categoryColor(for: systemImage), size: 40, filled: true)
 
 			VStack(alignment: .leading, spacing: 4) {
 				HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -141,8 +151,8 @@ struct NullSignSettingsIntro: View {
 					.fixedSize(horizontal: false, vertical: true)
 			}
 		}
-		.padding(16)
-		.nullSignSurface()
+		.padding(18)
+		.nullSignSurface(fill: NullSignStyle.groupedSurface)
 	}
 }
 
@@ -163,9 +173,9 @@ struct SettingsView: View {
 	}
 
 	var body: some View {
-		NBNavigationView("Settings") {
+		NBNavigationView("Settings", displayMode: .inline) {
 			ScrollView {
-				VStack(spacing: 24) {
+				VStack(spacing: 28) {
 					NullSignIdentityCard(certificate: NullSignIdentity.activeCertificate(in: certificates)) {
 						_isCertificatesPresenting = true
 					}
@@ -246,11 +256,13 @@ struct SettingsView: View {
 						.padding(.horizontal, 24)
 						.padding(.bottom, 12)
 				}
-				.padding(.horizontal, 16)
-				.padding(.top, 4)
+				.padding(.horizontal, 20)
+				.padding(.top, 12)
 				.padding(.bottom, 24)
 			}
-			.background(Color.black)
+			.background(NullSignStyle.canvas)
+			.toolbarBackground(NullSignStyle.canvas, for: .navigationBar)
+			.toolbarBackground(.visible, for: .navigationBar)
 			.navigationDestination(isPresented: $_isCertificatesPresenting) {
 				CertificatesView()
 			}

@@ -49,7 +49,7 @@ struct SourcesAddView: View {
 				.padding(.bottom, 32)
 			}
 			.scrollDismissesKeyboard(.interactively)
-			.background(Color.black)
+			.nullSignPage()
 			.toolbar {
 				NBToolbarButton(role: .cancel)
 			}

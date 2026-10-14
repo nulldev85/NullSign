@@ -26,7 +26,7 @@ struct LibraryCellView: View {
 	@Binding var selectedInstallAppPresenting: AnyApp?
 	@Binding var selectedAppUUIDs: Set<String>
 
-	private let _cardShape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+	private let _cardShape = RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous)
 
 	// MARK: Selections
 	private var _isSelected: Bool {
@@ -72,6 +72,7 @@ struct LibraryCellView: View {
 					.font(.roundedUI(.subheadline))
 					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
+					.minimumScaleFactor(0.85)
 				HStack(spacing: 6) {
 					PlatformBadge(platform: app.platform)
 					_status
@@ -85,7 +86,7 @@ struct LibraryCellView: View {
 				_primaryAction
 			}
 		}
-		.padding(12)
+		.padding(14)
 		.nullSignSurface()
 		.overlay {
 			if isSelecting && _isSelected {
@@ -108,7 +109,7 @@ struct LibraryCellView: View {
 				} label: {
 					Label(.localized("Delete"), systemImage: "trash")
 				}
-				.tint(NullSignStyle.accent)
+				.tint(NullSignStyle.danger)
 			}
 		}
 		.contextMenu {

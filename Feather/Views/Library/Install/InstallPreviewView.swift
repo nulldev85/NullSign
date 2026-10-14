@@ -36,13 +36,7 @@ struct InstallPreviewView: View {
 	
 	// MARK: Body
 	var body: some View {
-		let cornerRadius = {
-			if #available(iOS 26.0, *) {
-				28.0
-			} else {
-				10.5
-			}
-		}()
+		let cornerRadius = NullSignStyle.cardRadius
 		
 		VStack(alignment: .leading, spacing: 16) {
 			HStack(spacing: 16) {
@@ -67,11 +61,7 @@ struct InstallPreviewView: View {
 		}
 		.padding(20)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-		.background(NullSignStyle.surface, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-		.overlay(
-			RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-				.strokeBorder(NullSignStyle.hairline, lineWidth: 1)
-		)
+		.background(NullSignStyle.groupedSurface, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
 		.padding()
 		.sheet(isPresented: $_isWebviewPresenting) {
 			SafariRepresentableView(url: installer.pageEndpoint).ignoresSafeArea()

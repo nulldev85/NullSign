@@ -69,7 +69,7 @@ struct DiagnosticsView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 28)
 		}
-		.background(Color.black)
+		.nullSignPage()
 		.navigationTitle("Diagnostics")
 		.onAppear(perform: _refresh)
 	}

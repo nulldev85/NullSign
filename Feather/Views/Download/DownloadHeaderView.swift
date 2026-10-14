@@ -26,13 +26,8 @@ struct DownloadHeaderView: View {
 				}
 				.padding(.horizontal, 14)
 				.padding(.vertical, 10)
-				.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-				.background(Color.black.opacity(0.4), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-				.overlay(
-					RoundedRectangle(cornerRadius: 18, style: .continuous)
-						.strokeBorder(NullSignStyle.hairline, lineWidth: 1)
-				)
-				.padding(.horizontal, 14)
+				.nullSignSurface(fill: NullSignStyle.groupedSurface)
+				.padding(.horizontal, 20)
 				.padding(.top, 4)
 				.padding(.bottom, 6)
 				.transition(_reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))

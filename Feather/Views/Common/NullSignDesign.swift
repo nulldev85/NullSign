@@ -3,48 +3,80 @@ import CoreData
 
 // MARK: - Tokens
 
-/// True black, neutral grays, and one red — the red of the tvOS tag. Red
-/// marks primary actions, selection, and problems; it is never decorative.
+/// The reference palette: electric blue, charcoal cards, and distinct category colors.
 enum NullSignStyle {
-	static let accent = Color(red: 0.902, green: 0.098, blue: 0.267)
-	static let crimson = accent
-	static let danger = accent
-	static let success = Color(red: 0.188, green: 0.820, blue: 0.345)
-	static let warning = Color(red: 1.0, green: 0.624, blue: 0.039)
+	static let accent = Color(red: 0, green: 0.58, blue: 1)
+	/// Slightly deeper blues keep white button/header text readable.
+	static let actionBlue = Color(red: 0, green: 0.44, blue: 0.88)
+	static let sky = Color(red: 0, green: 0.44, blue: 0.88)
+	static let danger = Color(red: 1, green: 0.23, blue: 0.28)
+	static let crimson = danger
+	static let success = Color(red: 0.19, green: 0.82, blue: 0.35)
+	static let warning = Color(red: 1, green: 0.62, blue: 0.04)
+	static let yellow = Color(red: 1, green: 0.9, blue: 0)
+	static let teal = Color(red: 0.18, green: 0.85, blue: 0.69)
+	static let purple = Color(red: 0.75, green: 0.35, blue: 0.95)
 	static let ink = Color.black
-	static let canvas = Color.black
-	/// Cards and grouped rows.
-	static let surface = Color(white: 0.09)
-	/// Controls, tags and icon wells.
-	static let fill = Color.white.opacity(0.1)
-	static let muted = Color.white.opacity(0.6)
-	static let faint = Color.white.opacity(0.35)
+	static let canvas = Color(red: 0.11, green: 0.11, blue: 0.12)
+	static let surface = Color(red: 0.12, green: 0.12, blue: 0.13)
+	static let groupedSurface = Color(red: 0.17, green: 0.17, blue: 0.18)
+	static let cardRadius: CGFloat = 24
+	static let fill = Color.white.opacity(0.08)
+	static let muted = Color(white: 0.72)
+	static let faint = Color(white: 0.58)
 	static let hairline = Color.white.opacity(0.08)
-	static let panel = Color.white.opacity(0.05)
-	static let raisedPanel = Color.white.opacity(0.1)
+	static let panel = groupedSurface
+	static let raisedPanel = Color(white: 0.22)
+
+	static func categoryColor(for symbol: String) -> Color {
+		switch symbol {
+		case "checkmark.seal", "checkmark.seal.fill", "checkmark.shield", "hand.raised", "lock.shield":
+			return success
+		case "signature", "pencil", "slider.horizontal.3", "doc.text", "list.bullet":
+			return purple
+		case "internaldrive", "folder", "folder.fill", "shippingbox", "shippingbox.fill":
+			return warning
+		case "waveform.path.ecg", "exclamationmark.triangle", "trash", "trash.fill":
+			return danger
+		case "gearshape", "gearshape.fill", "info.circle":
+			return Color(white: 0.55)
+		default:
+			return accent
+		}
+	}
 }
 
 // MARK: - Surfaces
 
 struct NullSignSurfaceModifier: ViewModifier {
-	var cornerRadius: CGFloat = 16
+	var cornerRadius: CGFloat = NullSignStyle.cardRadius
 	var fill: Color = NullSignStyle.surface
 
 	func body(content: Content) -> some View {
 		let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
 		return content
 			.background(fill, in: shape)
-			.overlay(shape.strokeBorder(NullSignStyle.hairline, lineWidth: 1))
+			.clipShape(shape)
 	}
 }
 
 extension View {
-	func nullSignSurface(cornerRadius: CGFloat = 16, fill: Color = NullSignStyle.surface) -> some View {
+	/// Charcoal pages and navigation chrome, including pushed views and sheets.
+	func nullSignPage() -> some View {
+		self
+			.background(NullSignStyle.canvas)
+			.toolbarBackground(NullSignStyle.canvas, for: .navigationBar)
+			.toolbarBackground(.visible, for: .navigationBar)
+			.toolbarColorScheme(.dark, for: .navigationBar)
+			.tint(NullSignStyle.accent)
+	}
+
+	func nullSignSurface(cornerRadius: CGFloat = NullSignStyle.cardRadius, fill: Color = NullSignStyle.surface) -> some View {
 		modifier(NullSignSurfaceModifier(cornerRadius: cornerRadius, fill: fill))
 	}
 
 	/// A transparent, separator-free list row so cards sit directly on black.
-	func nullSignListRow(top: CGFloat = 5, bottom: CGFloat = 5, horizontal: CGFloat = 16) -> some View {
+	func nullSignListRow(top: CGFloat = 6, bottom: CGFloat = 6, horizontal: CGFloat = 20) -> some View {
 		self
 			.listRowInsets(EdgeInsets(top: top, leading: horizontal, bottom: bottom, trailing: horizontal))
 			.listRowBackground(Color.clear)
@@ -60,15 +92,23 @@ struct NullSignSectionLabel: View {
 	let title: String
 	var count: Int? = nil
 	var prominent: Bool = false
+	var systemImage: String? = nil
 
 	var body: some View {
 		HStack(alignment: .firstTextBaseline, spacing: 6) {
-			Text(title)
-				.font(prominent ? .roundedUI(.title3, weight: .heavy) : .roundedUI(.subheadline, weight: .bold))
-				.foregroundStyle(prominent ? Color.white : NullSignStyle.muted)
+			if let systemImage {
+				Image(systemName: systemImage)
+					.font(.system(size: 13, weight: .bold))
+					.foregroundStyle(NullSignStyle.muted)
+					.accessibilityHidden(true)
+			}
+			Text(title.uppercased())
+				.font(.roundedUI(prominent ? .subheadline : .caption, weight: .heavy))
+				.tracking(prominent ? 0.35 : 0.65)
+				.foregroundStyle(NullSignStyle.muted)
 			if let count {
 				Text(verbatim: "\(count)")
-					.font(prominent ? .roundedUI(.title3, weight: .heavy) : .roundedUI(.subheadline))
+					.font(.roundedUI(.caption, weight: .bold))
 					.foregroundStyle(NullSignStyle.faint)
 			}
 			Spacer(minLength: 0)
@@ -85,13 +125,14 @@ struct NullSignIconTile: View {
 	let systemImage: String
 	var tint: Color = .white
 	var size: CGFloat = 30
+	var filled: Bool = false
 
 	var body: some View {
 		Image(systemName: systemImage)
 			.font(.system(size: size * 0.5, weight: .medium))
-			.foregroundStyle(tint)
+			.foregroundStyle(filled ? Color.white : tint)
 			.frame(width: size, height: size)
-			.background(NullSignStyle.fill, in: RoundedRectangle(cornerRadius: size * 0.26, style: .continuous))
+			.background(filled ? tint : NullSignStyle.fill, in: RoundedRectangle(cornerRadius: size * 0.23, style: .continuous))
 	}
 }
 
@@ -149,17 +190,19 @@ struct NullSignRing: View {
 
 struct NullSignPrimaryButtonStyle: ButtonStyle {
 	var height: CGFloat = 50
+	var tint: Color = NullSignStyle.actionBlue
 	/// Off for buttons that stay disabled while their own work runs, so the
 	/// in-progress state reads as active rather than unavailable.
 	var dimsWhenDisabled = true
 
 	func makeBody(configuration: Configuration) -> some View {
-		PrimaryBody(configuration: configuration, height: height, dimsWhenDisabled: dimsWhenDisabled)
+		PrimaryBody(configuration: configuration, height: height, tint: tint, dimsWhenDisabled: dimsWhenDisabled)
 	}
 
 	struct PrimaryBody: View {
 		let configuration: ButtonStyleConfiguration
 		let height: CGFloat
+		let tint: Color
 		let dimsWhenDisabled: Bool
 		@Environment(\.isEnabled) private var isEnabled
 
@@ -169,15 +212,17 @@ struct NullSignPrimaryButtonStyle: ButtonStyle {
 				.foregroundStyle(.white)
 				.padding(.horizontal, height < 40 ? 14 : 20)
 				.frame(minHeight: height)
-				.background(NullSignStyle.accent, in: Capsule())
+				.background(tint, in: Capsule())
 				.opacity(isEnabled || !dimsWhenDisabled ? (configuration.isPressed ? 0.75 : 1) : 0.4)
+				.frame(minHeight: 44)
+				.contentShape(Rectangle())
 		}
 	}
 }
 
 struct NullSignSecondaryButtonStyle: ButtonStyle {
 	var height: CGFloat = 50
-	var tint: Color = .white
+	var tint: Color = NullSignStyle.accent
 
 	func makeBody(configuration: Configuration) -> some View {
 		SecondaryBody(configuration: configuration, height: height, tint: tint)
@@ -195,8 +240,11 @@ struct NullSignSecondaryButtonStyle: ButtonStyle {
 				.foregroundStyle(tint)
 				.padding(.horizontal, height < 40 ? 14 : 20)
 				.frame(minHeight: height)
-				.background(Color.white.opacity(configuration.isPressed ? 0.16 : 0.1), in: Capsule())
+				.background(tint.opacity(configuration.isPressed ? 0.16 : 0.04), in: Capsule())
+				.overlay(Capsule().strokeBorder(tint.opacity(isEnabled ? 0.85 : 0.35), lineWidth: 1.2))
 				.opacity(isEnabled ? 1 : 0.4)
+				.frame(minHeight: 44)
+				.contentShape(Rectangle())
 		}
 	}
 }
@@ -235,8 +283,8 @@ struct NullSignSearchField: View {
 			}
 		}
 		.padding(.horizontal, 12)
-		.frame(height: 40)
-		.background(NullSignStyle.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+		.frame(minHeight: 46)
+		.background(NullSignStyle.groupedSurface, in: Capsule())
 	}
 }
 
@@ -261,20 +309,21 @@ struct NullSignSegmentedControl<Value: Hashable>: View {
 				} label: {
 					HStack(spacing: 5) {
 						Text(title(option))
-							.foregroundStyle(isSelected ? Color.white : NullSignStyle.muted)
+							.foregroundStyle(isSelected ? Color.white : NullSignStyle.accent)
 						if let value = count?(option) {
 							Text(verbatim: "\(value)")
-								.foregroundStyle(NullSignStyle.faint)
+								.foregroundStyle(isSelected ? Color.white : NullSignStyle.accent)
 						}
 					}
 					.font(.roundedUI(.subheadline, weight: .bold))
 					.lineLimit(1)
+					.minimumScaleFactor(0.8)
 					.frame(maxWidth: .infinity)
-					.frame(height: 32)
+					.frame(minHeight: 36)
 					.background {
 						if isSelected {
-							RoundedRectangle(cornerRadius: 9, style: .continuous)
-								.fill(Color.white.opacity(0.16))
+							Capsule()
+								.fill(NullSignStyle.actionBlue)
 								.matchedGeometryEffect(id: "segment", in: _namespace)
 						}
 					}
@@ -284,8 +333,9 @@ struct NullSignSegmentedControl<Value: Hashable>: View {
 				.accessibilityAddTraits(isSelected ? .isSelected : [])
 			}
 		}
-		.padding(3)
-		.background(NullSignStyle.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+		.padding(4)
+		.background(NullSignStyle.accent.opacity(0.08), in: Capsule())
+		.overlay(Capsule().strokeBorder(NullSignStyle.accent.opacity(0.45), lineWidth: 1))
 	}
 }
 
@@ -313,7 +363,7 @@ struct NullSignEmptyState<Actions: View>: View {
 		VStack(spacing: 16) {
 			Image(systemName: systemImage)
 				.font(.system(size: 40, weight: .regular))
-				.foregroundStyle(NullSignStyle.faint)
+				.foregroundStyle(NullSignStyle.accent)
 				.accessibilityHidden(true)
 
 			VStack(spacing: 6) {
@@ -520,7 +570,7 @@ struct NullSignIdentityCard: View {
 					progress: validity.progress,
 					size: 58,
 					lineWidth: 5,
-					tint: validity.tint == NullSignStyle.success ? .white : validity.tint
+					tint: validity.tint
 				)
 				VStack(spacing: -2) {
 					Text(validity.value)
@@ -564,9 +614,10 @@ struct NullSignIdentityCard: View {
 					.foregroundStyle(NullSignStyle.faint)
 			}
 		}
-		.padding(16)
-		.nullSignSurface()
-		.contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+		.foregroundStyle(.white)
+		.padding(18)
+		.nullSignSurface(fill: NullSignStyle.groupedSurface)
+		.contentShape(RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous))
 		.accessibilityElement(children: .combine)
 	}
 
