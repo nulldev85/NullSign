@@ -27,6 +27,9 @@ jobs:
       - name: Verify SF Rounded coverage
         run: node Tools/check-typography.mjs --self-test
 
+      - name: Verify app icon assets
+        run: node Tools/check-app-icon.mjs
+
       - name: Build unsigned NullSign IPA
         run: |
           cmp -s Feather/Resources/AppIcon.icon/Assets/nullsign.png Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png

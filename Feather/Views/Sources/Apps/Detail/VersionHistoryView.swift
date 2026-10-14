@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import AltSourceKit
 
 struct VersionHistoryView: View {
@@ -14,36 +15,9 @@ struct VersionHistoryView: View {
 		ScrollView {
 			VStack(spacing: 0) {
 				ForEach(Array(versions.enumerated()), id: \.element.id) { index, version in
-					HStack(alignment: .top, spacing: 12) {
-						AppVersionInfo(
-							version: version.version,
-							date: version.date?.date,
-							description: version.localizedDescription ?? .localized("No release notes available")
-						)
-
-						if let url = version.downloadURL {
-							VStack(spacing: 8) {
-								Button { _download(version, from: url) } label: {
-									Image(systemName: "arrow.down")
-										.font(.roundedUI(size: 13, weight: .semibold))
-								}
-								.buttonStyle(NullSignPrimaryButtonStyle(height: 34))
-								.accessibilityLabel(.localized("Download Version %1$@", arguments: version.version))
-								Button {
-									UIPasteboard.general.string = url.absoluteString
-									copiedURL = url
-									UINotificationFeedbackGenerator().notificationOccurred(.success)
-								} label: {
-									Image(systemName: copiedURL == url ? "checkmark" : "doc.on.clipboard")
-										.font(.roundedUI(size: 13, weight: .semibold))
-								}
-								.buttonStyle(NullSignSecondaryButtonStyle(height: 34))
-								.accessibilityLabel(copiedURL == url ? .localized("Copied") : .localized("Copy Download URL"))
-							}
-						}
+					VersionHistoryRow(version: version, copiedURL: $copiedURL) { url in
+						_download(version, from: url)
 					}
-					.padding(14)
-
 					if index < versions.count - 1 {
 						Divider().overlay(NullSignStyle.hairline).padding(.leading, 14)
 					}
@@ -68,5 +42,76 @@ struct VersionHistoryView: View {
 			)
 		)
 		dismiss()
+	}
+}
+
+/// Separate the row and action buttons so Swift does not infer one large
+/// nested ForEach/HStack/VStack/Button expression.
+private struct VersionHistoryRow: View {
+	let version: ASRepository.App.Version
+	@Binding var copiedURL: URL?
+	let onDownload: (URL) -> Void
+
+	var body: some View {
+		HStack(alignment: .top, spacing: 12) {
+			AppVersionInfo(
+				version: version.version,
+				date: version.date?.date,
+				description: version.localizedDescription ?? .localized("No release notes available")
+			)
+			if let url = version.downloadURL {
+				VersionHistoryActions(
+					url: url, versionName: version.version,
+					copiedURL: $copiedURL, onDownload: { onDownload(url) }
+				)
+			}
+		}
+		.padding(14)
+	}
+}
+
+private struct VersionHistoryActions: View {
+	let url: URL
+	let versionName: String
+	@Binding var copiedURL: URL?
+	let onDownload: () -> Void
+
+	private var downloadLabel: String {
+		.localized("Download Version %1$@", arguments: versionName)
+	}
+
+	private var copyLabel: String {
+		copiedURL == url ? .localized("Copied") : .localized("Copy Download URL")
+	}
+
+	var body: some View {
+		VStack(spacing: 8) {
+			downloadButton
+			copyButton
+		}
+	}
+
+	private var downloadButton: some View {
+		Button(action: onDownload) {
+			Image(systemName: "arrow.down")
+				.font(.roundedUI(size: 13, weight: .semibold))
+		}
+		.buttonStyle(NullSignPrimaryButtonStyle(height: 34))
+		.accessibilityLabel(Text(downloadLabel))
+	}
+
+	private var copyButton: some View {
+		Button(action: copyURL) {
+			Image(systemName: copiedURL == url ? "checkmark" : "doc.on.clipboard")
+				.font(.roundedUI(size: 13, weight: .semibold))
+		}
+		.buttonStyle(NullSignSecondaryButtonStyle(height: 34))
+		.accessibilityLabel(Text(copyLabel))
+	}
+
+	private func copyURL() {
+		UIPasteboard.general.string = url.absoluteString
+		copiedURL = url
+		UINotificationFeedbackGenerator().notificationOccurred(.success)
 	}
 }
