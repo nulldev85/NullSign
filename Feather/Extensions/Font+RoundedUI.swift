@@ -1,5 +1,21 @@
 import SwiftUI
 
+/// Apply at each independent presentation/hosting root, not only the app window.
+/// UIKit hosting controllers do not inherit the window's SwiftUI environment.
+struct NullSignTypography: ViewModifier {
+	func body(content: Content) -> some View {
+		content
+			.environment(\.font, .roundedUI(.body))
+			.modifier(NullSignRoundedFontDesign())
+	}
+}
+
+extension View {
+	func nullSignTypography() -> some View {
+		modifier(NullSignTypography())
+	}
+}
+
 /// Apply the rounded design to system-managed controls where supported.
 struct NullSignRoundedFontDesign: ViewModifier {
 	@ViewBuilder

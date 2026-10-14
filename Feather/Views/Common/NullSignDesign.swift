@@ -69,6 +69,7 @@ extension View {
 			.toolbarBackground(.visible, for: .navigationBar)
 			.toolbarColorScheme(.dark, for: .navigationBar)
 			.tint(NullSignStyle.accent)
+			.nullSignTypography()
 	}
 
 	func nullSignSurface(cornerRadius: CGFloat = NullSignStyle.cardRadius, fill: Color = NullSignStyle.surface) -> some View {
@@ -98,7 +99,7 @@ struct NullSignSectionLabel: View {
 		HStack(alignment: .firstTextBaseline, spacing: 6) {
 			if let systemImage {
 				Image(systemName: systemImage)
-					.font(.system(size: 13, weight: .bold))
+					.font(.roundedUI(size: 13, weight: .bold))
 					.foregroundStyle(NullSignStyle.muted)
 					.accessibilityHidden(true)
 			}
@@ -129,7 +130,7 @@ struct NullSignIconTile: View {
 
 	var body: some View {
 		Image(systemName: systemImage)
-			.font(.system(size: size * 0.5, weight: .medium))
+			.font(.roundedUI(size: size * 0.5, weight: .medium))
 			.foregroundStyle(filled ? Color.white : tint)
 			.frame(width: size, height: size)
 			.background(filled ? tint : NullSignStyle.fill, in: RoundedRectangle(cornerRadius: size * 0.23, style: .continuous))
@@ -148,7 +149,7 @@ struct NullSignChip: View {
 		HStack(spacing: 3) {
 			if let systemImage {
 				Image(systemName: systemImage)
-					.font(.system(size: 9, weight: .semibold))
+					.font(.roundedUI(size: 9, weight: .semibold))
 			}
 			Text(text)
 				.font(.roundedUI(.caption2, weight: .bold))
@@ -362,7 +363,7 @@ struct NullSignEmptyState<Actions: View>: View {
 	var body: some View {
 		VStack(spacing: 16) {
 			Image(systemName: systemImage)
-				.font(.system(size: 40, weight: .regular))
+				.font(.roundedUI(size: 40, weight: .regular))
 				.foregroundStyle(NullSignStyle.accent)
 				.accessibilityHidden(true)
 
@@ -610,7 +611,7 @@ struct NullSignIdentityCard: View {
 
 			if action != nil {
 				Image(systemName: "chevron.right")
-					.font(.footnote.weight(.semibold))
+					.font(.roundedUI(.footnote, weight: .semibold))
 					.foregroundStyle(NullSignStyle.faint)
 			}
 		}

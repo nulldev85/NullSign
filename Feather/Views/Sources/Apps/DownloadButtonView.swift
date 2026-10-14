@@ -65,7 +65,7 @@ private struct DownloadProgressButton: View {
 			ZStack {
 				NullSignRing(progress: max(0.03, progress), size: 30, lineWidth: 3, tint: NullSignStyle.accent)
 				Image(systemName: progress >= 0.75 ? "archivebox.fill" : "stop.fill")
-					.font(.system(size: 9, weight: .bold))
+					.font(.roundedUI(size: 9, weight: .bold))
 					.foregroundStyle(.white)
 			}
 			.frame(width: 44, height: 44)

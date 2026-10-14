@@ -61,7 +61,7 @@ struct SigningEntitlementsView: View {
 								}
 								Spacer(minLength: 0)
 								Image(systemName: "chevron.right")
-									.font(.caption.weight(.semibold))
+									.font(.roundedUI(.caption, weight: .semibold))
 									.foregroundStyle(.secondary)
 							}
 						}

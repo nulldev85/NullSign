@@ -43,7 +43,7 @@ struct NullSignMenuSheet<Content: View>: View {
 				ToolbarItem(placement: .topBarTrailing) {
 					Button { dismiss() } label: {
 						Image(systemName: "xmark")
-							.font(.system(size: 15, weight: .bold))
+							.font(.roundedUI(size: 15, weight: .bold))
 							.foregroundStyle(.white)
 							.frame(width: 36, height: 36)
 							.background(NullSignStyle.fill, in: Circle())
@@ -55,7 +55,7 @@ struct NullSignMenuSheet<Content: View>: View {
 				}
 			}
 		}
-		.environment(\.font, .roundedUI(.body))
+		.nullSignTypography()
 		.preferredColorScheme(.dark)
 		.tint(NullSignStyle.accent)
 		.presentationDetents(detents)
@@ -112,7 +112,7 @@ struct NullSignMenuAction: View {
 				Spacer(minLength: 8)
 				if isSelected {
 					Image(systemName: selectionImage)
-						.font(.system(size: 15, weight: .bold))
+						.font(.roundedUI(size: 15, weight: .bold))
 						.foregroundStyle(NullSignStyle.accent)
 						.accessibilityHidden(true)
 				}

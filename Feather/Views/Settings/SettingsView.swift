@@ -103,7 +103,7 @@ struct NullSignSettingsRow: View {
 			}
 			if showsChevron {
 				Image(systemName: "chevron.right")
-					.font(.footnote.weight(.semibold))
+					.font(.roundedUI(.footnote, weight: .semibold))
 					.foregroundStyle(NullSignStyle.faint)
 			}
 		}

@@ -235,7 +235,7 @@ struct SourceIconPlaceholder: View {
 			RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
 				.fill(NullSignStyle.fill)
 			Image(systemName: systemImage)
-				.font(.system(size: size * 0.38, weight: .medium))
+				.font(.roundedUI(size: size * 0.38, weight: .medium))
 				.foregroundStyle(NullSignStyle.faint)
 		}
 		.frame(width: size, height: size)

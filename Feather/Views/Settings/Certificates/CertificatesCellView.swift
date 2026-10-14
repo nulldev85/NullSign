@@ -50,7 +50,7 @@ struct CertificatesCellView: View {
 
 			if isSelected {
 				Image(systemName: "checkmark")
-					.font(.body.weight(.semibold))
+					.font(.roundedUI(.body, weight: .semibold))
 					.foregroundStyle(NullSignStyle.accent)
 					.accessibilityLabel("Selected")
 			}

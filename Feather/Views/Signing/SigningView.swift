@@ -199,7 +199,7 @@ extension SigningView {
 			}
 			.overlay(alignment: .bottomTrailing) {
 				Image(systemName: "pencil")
-					.font(.system(size: 11, weight: .bold))
+					.font(.roundedUI(size: 11, weight: .bold))
 					.foregroundStyle(.white)
 					.frame(width: 26, height: 26)
 					.background(Circle().fill(Color(white: 0.22)))

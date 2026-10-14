@@ -49,7 +49,7 @@ struct SourceNewsCardView: View {
 		ZStack {
 			NullSignStyle.raisedPanel
 			Image(systemName: "newspaper")
-				.font(.title3)
+				.font(.roundedUI(.title3, weight: .regular))
 				.foregroundStyle(NullSignStyle.accent)
 		}
 	}

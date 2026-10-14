@@ -81,7 +81,7 @@ struct DiagnosticsView: View {
 				.font(.roundedUI(size: 15, weight: .bold))
 			Spacer()
 			Image(systemName: "checkmark")
-				.font(.caption.weight(.bold))
+				.font(.roundedUI(.caption, weight: .bold))
 				.foregroundStyle(NullSignStyle.success)
 		}
 	}

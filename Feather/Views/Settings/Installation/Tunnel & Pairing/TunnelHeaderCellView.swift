@@ -6,7 +6,7 @@ struct TunnelHeaderView: View {
 	var body: some View {
 		HStack(spacing: 12) {
 			Image(systemName: "wave.3.right")
-				.font(.system(size: 15, weight: .semibold))
+				.font(.roundedUI(size: 15, weight: .semibold))
 				.foregroundStyle(NullSignStyle.accent)
 				.frame(width: 32, height: 32)
 				.background(NullSignStyle.raisedPanel)

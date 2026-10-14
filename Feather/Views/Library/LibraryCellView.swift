@@ -178,7 +178,7 @@ extension LibraryCellView {
 
 	private var _selectionIndicator: some View {
 		Image(systemName: _isSelected ? "checkmark.circle.fill" : "circle")
-			.font(.title2)
+			.font(.roundedUI(.title2, weight: .regular))
 			.symbolRenderingMode(.palette)
 			.foregroundStyle(_isSelected ? Color.white : NullSignStyle.faint, _isSelected ? NullSignStyle.accent : NullSignStyle.faint)
 	}

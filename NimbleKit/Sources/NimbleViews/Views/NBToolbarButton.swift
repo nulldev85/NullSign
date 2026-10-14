@@ -77,6 +77,7 @@ public struct NBToolbarButton: ToolbarContent {
 					Label(_title, systemImage: _icon).labelStyle(.titleOnly)
 				}
 			}
+			.font(.roundedUI(.body, weight: .bold))
 			.disabled(_isDisabled)
 		}
 	}

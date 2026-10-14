@@ -18,7 +18,7 @@ struct NullSignOverviewBanner: View {
 
 			HStack(alignment: .center, spacing: 18) {
 				Image(systemName: systemImage)
-					.font(.system(size: 42, weight: .bold))
+					.font(.roundedUI(size: 42, weight: .bold))
 					.foregroundStyle(iconColor)
 					.accessibilityHidden(true)
 				VStack(alignment: .leading, spacing: 2) {

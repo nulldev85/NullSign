@@ -92,6 +92,7 @@ struct SourceAppsView: View {
 		.toolbarBackground(.visible, for: .navigationBar)
 		.toolbarColorScheme(.dark, for: .navigationBar)
 		.searchable(text: $_searchText, placement: .platform(), prompt: .localized("Search apps"))
+		.background(NullSignSearchTypography().frame(width: 0, height: 0).accessibilityHidden(true))
 		.toolbar {
 			ToolbarItem(placement: .topBarTrailing) {
 				Button {

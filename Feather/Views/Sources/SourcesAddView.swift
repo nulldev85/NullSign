@@ -63,7 +63,7 @@ struct SourcesAddView: View {
 				await _fetchRecommendedRepositories()
 			}
 		}
-		.environment(\.font, .roundedUI(.body))
+		.nullSignTypography()
 		.preferredColorScheme(.dark)
 		.modifier(NullSignSheetChrome())
 	}
@@ -202,7 +202,7 @@ struct SourcesAddView: View {
 				}
 				Spacer()
 				Image(systemName: "chevron.right")
-					.font(.system(size: 12, weight: .bold))
+					.font(.roundedUI(size: 12, weight: .bold))
 					.foregroundStyle(NullSignStyle.faint)
 			}
 			.padding(.horizontal, 10)

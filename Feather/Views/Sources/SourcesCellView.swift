@@ -38,7 +38,7 @@ struct SourcesCellView: View {
 			Spacer(minLength: 8)
 
 			Image(systemName: "chevron.right")
-				.font(.footnote.weight(.semibold))
+				.font(.roundedUI(.footnote, weight: .semibold))
 				.foregroundStyle(NullSignStyle.faint)
 		}
 		.padding(16)

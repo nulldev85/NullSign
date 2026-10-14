@@ -1,5 +1,16 @@
 import SwiftUI
 
+struct NBRoundedFontDesign: ViewModifier {
+	@ViewBuilder
+	func body(content: Content) -> some View {
+		if #available(iOS 16.1, tvOS 16.1, *) {
+			content.fontDesign(.rounded)
+		} else {
+			content
+		}
+	}
+}
+
 extension Font {
 	/// SF Rounded with a strong title hierarchy and readable supporting text.
 	static func roundedUI(

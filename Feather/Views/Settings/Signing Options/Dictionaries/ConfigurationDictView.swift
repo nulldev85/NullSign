@@ -31,7 +31,7 @@ struct ConfigurationDictView: View {
 				if dataDict.isEmpty {
 					VStack(spacing: 9) {
 						Image(systemName: "arrow.triangle.swap")
-							.font(.title2)
+							.font(.roundedUI(.title2, weight: .regular))
 							.foregroundStyle(NullSignStyle.accent)
 						Text("No rules configured")
 							.font(.roundedUI(.headline))
@@ -75,7 +75,7 @@ struct ConfigurationDictView: View {
 					.lineLimit(1)
 				HStack(spacing: 7) {
 					Image(systemName: "arrow.right")
-						.font(.caption.weight(.semibold))
+						.font(.roundedUI(.caption, weight: .semibold))
 						.foregroundStyle(NullSignStyle.accent)
 					Text(value)
 						.font(.roundedUI(.body, weight: .bold))
@@ -90,7 +90,7 @@ struct ConfigurationDictView: View {
 				}
 			} label: {
 				Image(systemName: "ellipsis")
-					.font(.body.weight(.semibold))
+					.font(.roundedUI(.body, weight: .semibold))
 					.foregroundStyle(.secondary)
 					.frame(width: 40, height: 40)
 			}

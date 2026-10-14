@@ -108,7 +108,7 @@ extension SigningAlternativeIconView {
 
 			if showsSelectionIndicator {
 				Image(systemName: "chevron.right")
-					.font(.caption.weight(.semibold))
+					.font(.roundedUI(.caption, weight: .semibold))
 					.foregroundStyle(.secondary)
 			}
 		}

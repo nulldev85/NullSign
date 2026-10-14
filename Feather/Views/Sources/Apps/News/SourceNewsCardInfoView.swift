@@ -45,6 +45,7 @@ struct SourceNewsCardInfoView: View {
 			.toolbar { NBToolbarButton(role: .close) }
 		}
 		.tint(NullSignStyle.accent)
+		.nullSignTypography()
 	}
 
 	@ViewBuilder
@@ -73,7 +74,7 @@ struct SourceNewsCardInfoView: View {
 		ZStack {
 			NullSignStyle.panel
 			Image(systemName: "newspaper")
-				.font(.largeTitle)
+				.font(.roundedUI(.largeTitle, weight: .regular))
 				.foregroundStyle(NullSignStyle.accent)
 		}
 	}

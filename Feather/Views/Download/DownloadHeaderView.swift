@@ -45,7 +45,7 @@ struct DownloadItemView: View {
 			ZStack {
 				NullSignRing(progress: overallProgress, size: 32, lineWidth: 3, tint: NullSignStyle.accent)
 				Image(systemName: download.onlyArchiving ? "shippingbox.fill" : "arrow.down")
-					.font(.system(size: 11, weight: .bold))
+					.font(.roundedUI(size: 11, weight: .bold))
 					.foregroundStyle(.white)
 			}
 

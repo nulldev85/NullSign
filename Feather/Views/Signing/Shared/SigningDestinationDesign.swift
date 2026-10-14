@@ -45,7 +45,7 @@ struct SigningEmptyState: View {
 	var body: some View {
 		VStack(spacing: 10) {
 			Image(systemName: systemImage)
-				.font(.system(size: 30, weight: .regular))
+				.font(.roundedUI(size: 30, weight: .regular))
 				.foregroundStyle(NullSignStyle.faint)
 			Text(title)
 				.font(.roundedUI(.headline))

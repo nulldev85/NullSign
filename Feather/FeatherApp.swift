@@ -32,8 +32,7 @@ struct NullSignApp: App {
 			.background(NullSignStyle.canvas.ignoresSafeArea())
 			.preferredColorScheme(.dark)
 			.tint(NullSignStyle.accent)
-			.environment(\.font, .roundedUI(.body))
-			.modifier(NullSignRoundedFontDesign())
+			.nullSignTypography()
 			.onReceive(NotificationCenter.default.publisher(for: .heartbeatInvalidHost)) { _ in
 				DispatchQueue.main.async {
 					UIAlertController.showAlertWithOk(
@@ -154,7 +153,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 		UIView.appearance().tintColor = UIColor(NullSignStyle.accent)
 		UITableView.appearance().backgroundColor = UIColor(NullSignStyle.canvas)
 		UICollectionView.appearance().backgroundColor = UIColor(NullSignStyle.canvas)
-		_configureRoundedNavigationTitles()
+		_configureRoundedUIKitTypography()
 		_createPipeline()
 		_createDocumentsDirectories()
 		ResetView.clearWorkCache()
@@ -163,25 +162,19 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 		return true
 	}
 
-	private func _configureRoundedNavigationTitles() {
-		func roundedFont(size: CGFloat, weight: UIFont.Weight) -> UIFont {
-			let font = UIFont.systemFont(ofSize: size, weight: weight)
-			guard let descriptor = font.fontDescriptor.withDesign(.rounded) else {
-				return font
-			}
-			return UIFont(descriptor: descriptor, size: size)
-		}
-
+	private func _configureRoundedUIKitTypography() {
 		UINavigationBar.appearance().largeTitleTextAttributes = [
-			.font: UIFontMetrics(forTextStyle: .largeTitle).scaledFont(
-				for: roundedFont(size: 34, weight: .heavy)
-			)
+			.font: UIFont.roundedUI(size: 34, weight: .heavy, textStyle: .largeTitle)
 		]
 		UINavigationBar.appearance().titleTextAttributes = [
-			.font: UIFontMetrics(forTextStyle: .headline).scaledFont(
-				for: roundedFont(size: 17, weight: .bold)
-			)
+			.font: UIFont.roundedUI(size: 17, weight: .bold, textStyle: .headline)
 		]
+
+		// Back/Done/Cancel buttons are UIKit text, outside SwiftUI's font environment.
+		let controlFont = UIFont.roundedUI(size: 17, weight: .bold, textStyle: .body)
+		for state in [UIControl.State.normal, .highlighted, .disabled, .focused] {
+			UIBarButtonItem.appearance().setTitleTextAttributes([.font: controlFont], for: state)
+		}
 	}
 
 	private func _refreshServerCertificates() {

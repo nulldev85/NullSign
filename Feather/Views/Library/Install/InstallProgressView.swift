@@ -38,7 +38,7 @@ struct InstallProgressView: View {
 
 			if viewModel.isCompleted {
 				Image(systemName: "checkmark.circle.fill")
-					.font(.system(size: 20, weight: .bold))
+					.font(.roundedUI(size: 20, weight: .bold))
 					.symbolRenderingMode(.palette)
 					.foregroundStyle(.white, NullSignStyle.success)
 					.background(Circle().fill(.black).padding(2))

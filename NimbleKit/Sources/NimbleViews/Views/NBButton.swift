@@ -29,7 +29,7 @@ public struct NBButton: View {
 		switch _style {
 		case .icon:
 			Image(systemName: _icon)
-				.font(.caption).bold()
+				.font(.roundedUI(.caption, weight: .regular)).bold()
 				.frame(width: 29, height: 29)
 				.background(Color(uiColor: .quaternarySystemFill))
 				.clipShape(Circle())

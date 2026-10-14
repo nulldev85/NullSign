@@ -28,5 +28,7 @@ public struct NBNavigationView<Content>: View where Content: View {
 				.navigationTitle(_title)
 				.navigationBarTitleDisplayMode(_mode)
 		}
+		.environment(\.font, .roundedUI(.body))
+		.modifier(NBRoundedFontDesign())
 	}
 }

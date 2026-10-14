@@ -34,7 +34,7 @@ public struct NBPillView: View {
 		
 		HStack(spacing: 4) {
 			Image(systemName: icon)
-				.font(.caption)
+				.font(.roundedUI(.caption, weight: .regular))
 				.foregroundStyle(color.opacity(0.9))
 			Text(title)
 				.font(.roundedUI(.caption, weight: .bold))

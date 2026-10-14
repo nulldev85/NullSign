@@ -40,7 +40,7 @@ struct LibraryInfoView: View {
 							}
 							Spacer()
 							Image(systemName: "arrow.up.forward")
-								.font(.caption.weight(.bold))
+								.font(.roundedUI(.caption, weight: .bold))
 								.foregroundStyle(NullSignStyle.faint)
 						}
 					}

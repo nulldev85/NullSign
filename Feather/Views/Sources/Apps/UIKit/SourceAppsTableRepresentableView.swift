@@ -41,7 +41,7 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 			let news = firstSource.repository.news,
 			!news.isEmpty
 		{
-			let header = UIHostingController(rootView: SourceNewsView(news: news))
+			let header = UIHostingController(rootView: SourceNewsView(news: news).nullSignTypography())
 			context.coordinator.headerController = header
 			header.view.translatesAutoresizingMaskIntoConstraints = true
 			header.view.backgroundColor = .clear
@@ -254,6 +254,7 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 		cell.selectionStyle = .none
 		cell.contentConfiguration = UIHostingConfiguration {
 			SourceAppsCellView(sourceURL: entry.sourceURL, source: entry.source, app: entry.app)
+				.nullSignTypography()
 				.accessibilityAction(named: Text(.localized("App Actions"))) {
 					self.onActions(SourceAppsView.SourceAppRoute(sourceURL: entry.sourceURL, source: entry.source, app: entry.app))
 				}
@@ -291,6 +292,7 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 		headerView?.backgroundView = backing
 		headerView?.contentConfiguration = UIHostingConfiguration {
 			SourceSectionLabel(title: title, prominent: false)
+				.nullSignTypography()
 				.padding(.horizontal, 20)
 				.padding(.vertical, 8)
 		}

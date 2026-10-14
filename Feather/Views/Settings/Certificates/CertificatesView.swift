@@ -137,7 +137,7 @@ extension CertificatesView {
 				}
 			} label: {
 				Image(systemName: "ellipsis")
-					.font(.system(size: 15, weight: .bold))
+					.font(.roundedUI(size: 15, weight: .bold))
 					.foregroundStyle(NullSignStyle.muted)
 					.frame(width: 46, height: 52)
 					.contentShape(Rectangle())

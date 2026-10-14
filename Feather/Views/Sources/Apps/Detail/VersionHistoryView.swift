@@ -25,7 +25,7 @@ struct VersionHistoryView: View {
 							VStack(spacing: 8) {
 								Button { _download(version, from: url) } label: {
 									Image(systemName: "arrow.down")
-										.font(.system(size: 13, weight: .semibold))
+										.font(.roundedUI(size: 13, weight: .semibold))
 								}
 								.buttonStyle(NullSignPrimaryButtonStyle(height: 34))
 								.accessibilityLabel(.localized("Download Version %1$@", arguments: version.version))
@@ -35,7 +35,7 @@ struct VersionHistoryView: View {
 									UINotificationFeedbackGenerator().notificationOccurred(.success)
 								} label: {
 									Image(systemName: copiedURL == url ? "checkmark" : "doc.on.clipboard")
-										.font(.system(size: 13, weight: .semibold))
+										.font(.roundedUI(size: 13, weight: .semibold))
 								}
 								.buttonStyle(NullSignSecondaryButtonStyle(height: 34))
 								.accessibilityLabel(copiedURL == url ? .localized("Copied") : .localized("Copy Download URL"))

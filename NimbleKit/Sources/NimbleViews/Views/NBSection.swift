@@ -48,7 +48,7 @@ public struct NBSection<Content, Footer>: View
 			HStack(alignment: .center, spacing: 4) {
 				if let _systemName {
 					Image(systemName: _systemName)
-						.font(.system(size: 12))
+						.font(.roundedUI(size: 12))
 						.offset(y: -2)
 				}
 					

@@ -97,7 +97,7 @@ private struct NullSignDock: View {
 		} label: {
 			VStack(spacing: 3) {
 				Image(systemName: tab.icon)
-					.font(.system(size: 22, weight: .semibold))
+					.font(.roundedUI(size: 22, weight: .semibold))
 					.accessibilityHidden(true)
 				Text(tab.title)
 					.font(.roundedUI(.caption2, weight: .heavy))

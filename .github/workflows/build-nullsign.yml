@@ -19,6 +19,14 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Set up typography check runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify SF Rounded coverage
+        run: node Tools/check-typography.mjs --self-test
+
       - name: Build unsigned NullSign IPA
         run: |
           cmp -s Feather/Resources/AppIcon.icon/Assets/nullsign.png Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png

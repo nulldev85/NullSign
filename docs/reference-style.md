@@ -20,6 +20,17 @@ hierarchy to its own catalog, library, and settings data.
 - Compact all-caps section labels use SF Rounded Heavy. App names and controls
   use Bold; descriptions and identifiers use Regular. Semantic fonts retain
   Dynamic Type, and the overview metric scales relative to the large-title style.
+- SF Rounded is installed at independent window, navigation, page, sheet, and
+  UIKit hosting roots. Hosted catalog/news content does not depend on inheritance
+  from the window. UIKit navigation titles and textual bar buttons use rounded
+  descriptors with semantic scaling; shared toolbar labels explicitly use Bold.
+  The native searchable field uses the same UIKit helper through public
+  search-controller APIs, including placeholder styling and text-size changes.
+- Explicit font overrides, including SF Symbol sizing, use the rounded helper.
+  `Tools/check-typography.mjs` checks both the app and shared UI components and
+  runs before the IPA build. Keyboard, system alerts/confirmation dialogs,
+  Files/Photos/share pickers, and external web content remain platform/content
+  controlled; no private font overrides or global label swizzling are used.
 - The dock adds visible tab names and a dark selected capsule. Existing tab
   retention, keyboard handling, tap feedback, and reduced-motion behavior remain.
 - Compact action buttons retain at least a 44-point interaction area. Search
@@ -43,6 +54,10 @@ Source review covers primary and destructive actions, pushed-page toolbar
 backgrounds, card/selection shape alignment, form and sheet surfaces, and iOS 16
 API availability. The white-on-primary-blue contrast is above 4.5:1. Decorative
 waves and overview symbols are hidden from accessibility and do not intercept taps.
+
+Run `node Tools/check-typography.mjs --self-test` to check the SF Rounded source
+policy and presentation boundaries. This catches explicit default/custom font
+overrides and missing known hosting-root setup; it is not a native rendering test.
 
 `NullSignThemePreviews.swift` contains isolated SwiftUI component previews for
 standard and 320-point phone widths and larger accessibility text. These use the
