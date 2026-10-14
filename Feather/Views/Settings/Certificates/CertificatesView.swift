@@ -73,6 +73,7 @@ struct CertificatesView: View {
 					_isAddingPresenting = true
 				} label: {
 					Image(systemName: "plus")
+						.foregroundStyle(NullSignStyle.accent)
 				}
 				.accessibilityLabel("Import Certificate")
 			}
@@ -180,7 +181,7 @@ extension CertificatesView {
 			} label: {
 				Image(systemName: "ellipsis")
 					.font(.roundedUI(size: 15, weight: .bold))
-					.foregroundStyle(NullSignStyle.muted)
+					.foregroundStyle(NullSignStyle.accent)
 					.frame(width: 46, height: 52)
 					.contentShape(Rectangle())
 			}

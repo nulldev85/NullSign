@@ -27,6 +27,9 @@ jobs:
       - name: Verify SF Rounded coverage
         run: node Tools/check-typography.mjs --self-test
 
+      - name: Verify icon styling
+        run: node Tools/check-icon-style.mjs
+
       - name: Verify app icon assets
         run: node Tools/check-app-icon.mjs
 

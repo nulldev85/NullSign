@@ -113,7 +113,8 @@ extension CertificatesAddView {
 			HStack(spacing: 12) {
 				NullSignIconTile(
 					systemImage: file == nil ? systemImage : "checkmark",
-					tint: file == nil ? .white : NullSignStyle.success
+					tint: file == nil ? NullSignStyle.categoryColor(for: systemImage) : NullSignStyle.success,
+					size: 32
 				)
 
 				VStack(alignment: .leading, spacing: 2) {

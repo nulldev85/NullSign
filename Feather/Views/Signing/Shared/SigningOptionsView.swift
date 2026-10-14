@@ -128,14 +128,16 @@ struct SigningOptionsView: View {
 		Section {
 			_toggle(
 				.localized("Remove URL Schemes"),
-				systemImage: "link.badge.minus",
+				systemImage: "link",
+				tint: NullSignStyle.danger,
 				isOn: $options.removeURLScheme,
 				temporaryValue: temporaryOptions?.removeURLScheme
 			)
 			
 			_toggle(
 				.localized("Remove Provisioning Profile"),
-				systemImage: "doc.badge.minus",
+				systemImage: "doc.text",
+				tint: NullSignStyle.danger,
 				isOn: $options.removeProvisioning,
 				temporaryValue: temporaryOptions?.removeProvisioning
 			)
@@ -180,7 +182,7 @@ struct SigningOptionsView: View {
 		Section {
 			_toggle(
 				.localized("Replace Substrate with ElleKit"),
-				systemImage: "pencil",
+				systemImage: "arrow.triangle.2.circlepath",
 				isOn: $options.experiment_replaceSubstrateWithEllekit,
 				temporaryValue: temporaryOptions?.experiment_replaceSubstrateWithEllekit
 			)
@@ -223,12 +225,13 @@ struct SigningOptionsView: View {
 	private func _toggle(
 		_ title: String,
 		systemImage: String,
+		tint: Color? = nil,
 		isOn: Binding<Bool>,
 		temporaryValue: Bool? = nil
 	) -> some View {
 		Toggle(isOn: isOn) {
 			HStack(spacing: 12) {
-				SigningRowIcon(systemImage: systemImage)
+				NullSignIconTile(systemImage: systemImage, tint: tint)
 				Text(title)
 					.font(.roundedUI(.body, weight: .regular))
 				if let tempValue = temporaryValue, tempValue != isOn.wrappedValue {

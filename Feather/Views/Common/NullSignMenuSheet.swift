@@ -50,7 +50,15 @@ struct NullSignMenuSheet<Content: View>: View {
 							.font(.roundedUI(size: 15, weight: .bold))
 							.foregroundStyle(.white)
 							.frame(width: 36, height: 36)
-							.background(NullSignStyle.fill, in: Circle())
+							.background {
+								// iOS 26 already supplies the circular toolbar glass.
+								// Only older systems need our own close-button surface.
+								if #available(iOS 26.0, *) {
+									Color.clear
+								} else {
+									Circle().fill(NullSignStyle.fill)
+								}
+							}
 							.frame(width: 44, height: 44)
 							.contentShape(Circle())
 					}

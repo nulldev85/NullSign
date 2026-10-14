@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreData
+import UIKit
 
 // MARK: - Tokens
 
@@ -30,14 +31,16 @@ enum NullSignStyle {
 
 	static func categoryColor(for symbol: String) -> Color {
 		switch symbol {
-		case "checkmark.seal", "checkmark.seal.fill", "checkmark.shield", "hand.raised", "lock.shield":
+		case "checkmark", "checkmark.seal", "checkmark.seal.fill", "checkmark.shield", "hand.raised", "lock.shield", "lock.fill", "shield", "key":
 			return success
-		case "signature", "pencil", "slider.horizontal.3", "doc.text", "list.bullet":
+		case "signature", "pencil", "slider.horizontal.3", "doc.text", "list.bullet", "puzzlepiece.extension", "gamecontroller", "character.bubble", "character.cursor.ibeam", "circle.lefthalf.filled":
 			return purple
-		case "internaldrive", "folder", "folder.fill", "shippingbox", "shippingbox.fill":
+		case "internaldrive", "folder", "folder.fill", "folder.badge.person.crop", "shippingbox", "shippingbox.fill":
 			return warning
-		case "waveform.path.ecg", "exclamationmark.triangle", "trash", "trash.fill":
+		case "waveform.path.ecg", "exclamationmark.triangle", "trash", "trash.fill", "music.note.list":
 			return danger
+		case "arrow.triangle.2.circlepath", "speedometer", "square.stack.3d.up":
+			return teal
 		case "gearshape", "gearshape.fill", "info.circle":
 			return Color(white: 0.55)
 		default:
@@ -124,16 +127,23 @@ struct NullSignSectionLabel: View {
 
 struct NullSignIconTile: View {
 	let systemImage: String
-	var tint: Color = .white
+	/// Category color is the default for every row, including toggles.
+	var tint: Color? = nil
 	var size: CGFloat = 30
-	var filled: Bool = false
+	var filled: Bool = true
 
 	var body: some View {
-		Image(systemName: systemImage)
+		let color = tint ?? NullSignStyle.categoryColor(for: systemImage)
+		// A symbol unavailable on an older supported iOS must not leave a blank tile.
+		let symbol = UIImage(systemName: systemImage) == nil ? "square.dashed" : systemImage
+
+		Image(systemName: symbol)
+			.symbolRenderingMode(.monochrome)
 			.font(.roundedUI(size: size * 0.5, weight: .medium))
-			.foregroundStyle(filled ? Color.white : tint)
+			.foregroundStyle(filled ? Color.white : color)
 			.frame(width: size, height: size)
-			.background(filled ? tint : NullSignStyle.fill, in: RoundedRectangle(cornerRadius: size * 0.23, style: .continuous))
+			.background(filled ? color : NullSignStyle.fill, in: RoundedRectangle(cornerRadius: size * 0.23, style: .continuous))
+			.accessibilityHidden(true)
 	}
 }
 

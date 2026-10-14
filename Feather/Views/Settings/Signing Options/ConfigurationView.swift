@@ -135,9 +135,9 @@ struct ConfigurationView: View {
 					"Package Cleanup",
 					detail: "Removing provisioning data can break installation. Leave it off unless the target environment specifically requires it."
 				) {
-					_toggle("Remove URL Schemes", systemImage: "link.badge.minus", isOn: $_optionsManager.options.removeURLScheme)
+					_toggle("Remove URL Schemes", systemImage: "link", tint: NullSignStyle.danger, isOn: $_optionsManager.options.removeURLScheme)
 					NullSignSettingsDivider()
-					_toggle("Remove Provisioning Profile", systemImage: "doc.badge.minus", isOn: $_optionsManager.options.removeProvisioning)
+					_toggle("Remove Provisioning Profile", systemImage: "doc.text", tint: NullSignStyle.danger, isOn: $_optionsManager.options.removeProvisioning)
 					NullSignSettingsDivider()
 					_toggle(
 						"Force Localized Name",
@@ -178,7 +178,10 @@ struct ConfigurationView: View {
 				Button {
 					_didCopyPPQ = false
 					_isPPQMenuPresenting = true
-				} label: { Image(systemName: "number") }
+				} label: {
+					Image(systemName: "number")
+						.foregroundStyle(NullSignStyle.accent)
+				}
 				.accessibilityLabel("PPQ Suffix Options")
 			}
 		}
@@ -238,11 +241,12 @@ extension ConfigurationView {
 		_ title: String,
 		detail: String? = nil,
 		systemImage: String,
+		tint: Color? = nil,
 		isOn: Binding<Bool>
 	) -> some View {
 		Toggle(isOn: isOn) {
 			HStack(spacing: 12) {
-				NullSignIconTile(systemImage: systemImage)
+				NullSignIconTile(systemImage: systemImage, tint: tint, size: 32)
 				VStack(alignment: .leading, spacing: detail == nil ? 0 : 2) {
 					Text(title)
 						.font(.roundedUI(size: 16, weight: .bold))
