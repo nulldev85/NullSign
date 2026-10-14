@@ -41,7 +41,7 @@ struct SourceNewsCardInfoView: View {
 				}
 				.padding(16)
 			}
-			.background(Color.black)
+			.nullSignPage()
 			.toolbar { NBToolbarButton(role: .close) }
 		}
 		.tint(NullSignStyle.accent)

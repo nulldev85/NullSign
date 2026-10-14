@@ -288,7 +288,7 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 		
 		// Sticky headers float over the cards, so they get a frosted backing.
 		let backing = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
-		backing.backgroundColor = UIColor.black.withAlphaComponent(0.45)
+		backing.backgroundColor = UIColor(NullSignStyle.canvas).withAlphaComponent(0.85)
 		headerView?.backgroundView = backing
 		headerView?.contentConfiguration = UIHostingConfiguration {
 			SourceSectionLabel(title: title, prominent: false)

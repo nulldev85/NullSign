@@ -38,7 +38,7 @@ private struct NullSignDashboardThemePreview: View {
 				.padding(.bottom, 28)
 			}
 		}
-		.background(NullSignStyle.ink)
+		.background(NullSignStyle.canvas)
 		.environment(\.font, .roundedUI(.body))
 		.preferredColorScheme(.dark)
 	}

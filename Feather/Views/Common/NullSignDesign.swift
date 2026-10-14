@@ -4,12 +4,11 @@ import UIKit
 
 // MARK: - Tokens
 
-/// The reference palette: electric blue, charcoal cards, and distinct category colors.
+/// Settings is the palette reference: charcoal pages/cards and colored accents.
 enum NullSignStyle {
 	static let accent = Color(red: 0, green: 0.58, blue: 1)
 	/// Slightly deeper blues keep white button/header text readable.
 	static let actionBlue = Color(red: 0, green: 0.44, blue: 0.88)
-	static let sky = Color(red: 0, green: 0.44, blue: 0.88)
 	static let danger = Color(red: 1, green: 0.23, blue: 0.28)
 	static let crimson = danger
 	static let success = Color(red: 0.19, green: 0.82, blue: 0.35)
@@ -17,10 +16,10 @@ enum NullSignStyle {
 	static let yellow = Color(red: 1, green: 0.9, blue: 0)
 	static let teal = Color(red: 0.18, green: 0.85, blue: 0.69)
 	static let purple = Color(red: 0.75, green: 0.35, blue: 0.95)
-	static let ink = Color.black
 	static let canvas = Color(red: 0.11, green: 0.11, blue: 0.12)
-	static let surface = Color(red: 0.12, green: 0.12, blue: 0.13)
 	static let groupedSurface = Color(red: 0.17, green: 0.17, blue: 0.18)
+	// Ordinary cards and Settings groups share one surface color.
+	static let surface = groupedSurface
 	static let cardRadius: CGFloat = 24
 	static let fill = Color.white.opacity(0.08)
 	static let muted = Color(white: 0.72)
@@ -79,7 +78,7 @@ extension View {
 		modifier(NullSignSurfaceModifier(cornerRadius: cornerRadius, fill: fill))
 	}
 
-	/// A transparent, separator-free list row so cards sit directly on black.
+	/// A transparent, separator-free list row so cards sit on the charcoal canvas.
 	func nullSignListRow(top: CGFloat = 6, bottom: CGFloat = 6, horizontal: CGFloat = 20) -> some View {
 		self
 			.listRowInsets(EdgeInsets(top: top, leading: horizontal, bottom: bottom, trailing: horizontal))

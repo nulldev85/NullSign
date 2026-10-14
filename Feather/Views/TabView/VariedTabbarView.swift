@@ -27,7 +27,7 @@ struct VariedTabbarView: View {
 					.accessibilityHidden(selectedTab != tab)
 			}
 		}
-		.background(Color.black)
+		.background(NullSignStyle.canvas)
 		.safeAreaInset(edge: .bottom, spacing: 0) {
 			if !isKeyboardVisible {
 				NullSignDock(

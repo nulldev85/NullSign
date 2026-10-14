@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// A blue overview above the charcoal dashboard, using live library/catalog counts.
+/// A charcoal overview using the same palette as Settings and live app counts.
 struct NullSignOverviewBanner: View {
 	let title: String
 	let value: String
 	let detail: String
 	let systemImage: String
-	var iconColor: Color = NullSignStyle.yellow
+	var iconColor: Color? = nil
 	@ScaledMetric(relativeTo: .largeTitle) private var metricSize: CGFloat = 50
 
 	var body: some View {
@@ -14,12 +14,12 @@ struct NullSignOverviewBanner: View {
 			Text(title.uppercased())
 				.font(.roundedUI(.caption, weight: .heavy))
 				.tracking(0.7)
-				.foregroundStyle(Color.white)
+				.foregroundStyle(NullSignStyle.muted)
 
 			HStack(alignment: .center, spacing: 18) {
 				Image(systemName: systemImage)
 					.font(.roundedUI(size: 42, weight: .bold))
-					.foregroundStyle(iconColor)
+					.foregroundStyle(iconColor ?? NullSignStyle.categoryColor(for: systemImage))
 					.accessibilityHidden(true)
 				VStack(alignment: .leading, spacing: 2) {
 					Text(value)
@@ -29,7 +29,7 @@ struct NullSignOverviewBanner: View {
 						.minimumScaleFactor(0.65)
 					Text(detail)
 						.font(.roundedUI(.subheadline, weight: .bold))
-						.foregroundStyle(Color.white)
+						.foregroundStyle(NullSignStyle.muted)
 						.fixedSize(horizontal: false, vertical: true)
 				}
 				Spacer(minLength: 0)
@@ -40,17 +40,17 @@ struct NullSignOverviewBanner: View {
 		.padding(.top, 14)
 		.padding(.bottom, 70)
 		.frame(maxWidth: .infinity, alignment: .leading)
-		.background(NullSignStyle.sky)
+		.background(NullSignStyle.canvas)
 		.overlay(alignment: .bottom) {
 			ZStack(alignment: .bottom) {
 				NullSignOverviewWave(crest: 0.18)
-					.fill(NullSignStyle.accent)
+					.fill(NullSignStyle.groupedSurface)
 					.frame(height: 52)
 				NullSignOverviewWave(crest: 0.55)
-					.fill(NullSignStyle.teal.opacity(0.85))
+					.fill(NullSignStyle.raisedPanel.opacity(0.45))
 					.frame(height: 38)
 				RoundedRectangle(cornerRadius: 32, style: .continuous)
-					.fill(NullSignStyle.ink)
+					.fill(NullSignStyle.canvas)
 					.frame(height: 60)
 					.offset(y: 34)
 			}

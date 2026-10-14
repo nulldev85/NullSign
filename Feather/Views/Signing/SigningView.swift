@@ -202,8 +202,8 @@ extension SigningView {
 					.font(.roundedUI(size: 11, weight: .bold))
 					.foregroundStyle(.white)
 					.frame(width: 26, height: 26)
-					.background(Circle().fill(Color(white: 0.22)))
-					.overlay(Circle().strokeBorder(Color.black, lineWidth: 2))
+					.background(Circle().fill(NullSignStyle.raisedPanel))
+					.overlay(Circle().strokeBorder(NullSignStyle.groupedSurface, lineWidth: 2))
 					.offset(x: 6, y: 6)
 			}
 		}

@@ -30,6 +30,9 @@ jobs:
       - name: Verify icon styling
         run: node Tools/check-icon-style.mjs
 
+      - name: Verify shared Settings palette
+        run: node Tools/check-color-scheme.mjs
+
       - name: Verify tvOS icon selection
         run: |
           node Tools/check-tvos-icon-policy.mjs

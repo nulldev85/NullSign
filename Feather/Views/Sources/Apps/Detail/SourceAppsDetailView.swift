@@ -77,10 +77,8 @@ struct SourceAppsDetailView: View {
 			.padding(.top, 8)
 			.padding(.bottom, 36)
 		}
-		.background(Color.black)
+		.nullSignPage()
 		.navigationBarTitleDisplayMode(.inline)
-		.toolbarBackground(NullSignStyle.ink, for: .navigationBar)
-		.toolbarBackground(.visible, for: .navigationBar)
 		.toolbar {
 			NBToolbarButton(systemImage: "square.and.arrow.up", placement: .topBarTrailing) {
 				_share()

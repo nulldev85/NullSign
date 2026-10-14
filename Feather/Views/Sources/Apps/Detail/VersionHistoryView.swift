@@ -26,7 +26,7 @@ struct VersionHistoryView: View {
 			.sourcePanel(padding: 0)
 			.padding(16)
 		}
-		.background(Color.black)
+		.nullSignPage()
 		.tint(NullSignStyle.accent)
 	}
 

@@ -260,9 +260,7 @@ struct SettingsView: View {
 				.padding(.top, 12)
 				.padding(.bottom, 24)
 			}
-			.background(NullSignStyle.canvas)
-			.toolbarBackground(NullSignStyle.canvas, for: .navigationBar)
-			.toolbarBackground(.visible, for: .navigationBar)
+			.nullSignPage()
 			.navigationDestination(isPresented: $_isCertificatesPresenting) {
 				CertificatesView()
 			}

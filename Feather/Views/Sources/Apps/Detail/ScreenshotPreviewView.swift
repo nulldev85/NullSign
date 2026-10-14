@@ -25,7 +25,8 @@ struct ScreenshotPreviewView: View {
 	var body: some View {
 		NavigationStack {
 			_imageScrollView()
-				.background(Color.black.ignoresSafeArea())
+				.background(NullSignStyle.canvas.ignoresSafeArea())
+				.nullSignPage()
 				.toolbar {
 					ToolbarItem(placement: .topBarLeading) {
 						if #available(iOS 26.0, *) {

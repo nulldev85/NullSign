@@ -153,7 +153,7 @@ extension LibraryCellView {
 					Circle()
 						.fill(NullSignStyle.accent)
 						.frame(width: 12, height: 12)
-						.overlay(Circle().strokeBorder(Color.black, lineWidth: 2))
+						.overlay(Circle().strokeBorder(NullSignStyle.groupedSurface, lineWidth: 2))
 						.offset(x: 4, y: -4)
 						.accessibilityLabel(.localized("Update Available"))
 				}

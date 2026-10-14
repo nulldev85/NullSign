@@ -100,8 +100,7 @@ struct LibraryView: View {
 					title: "On this device",
 					value: (_signedApps.count + _importedApps.count).formatted(),
 					detail: "\(_signedApps.count) signed · \(_importedApps.count) imported",
-					systemImage: "checkmark.seal.fill",
-					iconColor: NullSignStyle.yellow
+					systemImage: "checkmark.seal.fill"
 				)
 				.nullSignListRow(top: 0, bottom: 0, horizontal: 0)
 
@@ -143,10 +142,7 @@ struct LibraryView: View {
 			// Section labels are short rows; don't pad them up to 44pt.
 			.environment(\.defaultMinListRowHeight, 0)
 			.scrollContentBackground(.hidden)
-			.background(Color.black)
-			.toolbarBackground(NullSignStyle.sky, for: .navigationBar)
-			.toolbarBackground(.visible, for: .navigationBar)
-			.toolbarColorScheme(.dark, for: .navigationBar)
+			.nullSignPage()
 			.scrollDismissesKeyboard(.interactively)
 			.toolbar {
 				ToolbarItem(placement: .topBarLeading) {
@@ -267,7 +263,7 @@ struct LibraryView: View {
 				await _autoCheckForUpdatesIfNeeded()
 			}
 		}
-		.tint(.white)
+		.tint(NullSignStyle.accent)
 	}
 }
 
@@ -374,7 +370,7 @@ extension LibraryView {
 		.padding(.trailing, 8)
 		.padding(.vertical, 8)
 		.background(.ultraThinMaterial, in: Capsule())
-		.background(Color.black.opacity(0.5), in: Capsule())
+		.background(NullSignStyle.groupedSurface.opacity(0.85), in: Capsule())
 		.overlay(Capsule().strokeBorder(NullSignStyle.hairline, lineWidth: 1))
 		.padding(.horizontal, 16)
 		.padding(.bottom, 8)

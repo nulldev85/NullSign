@@ -53,7 +53,7 @@ struct SourceAppsView: View {
 
 	var body: some View {
 		ZStack {
-			Color.black.ignoresSafeArea()
+			NullSignStyle.canvas.ignoresSafeArea()
 
 			if let _sourceContexts, !_sourceContexts.isEmpty {
 				SourceAppsTableRepresentableView(
@@ -88,9 +88,7 @@ struct SourceAppsView: View {
 			}
 		}
 		.nullSignNavigationTitle(_navigationTitle)
-		.toolbarBackground(NullSignStyle.ink, for: .navigationBar)
-		.toolbarBackground(.visible, for: .navigationBar)
-		.toolbarColorScheme(.dark, for: .navigationBar)
+		.nullSignPage()
 		.searchable(text: $_searchText, placement: .platform(), prompt: .localized("Search apps"))
 		.background(NullSignSearchTypography().frame(width: 0, height: 0).accessibilityHidden(true))
 		.toolbar {

@@ -41,7 +41,7 @@ struct InstallProgressView: View {
 					.font(.roundedUI(size: 20, weight: .bold))
 					.symbolRenderingMode(.palette)
 					.foregroundStyle(.white, NullSignStyle.success)
-					.background(Circle().fill(.black).padding(2))
+					.background(Circle().fill(NullSignStyle.groupedSurface).padding(2))
 					.offset(x: 27, y: 27)
 					.transition(.scale.combined(with: .opacity))
 			}
@@ -133,7 +133,7 @@ struct NullSignInstallProgressBar_Previews: PreviewProvider {
 			NullSignInstallProgressBar(progress: nil)
 		}
 		.padding(24)
-		.background(Color.black)
+		.background(NullSignStyle.canvas)
 		.preferredColorScheme(.dark)
 		.previewLayout(.sizeThatFits)
 	}

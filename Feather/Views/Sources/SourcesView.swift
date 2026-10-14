@@ -96,10 +96,7 @@ struct SourcesView: View {
 			// Section labels are short rows; don't pad them up to 44pt.
 			.environment(\.defaultMinListRowHeight, 0)
 			.scrollContentBackground(.hidden)
-			.background(Color.black)
-			.toolbarBackground(NullSignStyle.sky, for: .navigationBar)
-			.toolbarBackground(.visible, for: .navigationBar)
-			.toolbarColorScheme(.dark, for: .navigationBar)
+			.nullSignPage()
 			.scrollDismissesKeyboard(.interactively)
 			.toolbar {
 				ToolbarItem(placement: .topBarTrailing) {
@@ -121,7 +118,7 @@ struct SourcesView: View {
 				SourceAppsView(object: [source], viewModel: viewModel)
 			}
 		}
-		.tint(.white)
+		.tint(NullSignStyle.accent)
 		.task(id: Array(_sources)) {
 			await viewModel.fetchSources(_sources)
 		}

@@ -176,7 +176,7 @@ struct SourceIconStack: View {
 				SourceRemoteIcon(url: url, size: size)
 					.overlay(
 						RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
-							.strokeBorder(Color.black, lineWidth: 2)
+							.strokeBorder(NullSignStyle.groupedSurface, lineWidth: 2)
 					)
 					.zIndex(Double(4 - index))
 			}
