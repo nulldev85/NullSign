@@ -18,17 +18,21 @@ struct VariedTabbarView: View {
 	init() {}
 
 	var body: some View {
-		ZStack {
-			ForEach(TabEnum.defaultTabs.filter { visitedTabs.contains($0) }, id: \.self) { tab in
-				TabEnum.view(for: tab)
-					.id("\(tab.rawValue)-\(rootGeneration[tab, default: 0])")
-					.opacity(selectedTab == tab ? 1 : 0)
-					.allowsHitTesting(selectedTab == tab)
-					.accessibilityHidden(selectedTab != tab)
+		VStack(spacing: 0) {
+			ZStack {
+				ForEach(TabEnum.defaultTabs.filter { visitedTabs.contains($0) }, id: \.self) { tab in
+					TabEnum.view(for: tab)
+						.id("\(tab.rawValue)-\(rootGeneration[tab, default: 0])")
+						.opacity(selectedTab == tab ? 1 : 0)
+						.allowsHitTesting(selectedTab == tab)
+						.accessibilityHidden(selectedTab != tab)
+				}
 			}
-		}
-		.background(NullSignStyle.canvas)
-		.safeAreaInset(edge: .bottom, spacing: 0) {
+			// Give navigation stacks a real viewport above the dock. An outer
+			// safe-area inset can be lost by nested List/NavigationStack layouts.
+			.frame(maxWidth: .infinity, maxHeight: .infinity)
+			.clipped()
+
 			if !isKeyboardVisible {
 				NullSignDock(
 					selection: Binding(
@@ -51,6 +55,7 @@ struct VariedTabbarView: View {
 				.transition(.opacity)
 			}
 		}
+		.background(NullSignStyle.canvas)
 		// The dock steps aside for the keyboard instead of riding on top of it.
 		.onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
 			withAnimation(.easeOut(duration: 0.2)) { isKeyboardVisible = true }

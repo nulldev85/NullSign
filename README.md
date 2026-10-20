@@ -36,6 +36,11 @@ The included GitHub Actions workflow builds on a hosted Mac, so you do not need 
 
 No repository secrets are required for the unsigned build.
 
+The pinned iOS Zsign package includes a reviewed resource-signing backport.
+`make iphoneos` and the shared Xcode scheme apply it automatically; custom build
+schemes should first run `python3 Tools/prepare-zsign.py`. See
+[signing update notes](docs/signing-resource-update.md) for details and tests.
+
 ## A note about certificates
 
 Use certificates and provisioning profiles that belong to you or that you are authorized to use. Your profile must support the device and app you are trying to install. NullSign cannot repair an expired or revoked certificate.

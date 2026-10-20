@@ -6,6 +6,21 @@
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES"
       buildArchitectures = "Automatic">
+      <PreActions>
+         <ExecutionAction ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent title = "Prepare pinned Zsign signing fix" scriptText = "set -eu&#10;/usr/bin/python3 &quot;$SRCROOT/Tools/prepare-zsign.py&quot;&#10;">
+               <EnvironmentBuildable>
+                  <BuildableReference
+                     BuildableIdentifier = "primary"
+                     BlueprintIdentifier = "3379C1B82DA869A1004372DA"
+                     BuildableName = "Feather.app"
+                     BlueprintName = "Feather"
+                     ReferencedContainer = "container:Feather.xcodeproj">
+                  </BuildableReference>
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
+      </PreActions>
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"

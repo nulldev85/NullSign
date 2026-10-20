@@ -5,7 +5,7 @@ PLATFORMS := iphoneos maccatalyst
 TMP := $(TMPDIR)/$(NAME)
 CERT_JSON_URL := https://backloop.dev/public/pack.json
 
-.PHONY: all clean deps $(PLATFORMS)
+.PHONY: all clean deps prepare-zsign $(PLATFORMS)
 
 all: $(PLATFORMS)
 
@@ -24,7 +24,10 @@ deps:
 	jq -r '.info.domains.commonName' cert.json > deps/commonName.txt
 
 
-$(PLATFORMS): deps
+prepare-zsign:
+	python3 Tools/prepare-zsign.py
+
+$(PLATFORMS): prepare-zsign deps
 	rm -rf _build
 
 	@if [ "$@" = "iphoneos" ]; then \

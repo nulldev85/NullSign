@@ -19,6 +19,14 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Apply pinned Zsign resource fix
+        run: python3 Tools/prepare-zsign.py
+
+      - name: Test native resource sealing and signing failure handling
+        run: |
+          python3 Tools/test-zsign-resources.py
+          python3 Tools/test-zsign-handler.py
+
       - name: Set up typography check runtime
         uses: actions/setup-node@v4
         with:
