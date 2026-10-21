@@ -25,7 +25,8 @@ struct ScreenshotPreviewView: View {
 	var body: some View {
 		NavigationStack {
 			_imageScrollView()
-				.background(Color.black.ignoresSafeArea())
+				.background(NullSignStyle.canvas.ignoresSafeArea())
+				.nullSignPage()
 				.toolbar {
 					ToolbarItem(placement: .topBarLeading) {
 						if #available(iOS 26.0, *) {
@@ -36,7 +37,7 @@ struct ScreenshotPreviewView: View {
 					}
 					ToolbarItem(placement: .topBarTrailing) {
 						Text(verbatim: "\(currentIndex + 1) of \(screenshotURLs.count)")
-							.font(.caption.weight(.semibold))
+							.font(.roundedUI(.caption, weight: .bold))
 							.foregroundStyle(.secondary)
 					}
 				}

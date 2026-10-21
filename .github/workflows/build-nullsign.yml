@@ -1,7 +1,12 @@
 name: Build NullSign IPA
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -19,9 +24,45 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Apply pinned Zsign resource fix
+        run: python3 Tools/prepare-zsign.py
+
+      - name: Select OpenSSL 3 for native regression tests
+        run: |
+          brew install openssl@3
+          echo "OPENSSL_PREFIX=$(brew --prefix openssl@3)" >> "$GITHUB_ENV"
+
+      - name: Test native resource sealing and signing failure handling
+        run: |
+          python3 Tools/test-zsign-resources.py
+          python3 Tools/test-zsign-handler.py
+
+      - name: Set up typography check runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify SF Rounded coverage
+        run: node Tools/check-typography.mjs --self-test
+
+      - name: Verify icon styling
+        run: node Tools/check-icon-style.mjs
+
+      - name: Verify shared Settings palette
+        run: node Tools/check-color-scheme.mjs
+
+      - name: Verify tvOS icon selection
+        run: |
+          node Tools/check-tvos-icon-policy.mjs
+          xcrun swiftc Feather/Utilities/TVIconSelection.swift Tools/test-tvos-icon-selection.swift -o "$RUNNER_TEMP/test-tvos-icon-selection"
+          "$RUNNER_TEMP/test-tvos-icon-selection"
+
+      - name: Verify app icon assets
+        run: node Tools/check-app-icon.mjs
+
       - name: Build unsigned NullSign IPA
         run: |
-          cmp -s Feather/Resources/AppIcon.icon/Assets/nullsign.png Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png
+          cmp -s Feather/Resources/NullSignBlue.icon/Assets/nullsign.png Feather/Resources/Assets.xcassets/NullSignBlue.appiconset/nullsign.png
           make iphoneos
 
       - name: Verify IPA structure
@@ -45,6 +86,10 @@ jobs:
           test -n "$expected_build"
           test "$actual_version" = "$expected_version"
           test "$actual_build" = "$expected_build"
+
+          icon_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName' "$plist_path")"
+          test "$icon_name" = "NullSignBlue"
+          node Tools/check-packaged-icon.mjs "$workdir/Payload/NullSign.app"
           echo "Verified NullSign $actual_version ($actual_build)"
 
       - name: Upload NullSign IPA
@@ -54,3 +99,37 @@ jobs:
           path: packages/NullSign-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish public source release from main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_TAG: source-${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ipa="packages/NullSign-unsigned.ipa"
+          workdir="$(mktemp -d)"
+          trap 'rm -rf "$workdir"' EXIT
+          unzip -q "$ipa" -d "$workdir"
+          plist="$workdir/Payload/NullSign.app/Info.plist"
+          bundle_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")
+          version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")
+          build=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")
+          minimum_os=$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$plist")
+          test "$bundle_id" = "com.elmat.NullSign"
+          {
+            echo "Source-App: NullSign"
+            echo "Source-Bundle-Identifier: $bundle_id"
+            echo "Source-Version: $version"
+            echo "Source-Build-Version: $build"
+            echo "Source-Minimum-OS-Version: $minimum_os"
+            echo "Source-Branch: main"
+            echo "Source-SHA: $GITHUB_SHA"
+          } > "$RUNNER_TEMP/source-release-notes.md"
+          gh release create "$SOURCE_TAG" "$ipa#NullSign.ipa" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "NullSign $version ($build)" \
+            --notes-file "$RUNNER_TEMP/source-release-notes.md" \
+            --target "$GITHUB_SHA" \
+            --latest=false

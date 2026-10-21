@@ -48,13 +48,13 @@ public struct NBSection<Content, Footer>: View
 			HStack(alignment: .center, spacing: 4) {
 				if let _systemName {
 					Image(systemName: _systemName)
-						.font(.system(size: 12))
+						.font(.roundedUI(size: 12))
 						.offset(y: -2)
 				}
 					
-				Text(_headerText)
-					.fontWeight(.bold)
-					.font(.title2)
+				Text(_headerText.uppercased())
+					.font(.roundedUI(.subheadline, weight: .heavy))
+					.tracking(0.35)
 					.foregroundStyle(.primary)
 						
 					
@@ -63,7 +63,7 @@ public struct NBSection<Content, Footer>: View
 				if let _headerTextSecondary {
 					if #available(iOS 26.0, *) {
 						Text(_headerTextSecondary)
-							.font(.caption)
+							.font(.roundedUI(.caption))
 							.foregroundStyle(.secondary)
 							.contentTransition(.numericText())
 							.padding(.horizontal, 8)
@@ -73,7 +73,7 @@ public struct NBSection<Content, Footer>: View
 							.glassEffect()
 					} else {
 						Text(_headerTextSecondary)
-							.font(.caption)
+							.font(.roundedUI(.caption))
 							.foregroundStyle(.secondary)
 							.contentTransition(.numericText())
 							.padding(.horizontal, 8)
@@ -86,11 +86,12 @@ public struct NBSection<Content, Footer>: View
 			.offset(y: 2)
 			,
 			footer: _footer
-				.font(.caption)
+				.font(.roundedUI(.caption))
 				.foregroundColor(.secondary)
 		) {
 			_content
 		}
 		.headerProminence(.increased)
+		.textCase(nil)
 	}
 }

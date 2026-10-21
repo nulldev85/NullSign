@@ -10,10 +10,11 @@ import IDeviceSwift
 
 struct InstallProgressView: View {
 	@State private var _isPulsing = false
-	
+	@Environment(\.accessibilityReduceMotion) private var _reduceMotion
+
 	var app: AppInfoPresentable
 	@ObservedObject var viewModel: InstallerStatusViewModel
-	
+
 	var body: some View {
 		VStack(spacing: 12) { _appIcon() }
 			.onAppear {
@@ -22,26 +23,31 @@ struct InstallProgressView: View {
 			}
 			.onChange(of: viewModel.isCompleted) { _ in _updateAnimation() }
 	}
-	
+
 	@ViewBuilder
 	private func _appIcon() -> some View {
 		ZStack {
 			FRAppIconView(app: app, size: 58)
-				.scaleEffect(viewModel.isCompleted ? 1 : (_isPulsing ? 1.03 : 1.0))
+				.opacity(viewModel.isCompleted || _reduceMotion ? 1 : (_isPulsing ? 0.6 : 1))
 				.animation(
-					viewModel.isCompleted ? .easeOut(duration: 0.2) : .easeInOut(duration: 1.25).repeatForever(autoreverses: true),
+					viewModel.isCompleted || _reduceMotion
+						? .easeOut(duration: 0.2)
+						: .easeInOut(duration: 1.1).repeatForever(autoreverses: true),
 					value: _isPulsing
 				)
+
 			if viewModel.isCompleted {
 				Image(systemName: "checkmark.circle.fill")
-					.font(.system(size: 20, weight: .bold))
+					.font(.roundedUI(size: 20, weight: .bold))
 					.symbolRenderingMode(.palette)
-					.foregroundStyle(.black, NullSignStyle.accent)
-					.background(Circle().fill(.black).padding(2))
-					.offset(x: 31, y: 31)
+					.foregroundStyle(.white, NullSignStyle.success)
+					.background(Circle().fill(NullSignStyle.groupedSurface).padding(2))
+					.offset(x: 27, y: 27)
+					.transition(.scale.combined(with: .opacity))
 			}
 		}
 		.frame(width: 68, height: 68)
+		.animation(.easeOut(duration: 0.25), value: viewModel.isCompleted)
 	}
 
 	private func _updateAnimation() {
@@ -64,9 +70,10 @@ struct NullSignInstallProgressBar: View {
 	}
 
 	var body: some View {
-		VStack(alignment: .trailing, spacing: 5) {
+		VStack(alignment: .trailing, spacing: 6) {
 			Text("\(Int(targetProgress * 100))%")
-				.font(.system(size: 10, weight: .semibold, design: .rounded).monospacedDigit())
+				.font(.roundedUI(.caption2, weight: .bold))
+				.monospacedDigit()
 				.foregroundStyle(NullSignStyle.muted)
 				.opacity(showsPercentage && progress != nil && targetProgress > 0 && targetProgress < 1 ? 1 : 0)
 				.frame(height: 12)
@@ -78,13 +85,7 @@ struct NullSignInstallProgressBar: View {
 
 					ZStack(alignment: .leading) {
 						Capsule()
-							.fill(Color(red: 0.173, green: 0.173, blue: 0.180))
-							.overlay {
-								Capsule()
-									.stroke(Color.black.opacity(0.62), lineWidth: 1)
-									.blur(radius: 0.35)
-									.offset(y: 0.5)
-							}
+							.fill(NullSignStyle.fill)
 
 						if progress == nil {
 							_indeterminateFill(width: width, seconds: seconds)
@@ -92,10 +93,10 @@ struct NullSignInstallProgressBar: View {
 							_determinateFill(width: width)
 						}
 					}
-					.frame(width: width, height: 8, alignment: .leading)
+					.frame(width: width, height: 6, alignment: .leading)
 					.clipShape(Capsule())
 				}
-				.frame(height: 8)
+				.frame(height: 6)
 			}
 		}
 	}
@@ -105,34 +106,21 @@ struct NullSignInstallProgressBar: View {
 		let fillWidth = min(width, max(0, width * targetProgress))
 
 		Capsule()
-			.fill(
-				LinearGradient(
-					colors: [NullSignStyle.crimson, NullSignStyle.crimson.opacity(0.88), Color.white.opacity(0.32)],
-					startPoint: .leading,
-					endPoint: .trailing
-				)
-			)
+			.fill(NullSignStyle.accent)
 			.frame(width: fillWidth)
 			.animation(.linear(duration: 0.2), value: targetProgress)
 	}
 
 	@ViewBuilder
 	private func _indeterminateFill(width: CGFloat, seconds: TimeInterval) -> some View {
-		let segmentWidth = min(width, max(54, width * 0.24))
+		let segmentWidth = min(width, max(54, width * 0.26))
 		let travel = max(0, width - segmentWidth)
 		let easedPosition = (sin(seconds * 2.1) + 1) / 2
 
 		Capsule()
-			.fill(
-				LinearGradient(
-					colors: [NullSignStyle.crimson.opacity(0.72), NullSignStyle.crimson, Color.white.opacity(0.28)],
-					startPoint: .leading,
-					endPoint: .trailing
-				)
-			)
+			.fill(NullSignStyle.accent)
 			.frame(width: segmentWidth)
 			.offset(x: travel * CGFloat(easedPosition))
-			.shadow(color: NullSignStyle.crimson.opacity(0.58), radius: 7)
 	}
 
 }
@@ -145,7 +133,7 @@ struct NullSignInstallProgressBar_Previews: PreviewProvider {
 			NullSignInstallProgressBar(progress: nil)
 		}
 		.padding(24)
-		.background(Color(red: 0.110, green: 0.110, blue: 0.118))
+		.background(NullSignStyle.canvas)
 		.preferredColorScheme(.dark)
 		.previewLayout(.sizeThatFits)
 	}

@@ -25,42 +25,45 @@ struct AppUpdate: Identifiable, Equatable {
 @MainActor
 final class UpdateManager: ObservableObject {
 	static let shared = UpdateManager()
-	
+
 	typealias RepositoryDataHandler = Result<ASRepository, Error>
-	
+
 	@Published private(set) var updates: [String: AppUpdate] = [:]
 	@Published private(set) var isChecking = false
 	@Published private(set) var lastCheckedDate: Date?
-	
+
 	private let _dataService = NBFetchService()
-	
+
 	private init() {}
-	
+
 	func update(for app: AppInfoPresentable) -> AppUpdate? {
 		guard let uuid = app.uuid else { return nil }
 		return updates[uuid]
 	}
-	
+
 	func checkForUpdates(
 		sources: [AltSource],
 		localApps: [AppInfoPresentable]
 	) async {
 		guard !isChecking else { return }
-		
+
 		isChecking = true
 		defer {
 			isChecking = false
 			lastCheckedDate = Date()
 		}
-		
-		let repositories = await _fetchRepositories(from: sources)
-		updates = _findUpdates(repositories: repositories, localApps: localApps)
+
+		// Everything needed from Core Data is read before the network fetch
+		// suspends this task: apps and sources can be deleted while it runs.
+		let sourceURLs = sources.compactMap(\.sourceURL)
+		let snapshots = localApps.compactMap(LocalAppSnapshot.init)
+
+		let repositories = await _fetchRepositories(from: sourceURLs)
+		updates = _findUpdates(repositories: repositories, localApps: snapshots)
 	}
-	
-	private func _fetchRepositories(from sources: [AltSource]) async -> [(AltSource, ASRepository)] {
-		let requests = sources.enumerated().compactMap { index, source in
-			source.sourceURL.map { (index, $0) }
-		}
+
+	private func _fetchRepositories(from urls: [URL]) async -> [(URL, ASRepository)] {
+		let requests = Array(urls.enumerated())
 		var fetched: [(Int, ASRepository?)] = []
 
 		// Keep checks quick without opening an unbounded number of connections for
@@ -88,10 +91,10 @@ final class UpdateManager: ObservableObject {
 			.sorted { $0.0 < $1.0 }
 			.compactMap { index, repository in
 				guard let repository else { return nil }
-				return (sources[index], repository)
+				return (urls[index], repository)
 			}
 	}
-	
+
 	private func _fetchRepository(from url: URL) async -> ASRepository? {
 		await withCheckedContinuation { continuation in
 			_dataService.fetch(from: url) { (result: RepositoryDataHandler) in
@@ -104,30 +107,25 @@ final class UpdateManager: ObservableObject {
 			}
 		}
 	}
-	
+
 	private func _findUpdates(
-		repositories: [(AltSource, ASRepository)],
-		localApps: [AppInfoPresentable]
+		repositories: [(URL, ASRepository)],
+		localApps: [LocalAppSnapshot]
 	) -> [String: AppUpdate] {
 		var foundUpdates: [String: AppUpdate] = [:]
 		let metadataByUUID = Storage.shared.getSourceMetadata().reduce(into: [String: AppSourceMetadata]()) {
 			$0[$1.appUUID] = $1
 		}
 		let metadataCandidates = localApps.compactMap { app -> SourceMetadataCandidate? in
-			guard
-				let uuid = app.uuid,
-				let metadata = metadataByUUID[uuid]
-			else {
+			guard let metadata = metadataByUUID[app.uuid] else {
 				return nil
 			}
-			return SourceMetadataCandidate(appUUID: uuid, app: app, metadata: metadata)
+			return SourceMetadataCandidate(app: app, metadata: metadata)
 		}
-		
+
 		for localApp in localApps {
-			guard let localUUID = localApp.uuid else {
-				continue
-			}
-			
+			let localUUID = localApp.uuid
+
 			let sourceAppIdentifier: String
 			let sourceAppVersion: String?
 			let storedSourceURL: URL
@@ -138,13 +136,12 @@ final class UpdateManager: ObservableObject {
 				else {
 					continue
 				}
-				
+
 				sourceAppIdentifier = metadataSourceAppIdentifier
 				sourceAppVersion = directMetadata.sourceAppVersion
 				storedSourceURL = metadataSourceURL
 			} else if let fallback = _fallbackMetadataCandidate(
 				for: localApp,
-				localUUID: localUUID,
 				candidates: metadataCandidates
 			) {
 				guard
@@ -153,12 +150,12 @@ final class UpdateManager: ObservableObject {
 				else {
 					continue
 				}
-				
+
 				sourceAppIdentifier = metadataSourceAppIdentifier
 				sourceAppVersion = fallback.metadata.sourceAppVersion
 				storedSourceURL = metadataSourceURL
 				Storage.shared.copySourceMetadata(
-					from: fallback.appUUID,
+					from: fallback.app.uuid,
 					to: localUUID,
 					kind: localApp.isSigned ? .signed : .imported
 				)
@@ -172,35 +169,31 @@ final class UpdateManager: ObservableObject {
 			} else {
 				continue
 			}
-			
-			for (source, repository) in repositories {
-				guard let sourceURL = source.sourceURL else {
-					continue
-				}
-				
+
+			for (sourceURL, repository) in repositories {
 				guard _matchesStoredRepository(storedSourceURL: storedSourceURL, sourceURL: sourceURL) else {
 					continue
 				}
-				
+
 				guard let remoteApp = repository.apps.first(where: { $0.id == sourceAppIdentifier }) else {
 					continue
 				}
-				
+
 				guard let remoteVersion = remoteApp.currentVersion, !remoteVersion.isEmpty else {
 					continue
 				}
-				
+
 				guard
 					let installedVersion = sourceAppVersion ?? localApp.version,
 					_isVersion(remoteVersion, newerThan: installedVersion)
 				else {
 					continue
 				}
-				
+
 				guard let downloadURL = remoteApp.currentDownloadUrl else {
 					continue
 				}
-				
+
 				guard let provenance = SourceAppProvenance(
 					sourceURL: sourceURL,
 					repository: repository,
@@ -208,7 +201,7 @@ final class UpdateManager: ObservableObject {
 				) else {
 					continue
 				}
-				
+
 				foundUpdates[localUUID] = AppUpdate(
 					id: localUUID,
 					localUUID: localUUID,
@@ -223,17 +216,17 @@ final class UpdateManager: ObservableObject {
 				break
 			}
 		}
-		
+
 		return foundUpdates
 	}
-	
+
 	private func _matchesStoredRepository(
 		storedSourceURL: URL,
 		sourceURL: URL
 	) -> Bool {
 		_normalizedSourceURL(storedSourceURL) == _normalizedSourceURL(sourceURL)
 	}
-	
+
 	private func _normalizedSourceURL(_ url: URL) -> String {
 		var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
 		let scheme = components?.scheme?.lowercased()
@@ -241,7 +234,7 @@ final class UpdateManager: ObservableObject {
 		components?.scheme = scheme
 		components?.host = host
 		components?.fragment = nil
-		
+
 		let normalized = components?.url ?? url
 		let absoluteString = normalized.absoluteString
 		return absoluteString.hasSuffix("/") ? String(absoluteString.dropLast()) : absoluteString
@@ -250,10 +243,9 @@ final class UpdateManager: ObservableObject {
 	private func _isVersion(_ candidate: String, newerThan installed: String) -> Bool {
 		candidate.compare(installed, options: [.numeric, .caseInsensitive]) == .orderedDescending
 	}
-	
+
 	private func _fallbackMetadataCandidate(
-		for localApp: AppInfoPresentable,
-		localUUID: String,
+		for localApp: LocalAppSnapshot,
 		candidates: [SourceMetadataCandidate]
 	) -> SourceMetadataCandidate? {
 		guard
@@ -263,9 +255,9 @@ final class UpdateManager: ObservableObject {
 		else {
 			return nil
 		}
-		
+
 		return candidates.first {
-			$0.appUUID != localUUID &&
+			$0.app.uuid != localApp.uuid &&
 			!$0.app.isSigned &&
 			$0.app.identifier == localIdentifier &&
 			$0.app.version == localVersion
@@ -273,8 +265,25 @@ final class UpdateManager: ObservableObject {
 	}
 }
 
+/// Plain values copied out of a managed object before any suspension point.
+private struct LocalAppSnapshot {
+	let uuid: String
+	let identifier: String?
+	let version: String?
+	let source: URL?
+	let isSigned: Bool
+
+	init?(_ app: AppInfoPresentable) {
+		guard let uuid = app.uuid else { return nil }
+		self.uuid = uuid
+		self.identifier = app.identifier
+		self.version = app.version
+		self.source = app.source
+		self.isSigned = app.isSigned
+	}
+}
+
 private struct SourceMetadataCandidate {
-	let appUUID: String
-	let app: AppInfoPresentable
+	let app: LocalAppSnapshot
 	let metadata: AppSourceMetadata
 }

@@ -45,8 +45,9 @@ struct ServerView: View {
 			) {
 				HStack {
 					Text("Server type")
+						.font(.roundedUI(.body, weight: .bold))
 					Spacer()
-					Text("Semi Local").foregroundStyle(.secondary)
+					Text("Semi Local").font(.roundedUI(.body)).foregroundStyle(.secondary)
 				}
 
 				NullSignSettingsDivider()
@@ -54,9 +55,9 @@ struct ServerView: View {
 				Toggle(isOn: $_ipFix) {
 					VStack(alignment: .leading, spacing: 2) {
 						Text("Use localhost only")
-							.font(.body.weight(.medium))
+							.font(.roundedUI(.body, weight: .regular))
 						Text("Avoid exposing the temporary server on your LAN")
-							.font(.caption)
+							.font(.roundedUI(.caption))
 							.foregroundStyle(.secondary)
 					}
 				}

@@ -1,22 +1,116 @@
 import SwiftUI
+import AltSourceKit
+import Nuke
+import NukeUI
+
+/// Some otherwise valid feeds omit icon metadata entirely. Keep narrowly
+/// scoped, bundled fallbacks for known apps whose own distributable contains
+/// artwork but whose source provides no URL.
+enum SourceBundledIcon {
+	static func assetName(forBundleIdentifier identifier: String?) -> String? {
+		switch identifier?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+		case "com.stadiumsync.mobile":
+			return "StadiumSync"
+		case "com.stadiumsync.mobile.tv":
+			return "StadiumSyncTV"
+		default:
+			return nil
+		}
+	}
+
+	static func assetName(for repository: ASRepository?) -> String? {
+		guard let repository else { return nil }
+		for app in repository.apps {
+			if let name = assetName(forBundleIdentifier: app.id) {
+				return name
+			}
+		}
+		return nil
+	}
+}
+
+/// Source feeds in the wild frequently use repository-relative paths or a
+/// GitHub asset page instead of a direct image URL. Resolve those forms in one
+/// place so every source screen displays the same icon.
+enum SourceAssetURL {
+	private static let _inlineImageCache = NSCache<NSString, UIImage>()
+
+	static func resolve(_ url: URL?, relativeTo sourceURL: URL?) -> URL? {
+		guard let url else { return nil }
+		let rawValue = url.absoluteString.trimmingCharacters(in: .whitespacesAndNewlines)
+		guard !rawValue.isEmpty else { return nil }
+
+		if rawValue.hasPrefix("//") {
+			let scheme = sourceURL?.scheme ?? "https"
+			return URL(string: "\(scheme):\(rawValue)").flatMap(_normalizedRemoteURL)
+		}
+
+		if url.scheme == nil {
+			guard let sourceURL else { return nil }
+			guard let resolvedURL = URL(string: rawValue, relativeTo: sourceURL)?.absoluteURL else { return nil }
+			return _normalizedRemoteURL(resolvedURL)
+		}
+
+		return _normalizedRemoteURL(url)
+	}
+
+	static func inlineImage(from url: URL) -> UIImage? {
+		guard url.scheme?.lowercased() == "data" else { return nil }
+		let key = url.absoluteString as NSString
+		if let cached = _inlineImageCache.object(forKey: key) { return cached }
+
+		let value = url.absoluteString
+		guard let comma = value.firstIndex(of: ",") else { return nil }
+		let metadata = value[value.startIndex..<comma].lowercased()
+		let payload = String(value[value.index(after: comma)...])
+		let data: Data?
+		if metadata.contains(";base64") {
+			data = Data(base64Encoded: payload, options: .ignoreUnknownCharacters)
+		} else if let decoded = payload.removingPercentEncoding {
+			data = decoded.data(using: .utf8)
+		} else {
+			data = nil
+		}
+
+		guard let data, let image = UIImage(data: data) else { return nil }
+		_inlineImageCache.setObject(image, forKey: key)
+		return image
+	}
+
+	private static func _normalizedRemoteURL(_ url: URL) -> URL? {
+		guard var components = URLComponents(url: url, resolvingAgainstBaseURL: true) else { return url }
+
+		// ATS rejects ordinary HTTP image requests. Most source CDNs offer HTTPS,
+		// so prefer it without weakening transport security for the entire app.
+		if components.scheme?.lowercased() == "http" {
+			components.scheme = "https"
+		}
+
+		guard components.host?.lowercased() == "github.com" else {
+			return components.url
+		}
+
+		let path = components.path.split(separator: "/", omittingEmptySubsequences: true)
+		guard path.count >= 5, path[2] == "blob" || path[2] == "raw" else {
+			return components.url
+		}
+
+		var raw = URLComponents()
+		raw.scheme = "https"
+		raw.host = "raw.githubusercontent.com"
+		raw.path = "/" + ([path[0], path[1]] + Array(path.dropFirst(3))).joined(separator: "/")
+		return raw.url
+	}
+}
 
 /// Small, source-specific pieces reused throughout the Apps tab.
 struct SourceSectionLabel: View {
 	let title: String
 	var count: Int? = nil
+	var prominent: Bool = true
 
 	var body: some View {
-		HStack(alignment: .firstTextBaseline) {
-			Text(title)
-				.font(.headline)
-			Spacer()
-			if let count {
-				Text(count.formatted())
-					.font(.caption.weight(.semibold))
-					.foregroundStyle(.secondary)
-			}
-		}
-		.textCase(nil)
+		NullSignSectionLabel(title: title, count: count, prominent: prominent)
 	}
 }
 
@@ -28,47 +122,26 @@ struct SourceEmptyState: View {
 	var action: (() -> Void)? = nil
 
 	var body: some View {
-		VStack(spacing: 14) {
-			ZStack {
-				RoundedRectangle(cornerRadius: 18, style: .continuous)
-					.fill(NullSignStyle.raisedPanel)
-					.frame(width: 64, height: 64)
-				Image(systemName: icon)
-					.font(.system(size: 25, weight: .medium))
-					.foregroundStyle(NullSignStyle.accent)
-			}
-
-			VStack(spacing: 5) {
-				Text(title)
-					.font(.title3.weight(.semibold))
-				Text(message)
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
-					.multilineTextAlignment(.center)
-					.fixedSize(horizontal: false, vertical: true)
-			}
-
+		NullSignEmptyState(systemImage: icon, title: title, message: message) {
 			if let actionTitle, let action {
 				Button(action: action) {
 					Text(actionTitle)
-						.font(.subheadline.weight(.semibold))
-						.padding(.horizontal, 18)
-						.frame(height: 38)
+						.frame(minWidth: 160)
 				}
-				.buttonStyle(.nullSign(cornerRadius: 10))
+				.buttonStyle(NullSignPrimaryButtonStyle(height: 44))
+				.padding(.top, 4)
 			}
 		}
-		.frame(maxWidth: 330)
-		.padding(24)
 	}
 }
+
 struct SourcePanelModifier: ViewModifier {
 	var padding: CGFloat = 14
 
 	func body(content: Content) -> some View {
 		content
 			.padding(padding)
-			.nullSignSurface(cornerRadius: 16)
+			.nullSignSurface()
 	}
 }
 
@@ -82,13 +155,128 @@ struct SourceLoadingState: View {
 	var label: String = "Loading apps"
 
 	var body: some View {
-		VStack(spacing: 13) {
+		VStack(spacing: 12) {
 			ProgressView()
-				.tint(NullSignStyle.accent)
 			Text(label)
-				.font(.subheadline)
-				.foregroundStyle(.secondary)
+				.font(.roundedUI(.subheadline))
+				.foregroundStyle(NullSignStyle.muted)
 		}
 		.padding(24)
+	}
+}
+
+/// Overlapping repository icons, used to preview a catalog at a glance.
+struct SourceIconStack: View {
+	let urls: [URL]
+	var size: CGFloat = 34
+
+	var body: some View {
+		HStack(spacing: -size * 0.32) {
+			ForEach(Array(urls.prefix(4).enumerated()), id: \.offset) { index, url in
+				SourceRemoteIcon(url: url, size: size)
+					.overlay(
+						RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
+							.strokeBorder(NullSignStyle.groupedSurface, lineWidth: 2)
+					)
+					.zIndex(Double(4 - index))
+			}
+		}
+	}
+}
+
+/// A remote icon in NullSign's app-icon shape with a quiet placeholder.
+struct SourceRemoteIcon: View {
+	let url: URL?
+	var relativeTo: URL? = nil
+	var size: CGFloat = 50
+	var placeholderSystemImage: String = "shippingbox"
+	var fallbackAssetName: String? = nil
+
+	var body: some View {
+		let resolvedURL = SourceAssetURL.resolve(url, relativeTo: relativeTo)
+
+		Group {
+			if let url = resolvedURL,
+			   let image = SourceAssetURL.inlineImage(from: url) {
+				Image(uiImage: image)
+					.appIconStyle(size: size, isCircle: false, background: NullSignStyle.raisedPanel)
+			} else if let url = resolvedURL {
+				LazyImageIcon(
+					url: url,
+					referer: relativeTo,
+					size: size,
+					placeholderSystemImage: placeholderSystemImage,
+					fallbackAssetName: fallbackAssetName
+				)
+			} else {
+				_placeholder
+			}
+		}
+		.frame(width: size, height: size)
+	}
+
+	@ViewBuilder
+	private var _placeholder: some View {
+		if let fallbackAssetName {
+			Image(fallbackAssetName)
+				.appIconStyle(size: size, isCircle: false, background: NullSignStyle.raisedPanel)
+		} else {
+			SourceIconPlaceholder(size: size, systemImage: placeholderSystemImage)
+		}
+	}
+}
+
+struct SourceIconPlaceholder: View {
+	let size: CGFloat
+	var systemImage: String = "shippingbox"
+
+	var body: some View {
+		ZStack {
+			RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
+				.fill(NullSignStyle.fill)
+			Image(systemName: systemImage)
+				.font(.roundedUI(size: size * 0.38, weight: .medium))
+				.foregroundStyle(NullSignStyle.faint)
+		}
+		.frame(width: size, height: size)
+	}
+}
+
+/// A remote image loaded through Nuke, shaped like an app icon.
+struct LazyImageIcon: View {
+	let url: URL
+	var referer: URL? = nil
+	let size: CGFloat
+	var placeholderSystemImage: String = "shippingbox"
+	var fallbackAssetName: String? = nil
+
+	private var request: ImageRequest {
+		var urlRequest = URLRequest(url: url)
+		urlRequest.setValue("image/avif,image/webp,image/apng,image/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
+		urlRequest.setValue(
+			"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
+			forHTTPHeaderField: "User-Agent"
+		)
+		if let referer,
+		   var components = URLComponents(url: referer, resolvingAgainstBaseURL: true) {
+			components.path = "/"
+			components.query = nil
+			components.fragment = nil
+			urlRequest.setValue(components.url?.absoluteString, forHTTPHeaderField: "Referer")
+		}
+		return ImageRequest(urlRequest: urlRequest)
+	}
+
+	var body: some View {
+		LazyImage(request: request) { state in
+			if let image = state.image {
+				image.appIconStyle(size: size, isCircle: false, background: NullSignStyle.raisedPanel)
+			} else if let fallbackAssetName {
+				Image(fallbackAssetName)
+					.appIconStyle(size: size, isCircle: false, background: NullSignStyle.raisedPanel)
+			} else {
+				SourceIconPlaceholder(size: size, systemImage: placeholderSystemImage)
+			}
+		}
 	}
 }

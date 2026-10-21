@@ -21,7 +21,7 @@ struct NullSignApp: App {
 	
 	var body: some Scene {
 		WindowGroup {
-			VStack {
+			VStack(spacing: 0) {
 				DownloadHeaderView(downloadManager: downloadManager)
 					.transition(.move(edge: .top).combined(with: .opacity))
 				VariedTabbarView()
@@ -29,8 +29,11 @@ struct NullSignApp: App {
 					.onOpenURL(perform: _handleURL)
 					.transition(.move(edge: .top).combined(with: .opacity))
 			}
+			.frame(maxWidth: .infinity, maxHeight: .infinity)
+			.background(NullSignStyle.canvas.ignoresSafeArea())
 			.preferredColorScheme(.dark)
-			.tint(.white)
+			.tint(NullSignStyle.accent)
+			.nullSignTypography()
 			.onReceive(NotificationCenter.default.publisher(for: .heartbeatInvalidHost)) { _ in
 				DispatchQueue.main.async {
 					UIAlertController.showAlertWithOk(
@@ -42,9 +45,9 @@ struct NullSignApp: App {
 			// dear god help me
 			.onAppear {
 				UserDefaults.standard.set(UIUserInterfaceStyle.dark.rawValue, forKey: "Feather.userInterfaceStyle")
-				UserDefaults.standard.set("#FFFFFF", forKey: "Feather.userTintColor")
+				UserDefaults.standard.set("#0094FF", forKey: "Feather.userTintColor")
 				UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = .dark
-				UIApplication.topViewController()?.view.window?.tintColor = .white
+				UIApplication.topViewController()?.view.window?.tintColor = UIColor(NullSignStyle.accent)
 			}
 		}
 	}
@@ -148,15 +151,31 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 		_ application: UIApplication,
 		didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
 	) -> Bool {
-		UIView.appearance().tintColor = .white
-		UITableView.appearance().backgroundColor = .black
-		UICollectionView.appearance().backgroundColor = .black
+		UIView.appearance().tintColor = UIColor(NullSignStyle.accent)
+		UITableView.appearance().backgroundColor = UIColor(NullSignStyle.canvas)
+		UICollectionView.appearance().backgroundColor = UIColor(NullSignStyle.canvas)
+		_configureRoundedUIKitTypography()
 		_createPipeline()
 		_createDocumentsDirectories()
 		ResetView.clearWorkCache()
 		_addDefaultCertificates()
 		_refreshServerCertificates()
 		return true
+	}
+
+	private func _configureRoundedUIKitTypography() {
+		UINavigationBar.appearance().largeTitleTextAttributes = [
+			.font: UIFont.roundedUI(size: 34, weight: .heavy, textStyle: .largeTitle)
+		]
+		UINavigationBar.appearance().titleTextAttributes = [
+			.font: UIFont.roundedUI(size: 17, weight: .bold, textStyle: .headline)
+		]
+
+		// Back/Done/Cancel buttons are UIKit text, outside SwiftUI's font environment.
+		let controlFont = UIFont.roundedUI(size: 17, weight: .bold, textStyle: .body)
+		for state in [UIControl.State.normal, .highlighted, .disabled, .focused] {
+			UIBarButtonItem.appearance().setTitleTextAttributes([.font: controlFont], for: state)
+		}
 	}
 
 	private func _refreshServerCertificates() {

@@ -2,7 +2,6 @@ import SwiftUI
 import NimbleViews
 import AltSourceKit
 import NimbleJSON
-import NukeUI
 import OSLog
 
 struct SourcesAddView: View {
@@ -41,16 +40,21 @@ struct SourcesAddView: View {
 		NBNavigationView(.localized("Add Source"), displayMode: .inline) {
 			ScrollView {
 				LazyVStack(alignment: .leading, spacing: 24) {
+					NullSignSettingsIntro(
+						systemImage: "externaldrive.connected.to.line.below",
+						title: .localized("Add Source"),
+						detail: "Add a repository by URL, move a source list, or choose a featured source."
+					)
 					_urlSection
 					_transferSection
 					_featuredSection
 				}
-				.padding(.horizontal, 16)
+				.padding(.horizontal, 20)
 				.padding(.top, 12)
 				.padding(.bottom, 32)
 			}
 			.scrollDismissesKeyboard(.interactively)
-			.background(Color.black.ignoresSafeArea())
+			.nullSignPage()
 			.toolbar {
 				NBToolbarButton(role: .cancel)
 			}
@@ -59,6 +63,9 @@ struct SourcesAddView: View {
 				await _fetchRecommendedRepositories()
 			}
 		}
+		.nullSignTypography()
+		.preferredColorScheme(.dark)
+		.modifier(NullSignSheetChrome())
 	}
 
 	private var _urlSection: some View {
@@ -66,14 +73,12 @@ struct SourcesAddView: View {
 			SourceSectionLabel(title: .localized("Repository URL"))
 
 			VStack(alignment: .leading, spacing: 12) {
-				Text("Paste an AltStore-compatible source URL. NullSign will check it before adding anything.")
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
+				Text("Paste an AltStore-compatible source URL. NullSign checks it before adding anything.")
+					.font(.roundedUI(.subheadline))
+					.foregroundStyle(NullSignStyle.muted)
 					.fixedSize(horizontal: false, vertical: true)
 
 				HStack(spacing: 8) {
-					Image(systemName: "link")
-						.foregroundStyle(NullSignStyle.accent)
 					TextField(.localized("https://example.com/apps.json"), text: $_sourceURL)
 						.keyboardType(.URL)
 						.textInputAutocapitalization(.never)
@@ -81,34 +86,30 @@ struct SourcesAddView: View {
 					Button {
 						_sourceURL = UIPasteboard.general.string ?? _sourceURL
 					} label: {
-						Image(systemName: "doc.on.clipboard")
-							.font(.subheadline.weight(.semibold))
+						Text("Paste")
+							.font(.roundedUI(.subheadline, weight: .bold))
 							.foregroundStyle(NullSignStyle.accent)
 					}
 					.buttonStyle(.plain)
 				}
 				.padding(.horizontal, 12)
-				.frame(height: 46)
-				.background(NullSignStyle.raisedPanel)
-				.clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+				.frame(minHeight: 50)
+				.background(NullSignStyle.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
 				Button(action: _saveSource) {
 					HStack(spacing: 8) {
 						if _isSaving {
-							ProgressView().tint(.black)
-						} else {
-							Image(systemName: "plus")
+							ProgressView().tint(.white)
 						}
-						Text(_isSaving ? "Checking Source" : .localized("Add Source"))
+						Text(_isSaving ? "Checking Source…" : .localized("Add Source"))
 					}
-					.font(.subheadline.weight(.semibold))
 					.frame(maxWidth: .infinity)
-					.frame(height: 42)
 				}
-				.buttonStyle(.nullSign())
+				.buttonStyle(NullSignPrimaryButtonStyle(height: 46))
 				.disabled(_trimmedURL.isEmpty || _isBusy)
 			}
-			.sourcePanel()
+			.padding(16)
+			.nullSignSurface(fill: NullSignStyle.groupedSurface)
 		}
 	}
 
@@ -137,7 +138,8 @@ struct SourcesAddView: View {
 					action: _exportSources
 				)
 			}
-			.sourcePanel(padding: 4)
+			.padding(8)
+			.nullSignSurface(fill: NullSignStyle.groupedSurface)
 		}
 	}
 
@@ -152,17 +154,19 @@ struct SourcesAddView: View {
 			if _isLoadingFeatured {
 				SourceLoadingState(label: "Checking featured sources")
 					.frame(maxWidth: .infinity)
-					.sourcePanel()
+					.padding(16)
+					.nullSignSurface(fill: NullSignStyle.groupedSurface)
 			} else if _filteredRecommendedSourcesData.isEmpty {
 				HStack(spacing: 11) {
 					Image(systemName: "checkmark.circle")
 						.foregroundStyle(NullSignStyle.accent)
 					Text("You already have all available featured sources.")
-						.font(.subheadline)
+						.font(.roundedUI(.subheadline))
 						.foregroundStyle(.secondary)
 				}
 				.frame(maxWidth: .infinity, alignment: .leading)
-				.sourcePanel()
+				.padding(16)
+				.nullSignSurface(fill: NullSignStyle.groupedSurface)
 			} else {
 				VStack(spacing: 0) {
 					ForEach(_filteredRecommendedSourcesData.indices, id: \.self) { index in
@@ -173,7 +177,7 @@ struct SourcesAddView: View {
 						}
 					}
 				}
-				.sourcePanel(padding: 0)
+				.nullSignSurface(fill: NullSignStyle.groupedSurface)
 			}
 		}
 	}
@@ -187,22 +191,19 @@ struct SourcesAddView: View {
 	) -> some View {
 		Button(action: action) {
 			HStack(spacing: 12) {
-				Image(systemName: icon)
-					.font(.system(size: 17, weight: .medium))
-					.foregroundStyle(NullSignStyle.accent)
-					.frame(width: 30)
+				NullSignIconTile(systemImage: icon, tint: NullSignStyle.categoryColor(for: icon), size: 32, filled: true)
 				VStack(alignment: .leading, spacing: 2) {
 					Text(title)
-						.font(.subheadline.weight(.semibold))
+						.font(.roundedUI(size: 15, weight: .bold))
 					Text(subtitle)
-						.font(.caption)
-						.foregroundStyle(.secondary)
+						.font(.roundedUI(.caption))
+						.foregroundStyle(NullSignStyle.muted)
 						.lineLimit(2)
 				}
 				Spacer()
 				Image(systemName: "chevron.right")
-					.font(.caption.weight(.semibold))
-					.foregroundStyle(.tertiary)
+					.font(.roundedUI(size: 12, weight: .bold))
+					.foregroundStyle(NullSignStyle.faint)
 			}
 			.padding(.horizontal, 10)
 			.padding(.vertical, 10)
@@ -214,18 +215,23 @@ struct SourcesAddView: View {
 
 	private func _featuredRow(url: URL, source: ASRepository) -> some View {
 		HStack(spacing: 12) {
-			_featuredIcon(source.currentIconURL)
-			VStack(alignment: .leading, spacing: 3) {
+			SourceRemoteIcon(
+				url: source.currentIconURL,
+				relativeTo: url,
+				size: 46,
+				fallbackAssetName: SourceBundledIcon.assetName(for: source)
+			)
+			VStack(alignment: .leading, spacing: 2) {
 				Text(source.name ?? .localized("Unknown"))
-					.font(.subheadline.weight(.semibold))
+					.font(.roundedUI(.headline))
 					.lineLimit(1)
 				Text(url.host?.replacingOccurrences(of: "www.", with: "") ?? url.absoluteString)
-					.font(.caption)
-					.foregroundStyle(.secondary)
+					.font(.roundedUI(.subheadline))
+					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
 				Text(verbatim: .localized("%lld Apps", arguments: source.apps.count))
-					.font(.caption2)
-					.foregroundStyle(.secondary)
+					.font(.roundedUI(.caption))
+					.foregroundStyle(NullSignStyle.faint)
 			}
 			Spacer(minLength: 8)
 			Button {
@@ -234,36 +240,10 @@ struct SourcesAddView: View {
 				}
 			} label: {
 				Text(.localized("Add"))
-					.font(.caption.weight(.bold))
-					.padding(.horizontal, 14)
-					.frame(height: 32)
 			}
-			.buttonStyle(.nullSign(cornerRadius: 9))
+			.buttonStyle(NullSignSecondaryButtonStyle(height: 30))
 		}
 		.padding(12)
-	}
-
-	@ViewBuilder
-	private func _featuredIcon(_ url: URL?) -> some View {
-		if let url {
-			LazyImage(url: url) { state in
-				if let image = state.image {
-					image.appIconStyle(size: 46, isCircle: false, background: NullSignStyle.raisedPanel)
-				} else {
-					_featuredPlaceholder
-				}
-			}
-		} else {
-			_featuredPlaceholder
-		}
-	}
-
-	private var _featuredPlaceholder: some View {
-		ZStack {
-			RoundedRectangle(cornerRadius: 11, style: .continuous).fill(NullSignStyle.raisedPanel)
-			Image(systemName: "shippingbox").foregroundStyle(NullSignStyle.accent)
-		}
-		.frame(width: 46, height: 46)
 	}
 
 	private func _saveSource() {

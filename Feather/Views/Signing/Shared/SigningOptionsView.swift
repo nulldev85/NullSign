@@ -128,14 +128,16 @@ struct SigningOptionsView: View {
 		Section {
 			_toggle(
 				.localized("Remove URL Schemes"),
-				systemImage: "link.badge.minus",
+				systemImage: "link",
+				tint: NullSignStyle.danger,
 				isOn: $options.removeURLScheme,
 				temporaryValue: temporaryOptions?.removeURLScheme
 			)
 			
 			_toggle(
 				.localized("Remove Provisioning Profile"),
-				systemImage: "doc.badge.minus",
+				systemImage: "doc.text",
+				tint: NullSignStyle.danger,
 				isOn: $options.removeProvisioning,
 				temporaryValue: temporaryOptions?.removeProvisioning
 			)
@@ -180,7 +182,7 @@ struct SigningOptionsView: View {
 		Section {
 			_toggle(
 				.localized("Replace Substrate with ElleKit"),
-				systemImage: "pencil",
+				systemImage: "arrow.triangle.2.circlepath",
 				isOn: $options.experiment_replaceSubstrateWithEllekit,
 				temporaryValue: temporaryOptions?.experiment_replaceSubstrateWithEllekit
 			)
@@ -212,19 +214,10 @@ struct SigningOptionsView: View {
 		selection: Binding<T>,
 		values: [T]
 	) -> some View {
-		HStack(spacing: 12) {
-			SigningRowIcon(systemImage: systemImage)
-			Text(title)
-				.font(.body.weight(.medium))
-			Spacer(minLength: 8)
-			Picker(title, selection: selection) {
-				ForEach(values, id: \.self) { value in
-					Text(value.localizedDescription).tag(value)
-				}
-			}
-			.labelsHidden()
-			.tint(NullSignStyle.accent)
-		}
+		NullSignChoiceRow(
+			title: title, systemImage: systemImage, selection: selection,
+			values: values, label: { $0.localizedDescription }
+		)
 		.signingDestinationRow()
 	}
 	
@@ -232,17 +225,18 @@ struct SigningOptionsView: View {
 	private func _toggle(
 		_ title: String,
 		systemImage: String,
+		tint: Color? = nil,
 		isOn: Binding<Bool>,
 		temporaryValue: Bool? = nil
 	) -> some View {
 		Toggle(isOn: isOn) {
 			HStack(spacing: 12) {
-				SigningRowIcon(systemImage: systemImage)
+				NullSignIconTile(systemImage: systemImage, tint: tint)
 				Text(title)
-					.font(.body.weight(.medium))
+					.font(.roundedUI(.body, weight: .regular))
 				if let tempValue = temporaryValue, tempValue != isOn.wrappedValue {
 					Text("Changed")
-						.font(.caption2.weight(.semibold))
+						.font(.roundedUI(.caption2, weight: .bold))
 						.foregroundStyle(NullSignStyle.accent)
 				}
 			}

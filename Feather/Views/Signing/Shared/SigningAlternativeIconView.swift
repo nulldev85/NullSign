@@ -28,7 +28,7 @@ struct SigningAlternativeIconView: View {
 			}
 		} else {
 			_content
-				.navigationTitle(.localized("Alternative Icons"))
+				.nullSignNavigationTitle(.localized("Alternative Icons"))
 		}
 	}
 }
@@ -43,9 +43,9 @@ extension SigningAlternativeIconView {
 						SigningRowIcon(systemImage: "app.dashed")
 						VStack(alignment: .leading, spacing: 3) {
 							Text("\(_alternateIcons.count) alternate \(_alternateIcons.count == 1 ? "icon" : "icons")")
-								.font(.headline)
+								.font(.roundedUI(.headline))
 							Text(isModifing ? "Choose the icon to use for this signed app." : "Icons declared by this app's Info.plist.")
-								.font(.caption)
+								.font(.roundedUI(.caption))
 								.foregroundStyle(.secondary)
 						}
 						Spacer(minLength: 0)
@@ -83,7 +83,7 @@ extension SigningAlternativeIconView {
 		}
 		.listStyle(.plain)
 		.scrollContentBackground(.hidden)
-		.background(Color.black)
+		.nullSignPage()
 		.tint(NullSignStyle.accent)
 		.onAppear(perform: _loadAlternateIcons)
 	}
@@ -100,7 +100,7 @@ extension SigningAlternativeIconView {
 			}
 			
 			Text(icon.name)
-				.font(.body.weight(.medium))
+				.font(.roundedUI(.body, weight: .regular))
 				.foregroundColor(.primary)
 				.lineLimit(2)
 
@@ -108,7 +108,7 @@ extension SigningAlternativeIconView {
 
 			if showsSelectionIndicator {
 				Image(systemName: "chevron.right")
-					.font(.caption.weight(.semibold))
+					.font(.roundedUI(.caption, weight: .semibold))
 					.foregroundStyle(.secondary)
 			}
 		}

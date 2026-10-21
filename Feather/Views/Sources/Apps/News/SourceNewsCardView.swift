@@ -10,14 +10,14 @@ struct SourceNewsCardView: View {
 			_newsImage
 			VStack(alignment: .leading, spacing: 6) {
 				Text(new.title)
-					.font(.subheadline.weight(.semibold))
+					.font(.roundedUI(.subheadline, weight: .bold))
 					.foregroundStyle(.primary)
 					.lineLimit(3)
 					.multilineTextAlignment(.leading)
 				Spacer(minLength: 0)
 				if let date = new.date?.date {
 					Text(date.formatted(date: .abbreviated, time: .omitted))
-						.font(.caption2)
+						.font(.roundedUI(.caption2))
 						.foregroundStyle(.secondary)
 				}
 			}
@@ -25,12 +25,7 @@ struct SourceNewsCardView: View {
 			.frame(width: 128, alignment: .leading)
 		}
 		.frame(width: 230, height: 112)
-		.background(NullSignStyle.panel)
-		.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-		.overlay {
-			RoundedRectangle(cornerRadius: 14, style: .continuous)
-				.stroke(NullSignStyle.hairline, lineWidth: 1)
-		}
+		.nullSignSurface(cornerRadius: 20)
 	}
 
 	@ViewBuilder
@@ -54,7 +49,7 @@ struct SourceNewsCardView: View {
 		ZStack {
 			NullSignStyle.raisedPanel
 			Image(systemName: "newspaper")
-				.font(.title3)
+				.font(.roundedUI(.title3, weight: .regular))
 				.foregroundStyle(NullSignStyle.accent)
 		}
 	}

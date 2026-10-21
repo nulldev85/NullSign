@@ -1,6 +1,5 @@
 import SwiftUI
 import AltSourceKit
-import NukeUI
 
 struct SourceAppsCellView: View {
 	@AppStorage("Feather.storeCellAppearance") private var _storeCellAppearance: Int = 0
@@ -10,68 +9,47 @@ struct SourceAppsCellView: View {
 	let app: ASRepository.App
 
 	var body: some View {
-		HStack(alignment: .top, spacing: 13) {
-			_appIcon
+		HStack(alignment: .center, spacing: 12) {
+			SourceRemoteIcon(
+				url: app.iconURL ?? source.currentIconURL,
+				relativeTo: sourceURL,
+				size: 56,
+				placeholderSystemImage: "app.dashed",
+				fallbackAssetName: SourceBundledIcon.assetName(forBundleIdentifier: app.id)
+			)
 
-			VStack(alignment: .leading, spacing: 5) {
+			VStack(alignment: .leading, spacing: 2) {
 				Text(app.currentName)
-					.font(.body.weight(.semibold))
+					.font(.roundedUI(.headline))
+					.foregroundStyle(.white)
 					.lineLimit(1)
 
 				Text(Self.appDescription(app: app))
-					.font(.caption)
-					.foregroundStyle(.secondary)
+					.font(.roundedUI(.subheadline))
+					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(_storeCellAppearance == 0 ? 1 : 2)
 
-				HStack(spacing: 6) {
-					if let version = app.currentVersion, !version.isEmpty {
-						Text("v\(version)")
-					}
-					if app.currentVersion?.isEmpty == false, source.name?.isEmpty == false {
-						Circle().fill(Color.secondary.opacity(0.65)).frame(width: 3, height: 3)
-					}
-					if let sourceName = source.name {
-						Text(sourceName)
-					}
-				}
-				.font(.caption2.weight(.medium))
-				.foregroundStyle(.secondary)
-				.lineLimit(1)
+				Text(_footnote)
+					.font(.roundedUI(.caption))
+					.foregroundStyle(NullSignStyle.faint)
+					.lineLimit(1)
+					.padding(.top, 1)
 			}
 
-			Spacer(minLength: 5)
+			Spacer(minLength: 6)
 
 			DownloadButtonView(sourceURL: sourceURL, source: source, app: app)
-				.padding(.top, 8)
 		}
-		.padding(.horizontal, 16)
-		.padding(.vertical, 12)
-		.overlay(alignment: .bottom) {
-			Rectangle()
-				.fill(NullSignStyle.hairline)
-				.frame(height: 1)
-				.padding(.leading, 87)
-		}
+		.padding(14)
+		.nullSignSurface()
+		.padding(.horizontal, 20)
+		.padding(.vertical, 6)
 	}
 
-	@ViewBuilder
-	private var _appIcon: some View {
-		if let iconURL = app.iconURL {
-			LazyImage(url: iconURL) { state in
-				if let image = state.image {
-					image.appIconStyle(size: 58, isCircle: false, background: NullSignStyle.raisedPanel)
-				} else {
-					_placeholderIcon
-				}
-			}
-		} else {
-			_placeholderIcon
-		}
-	}
-
-	private var _placeholderIcon: some View {
-		Image("App_Unknown")
-			.appIconStyle(size: 58, isCircle: false, background: NullSignStyle.raisedPanel)
+	private var _footnote: String {
+		[app.currentVersion.flatMap { $0.isEmpty ? nil : $0 }, source.name]
+			.compactMap { $0 }
+			.joined(separator: " · ")
 	}
 
 	static func appDescription(app: ASRepository.App) -> String {

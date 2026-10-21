@@ -11,72 +11,65 @@ import SwiftUI
 import NimbleJSON
 
 // MARK: - Class
+/// Main-actor isolated: sources are Core Data objects owned by the main
+/// context, so their URLs are read here and only plain URLs cross over to
+/// the network tasks.
+@MainActor
 final class SourcesViewModel: ObservableObject {
 	static let shared = SourcesViewModel()
-	
+
 	typealias RepositoryDataHandler = Result<ASRepository, Error>
-	
+
 	private let _dataService = NBFetchService()
 	private var _pendingRefresh = false
 	private var _pendingSources: [AltSource]?
-	
-	var isFinished = true
+	private var _isFinished = true
+
 	@Published var sources: [AltSource: ASRepository] = [:]
 	@Published private(set) var isFetching = false
 	@Published private(set) var failedSourceURLs: Set<URL> = []
-	
+
 	func fetchSources(_ sources: FetchedResults<AltSource>, refresh: Bool = false, batchSize: Int = 4) async {
 		await fetchSources(Array(sources), refresh: refresh, batchSize: batchSize)
 	}
 
 	func fetchSources(_ sources: [AltSource], refresh: Bool = false, batchSize: Int = 4) async {
-		guard isFinished else {
+		// One fetch at a time; the latest request is replayed when it finishes.
+		guard _isFinished else {
 			_pendingSources = sources
 			_pendingRefresh = _pendingRefresh || refresh
 			return
 		}
-		
+
+		let liveSources = sources.filter { !$0.isDeleted && $0.managedObjectContext != nil }
+
 		// check if sources to be fetched are the same as before, if yes, return
 		// also skip check if refresh is true
-		if !refresh, sources.allSatisfy({ self.sources[$0] != nil }) { return }
-		
-		// isfinished is used to prevent multiple fetches at the same time
-		isFinished = false
-		await MainActor.run {
-			self.isFetching = true
-			self.failedSourceURLs = []
-		}
-		defer {
-			isFinished = true
-			let pendingSources = _pendingSources
-			let shouldRefreshAgain = _pendingRefresh
-			_pendingSources = nil
-			_pendingRefresh = false
-			Task { @MainActor in
-				self.isFetching = false
-				if let pendingSources {
-					await self.fetchSources(pendingSources, refresh: shouldRefreshAgain, batchSize: batchSize)
-				}
-			}
-		}
-		
-		let sourcesArray = sources
-		
-		for startIndex in stride(from: 0, to: sourcesArray.count, by: batchSize) {
-			let endIndex = min(startIndex + batchSize, sourcesArray.count)
-			let batch = Array(sourcesArray[startIndex..<endIndex])
-			let requests = batch.enumerated().map { (index: $0.offset, url: $0.element.sourceURL) }
-			
+		if !refresh, liveSources.allSatisfy({ self.sources[$0] != nil }) { return }
+
+		_isFinished = false
+		isFetching = true
+		failedSourceURLs = []
+
+		let requests = liveSources.map { (source: $0, url: $0.sourceURL) }
+		let dataService = _dataService
+		let step = max(batchSize, 1)
+
+		for startIndex in stride(from: 0, to: requests.count, by: step) {
+			let endIndex = min(startIndex + step, requests.count)
+			let batch = Array(requests[startIndex..<endIndex])
+			let urls = batch.map { $0.url }
+
 			let batchResults = await withTaskGroup(of: (Int, Result<ASRepository, Error>).self) { group in
-				for request in requests {
+				for (index, url) in urls.enumerated() {
 					group.addTask {
-						guard let url = request.url else {
-							return (request.index, .failure(URLError(.badURL)))
+						guard let url else {
+							return (index, .failure(URLError(.badURL)))
 						}
-						
+
 						return await withCheckedContinuation { continuation in
-							self._dataService.fetch(from: url) { (result: RepositoryDataHandler) in
-								continuation.resume(returning: (request.index, result))
+							dataService.fetch(from: url) { (result: Result<ASRepository, Error>) in
+								continuation.resume(returning: (index, result))
 							}
 						}
 					}
@@ -88,23 +81,31 @@ final class SourcesViewModel: ObservableObject {
 				}
 				return results
 			}
-			
-			await MainActor.run {
-				for (index, result) in batchResults {
-					let source = batch[index]
-					switch result {
-					case .success(let repo):
-						self.sources[source] = repo
-						if let url = source.sourceURL {
-							self.failedSourceURLs.remove(url)
-						}
-					case .failure:
-						if let url = source.sourceURL {
-							self.failedSourceURLs.insert(url)
-						}
+
+			for (index, result) in batchResults {
+				let request = batch[index]
+				switch result {
+				case .success(let repo):
+					self.sources[request.source] = repo
+					if let url = request.url {
+						failedSourceURLs.remove(url)
+					}
+				case .failure:
+					if let url = request.url {
+						failedSourceURLs.insert(url)
 					}
 				}
 			}
+		}
+
+		_isFinished = true
+		isFetching = false
+
+		if let pendingSources = _pendingSources {
+			let shouldRefreshAgain = _pendingRefresh
+			_pendingSources = nil
+			_pendingRefresh = false
+			await fetchSources(pendingSources, refresh: shouldRefreshAgain, batchSize: batchSize)
 		}
 	}
 }

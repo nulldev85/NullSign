@@ -60,7 +60,7 @@ struct CertificatesAddView: View {
 						"Certificate files and passwords are stored locally and are never uploaded by NullSign.",
 						systemImage: "lock.fill"
 					)
-					.font(.footnote)
+					.font(.roundedUI(.footnote))
 					.foregroundStyle(.secondary)
 					.padding(.horizontal, 4)
 				}
@@ -68,7 +68,7 @@ struct CertificatesAddView: View {
 				.padding(.top, 12)
 				.padding(.bottom, 28)
 			}
-			.background(Color.black.ignoresSafeArea())
+			.nullSignPage()
 			.toolbar {
 				NBToolbarButton(role: .cancel)
 				NBToolbarButton(
@@ -111,24 +111,24 @@ extension CertificatesAddView {
 	) -> some View {
 		Button(action: action) {
 			HStack(spacing: 12) {
-				Image(systemName: file == nil ? systemImage : "checkmark.circle.fill")
-					.font(.system(size: 16, weight: .semibold))
-					.foregroundStyle(NullSignStyle.accent)
-					.frame(width: 32, height: 32)
-					.background(NullSignStyle.raisedPanel)
-					.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+				NullSignIconTile(
+					systemImage: file == nil ? systemImage : "checkmark",
+					tint: file == nil ? NullSignStyle.categoryColor(for: systemImage) : NullSignStyle.success,
+					size: 32
+				)
 
 				VStack(alignment: .leading, spacing: 2) {
 					Text(title)
-						.font(.body.weight(.medium))
-					Text(file?.lastPathComponent ?? "Choose a file")
-						.font(.caption)
-						.foregroundStyle(file == nil ? Color.secondary : NullSignStyle.accent)
+						.font(.roundedUI(.body, weight: .bold))
+					Text(file?.lastPathComponent ?? "No file selected")
+						.font(.roundedUI(.footnote))
+						.foregroundStyle(NullSignStyle.muted)
 						.lineLimit(1)
+						.truncationMode(.middle)
 				}
 				Spacer()
 				Text(file == nil ? "Choose" : "Change")
-					.font(.subheadline.weight(.medium))
+					.font(.roundedUI(.subheadline, weight: .bold))
 					.foregroundStyle(NullSignStyle.accent)
 			}
 			.contentShape(Rectangle())
@@ -140,9 +140,11 @@ extension CertificatesAddView {
 	private func _inputField(_ placeholder: String, text: Binding<String>, secure: Bool) -> some View {
 		if secure {
 			SecureField(placeholder, text: text)
+				.font(.roundedUI(.body))
 				.textContentType(.password)
 		} else {
 			TextField(placeholder, text: text)
+				.font(.roundedUI(.body))
 		}
 	}
 

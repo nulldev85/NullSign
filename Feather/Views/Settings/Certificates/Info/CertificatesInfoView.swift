@@ -20,7 +20,7 @@ struct CertificatesInfoView: View {
 						title: displayName,
 						detail: data?.TeamName ?? "Reading provisioning profile…",
 						status: cert.revoked ? "Revoked" : "Saved",
-						statusColor: cert.revoked ? NullSignStyle.warning : NullSignStyle.accent
+						statusColor: cert.revoked ? NullSignStyle.danger : NullSignStyle.success
 					)
 
 					if let data {
@@ -85,7 +85,7 @@ struct CertificatesInfoView: View {
 				.padding(.top, 12)
 				.padding(.bottom, 28)
 			}
-			.background(Color.black.ignoresSafeArea())
+			.nullSignPage()
 			.toolbar {
 				NBToolbarButton(role: .close)
 			}
@@ -98,13 +98,13 @@ struct CertificatesInfoView: View {
 	private func _infoRow(_ title: String, value: String) -> some View {
 		HStack(alignment: .firstTextBaseline, spacing: 16) {
 			Text(title)
-				.font(.body.weight(.medium))
+				.font(.roundedUI(.body, weight: .regular))
 			Spacer(minLength: 12)
 			Text(value)
-				.font(.subheadline)
+				.font(.roundedUI(.subheadline))
 				.foregroundStyle(.secondary)
 				.multilineTextAlignment(.trailing)
-				.copyableText(value)
+				.nullSignCopyableText(value)
 		}
 	}
 }

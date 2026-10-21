@@ -11,8 +11,6 @@ import NimbleViews
 
 // MARK: - View
 struct LibraryCellView: View {
-	@Environment(\.editMode) private var editMode
-	@Environment(\.accessibilityReduceMotion) private var reduceMotion
 	// Not @ObservedObject: UpdateManager also publishes isChecking/lastCheckedDate,
 	// which would re-render every visible row on every check start/finish even
 	// though only the per-app update entry below is ever read from it.
@@ -20,280 +18,303 @@ struct LibraryCellView: View {
 	@State private var _update: AppUpdate?
 	@State private var _signedUpdateConfirmation: AppUpdate?
 	@State private var _isSignedUpdateConfirmationPresented = false
-	@State private var _isPeelingAway = false
+	@State private var _isActionsPresenting = false
+	@State private var _pendingAction: MenuAction?
 
-	var certInfo: Date.ExpirationInfo? {
-		Storage.shared.getCertificate(from: app)?.expiration?.expirationInfo()
-	}
-	
-	var certRevoked: Bool {
-		Storage.shared.getCertificate(from: app)?.revoked == true
-	}
-	
 	var app: AppInfoPresentable
+	var isSelecting: Bool
 	@Binding var selectedInfoAppPresenting: AnyApp?
 	@Binding var selectedSigningAppPresenting: AnyApp?
 	@Binding var selectedInstallAppPresenting: AnyApp?
 	@Binding var selectedAppUUIDs: Set<String>
-	
+
+	private let _cardShape = RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous)
+
 	// MARK: Selections
 	private var _isSelected: Bool {
 		guard let uuid = app.uuid else { return false }
 		return selectedAppUUIDs.contains(uuid)
 	}
-	
+
 	private func _toggleSelection() {
 		guard let uuid = app.uuid else { return }
+		UISelectionFeedbackGenerator().selectionChanged()
 		if selectedAppUUIDs.contains(uuid) {
 			selectedAppUUIDs.remove(uuid)
 		} else {
 			selectedAppUUIDs.insert(uuid)
 		}
 	}
-	
+
 	// MARK: Body
 	var body: some View {
-		let isEditing = editMode?.wrappedValue == .active
-		
-		HStack(spacing: 18) {
-			if isEditing {
-				Button {
-					_toggleSelection()
+		HStack(spacing: 12) {
+			if isSelecting {
+				_selectionIndicator
+					.transition(.opacity)
+			}
+
+			_appIcon
+
+			VStack(alignment: .leading, spacing: 2) {
+				HStack(alignment: .firstTextBaseline, spacing: 6) {
+					Text(app.name ?? .localized("Unknown"))
+						.font(.roundedUI(.headline))
+						.foregroundStyle(.white)
+						.lineLimit(1)
+					if let version = app.version, !version.isEmpty {
+						Text(version)
+							.font(.roundedUI(.subheadline))
+							.foregroundStyle(NullSignStyle.faint)
+							.lineLimit(1)
+							.layoutPriority(-1)
+					}
+				}
+				Text(app.identifier ?? .localized("Unknown"))
+					.font(.roundedUI(.subheadline))
+					.foregroundStyle(NullSignStyle.muted)
+					.lineLimit(1)
+					.minimumScaleFactor(0.85)
+				HStack(spacing: 6) {
+					PlatformBadge(platform: app.platform)
+					_status
+				}
+				.padding(.top, 4)
+			}
+
+			Spacer(minLength: 4)
+
+			if !isSelecting {
+				_primaryAction
+			}
+		}
+		.padding(14)
+		.nullSignSurface()
+		.overlay {
+			if isSelecting && _isSelected {
+				_cardShape.strokeBorder(NullSignStyle.accent, lineWidth: 2)
+			}
+		}
+		.contentShape(_cardShape)
+		.gesture(
+			LongPressGesture().exclusively(before: TapGesture()).onEnded { value in
+				switch value {
+				case .first:
+					guard !isSelecting else { return }
+					UIImpactFeedbackGenerator(style: .light).impactOccurred()
+					_isActionsPresenting = true
+				case .second:
+					if isSelecting { _toggleSelection() }
+					else { selectedInfoAppPresenting = AnyApp(base: app) }
+				}
+			}
+		)
+		.swipeActions(edge: .trailing, allowsFullSwipe: true) {
+			if !isSelecting {
+				Button(role: .destructive) {
+					_delete()
 				} label: {
-					Image(systemName: _isSelected ? "checkmark.circle.fill" : "circle")
-						.foregroundColor(_isSelected ? .accentColor : .secondary)
-						.font(.title2)
+					Label(.localized("Delete"), systemImage: "trash")
 				}
-				.buttonStyle(.borderless)
-			}
-			
-			_appIcon(for: app)
-			
-			NBTitleWithSubtitleView(
-				title: app.name ?? .localized("Unknown"),
-				subtitle: _desc,
-				linelimit: 0
-			)
-			
-			if !isEditing {
-				_buttonActions(for: app)
+				.tint(NullSignStyle.danger)
 			}
 		}
-		.nullSignPanel()
-		.background(_isSelected && isEditing ? NullSignStyle.accent.opacity(0.08) : Color.clear)
-		.rotation3DEffect(
-			.degrees(_isPeelingAway && !reduceMotion ? -82 : 0),
-			axis: (x: 0, y: 1, z: 0),
-			anchor: .trailing,
-			perspective: 0.72
-		)
-		.scaleEffect(x: _isPeelingAway && !reduceMotion ? 0.72 : 1, y: _isPeelingAway && !reduceMotion ? 0.96 : 1, anchor: .trailing)
-		.offset(x: _isPeelingAway && !reduceMotion ? -34 : 0)
-		.opacity(_isPeelingAway ? 0 : 1)
-		.shadow(color: .black.opacity(_isPeelingAway ? 0.42 : 0), radius: 18, x: 14, y: 3)
-		.animation(
-			reduceMotion
-				? .easeOut(duration: 0.15)
-				: .timingCurve(0.22, 0.78, 0.28, 1, duration: 0.48),
-			value: _isPeelingAway
-		)
-		.allowsHitTesting(!_isPeelingAway)
-		.contentShape(Rectangle())
-		.onTapGesture {
-			if isEditing {
-				_toggleSelection()
-			}
+		.accessibilityAction(named: Text(.localized("App Actions"))) {
+			guard !isSelecting else { return }
+			_isActionsPresenting = true
 		}
-		.swipeActions {
-			if !isEditing {
-				_actions(for: app)
-			}
-		}
-		.contextMenu {
-			if !isEditing {
-				_contextActions(for: app)
-				Divider()
-				_contextActionsExtra(for: app)
-				Divider()
-				_actions(for: app)
-			}
-		}
-		.confirmationDialog(
-			.localized("Update Available"),
-			isPresented: $_isSignedUpdateConfirmationPresented,
-			titleVisibility: .visible
-		) {
-			Button(.localized("Install Current Version"), systemImage: "square.and.arrow.down") {
-				selectedInstallAppPresenting = AnyApp(base: app)
-			}
-			if let update = _signedUpdateConfirmation {
-				Button(.localized("Download Update"), systemImage: "arrow.down.circle") {
-					_startUpdateDownload(update)
+		.sheet(isPresented: $_isActionsPresenting, onDismiss: _performPendingAction) {
+			NullSignMenuSheet(
+				title: app.name ?? .localized("App Actions"), systemImage: "app.badge",
+				detail: app.identifier
+			) {
+				NullSignSettingsCard {
+					_menuActions
 				}
 			}
-			Button(.localized("Cancel"), role: .cancel) {}
-		} message: {
-			if let update = _signedUpdateConfirmation {
-				Text("\(update.appName) \(update.remoteVersion)")
-			}
+		}
+		.sheet(isPresented: $_isSignedUpdateConfirmationPresented, onDismiss: _performPendingAction) {
+			_signedUpdateMenu
 		}
 		.onReceive(updateManager.$updates) { updates in
 			_update = app.uuid.flatMap { updates[$0] }
 		}
-	}
-	
-	private var _desc: String {
-		if let version = app.version, let id = app.identifier {
-			return "\(version) • \(id)"
-		} else {
-			return .localized("Unknown")
-		}
+		.accessibilityAddTraits(isSelecting && _isSelected ? .isSelected : [])
 	}
 }
 
 
 // MARK: - Extension: View
 extension LibraryCellView {
-	private func _appIcon(for app: AppInfoPresentable) -> some View {
-		FRAppIconView(app: app, size: 57)
-			.overlay(alignment: .bottomTrailing) {
-				PlatformBadge(platform: app.platform)
-					.offset(x: 5, y: 4)
-			}
+	private var _appIcon: some View {
+		FRAppIconView(app: app, size: 56)
 			.overlay(alignment: .topTrailing) {
 				if _update != nil {
-					Image(systemName: "arrow.down.circle.fill")
-						.font(.system(size: 18, weight: .semibold))
-						.symbolRenderingMode(.palette)
-						.foregroundStyle(.white, NullSignStyle.muted)
-						.background(
-							Circle()
-								.fill(Color(.systemBackground))
-								.frame(width: 20, height: 20)
-						)
-						.offset(x: 5, y: -5)
+					Circle()
+						.fill(NullSignStyle.accent)
+						.frame(width: 12, height: 12)
+						.overlay(Circle().strokeBorder(NullSignStyle.groupedSurface, lineWidth: 2))
+						.offset(x: 4, y: -4)
 						.accessibilityLabel(.localized("Update Available"))
 				}
 			}
 	}
-	
-	@ViewBuilder
-	private func _actions(for app: AppInfoPresentable) -> some View {
-		Button(role: .destructive) {
-			_peelAndDelete(app)
-		} label: {
-			Label(.localized("Delete"), systemImage: "externaldrive.badge.xmark")
-				.symbolRenderingMode(.hierarchical)
-		}
-		.tint(NullSignStyle.accent)
+
+	private var _selectionIndicator: some View {
+		Image(systemName: _isSelected ? "checkmark.circle.fill" : "circle")
+			.font(.roundedUI(.title2, weight: .regular))
+			.symbolRenderingMode(.palette)
+			.foregroundStyle(_isSelected ? Color.white : NullSignStyle.faint, _isSelected ? NullSignStyle.accent : NullSignStyle.faint)
 	}
 
-	private func _peelAndDelete(_ app: AppInfoPresentable) {
-		guard !_isPeelingAway else { return }
-		UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-		_isPeelingAway = true
-		Task { @MainActor in
-			try? await Task.sleep(for: .milliseconds(reduceMotion ? 150 : 480))
-			Storage.shared.deleteApp(for: app)
+	@ViewBuilder
+	private var _status: some View {
+		if _update != nil {
+			Text("Update available")
+				.font(.roundedUI(.caption, weight: .regular))
+				.foregroundStyle(NullSignStyle.accent)
+		} else if app.isSigned {
+			if let certificate = Storage.shared.getCertificate(from: app) {
+				if certificate.revoked {
+					Text(.localized("Revoked"))
+						.font(.roundedUI(.caption, weight: .regular))
+						.foregroundStyle(NullSignStyle.danger)
+				} else if let expiration = certificate.expiration {
+					let label = NullSignValidity.shortLabel(for: expiration)
+					Text(label.text)
+						.font(.roundedUI(.caption))
+						.foregroundStyle(label.tint)
+				}
+			}
+		} else {
+			Text("Not signed")
+				.font(.roundedUI(.caption))
+				.foregroundStyle(NullSignStyle.faint)
 		}
 	}
-	
+
 	@ViewBuilder
-	private func _contextActions(for app: AppInfoPresentable) -> some View {
-		Button(.localized("Get Info"), systemImage: "info.circle") {
-			selectedInfoAppPresenting = AnyApp(base: app)
-		}
-	}
-	
-	@ViewBuilder
-	private func _contextActionsExtra(for app: AppInfoPresentable) -> some View {
+	private var _primaryAction: some View {
 		if let update = _update {
-			Button(.localized("Update"), systemImage: "arrow.down.circle") {
+			Button {
 				if app.isSigned {
 					_signedUpdateConfirmation = update
 					_isSignedUpdateConfirmationPresented = true
 				} else {
 					_startUpdateDownload(update)
 				}
+			} label: {
+				Text(.localized("Update"))
 			}
-		}
-		
-		if app.isSigned {
-			if let id = app.identifier {
-				Button(.localized("Open"), systemImage: "app.badge.checkmark") {
-					UIApplication.openApp(with: id)
-				}
-			}
-			Button(.localized("Install"), systemImage: "square.and.arrow.down") {
+			.buttonStyle(NullSignPrimaryButtonStyle(height: 32))
+		} else if app.isSigned {
+			Button {
 				selectedInstallAppPresenting = AnyApp(base: app)
+			} label: {
+				Text(.localized("Install"))
 			}
-			Button(.localized("Re-sign"), systemImage: "signature") {
-				selectedSigningAppPresenting = AnyApp(base: app)
-			}
-			Button(.localized("Export"), systemImage: "square.and.arrow.up") {
-				selectedInstallAppPresenting = AnyApp(base: app, archive: true)
-			}
+			.buttonStyle(NullSignPrimaryButtonStyle(height: 32))
 		} else {
-			Button(.localized("Install"), systemImage: "square.and.arrow.down") {
-				selectedInstallAppPresenting = AnyApp(base: app)
-			}
-			Button(.localized("Sign"), systemImage: "signature") {
+			Button {
 				selectedSigningAppPresenting = AnyApp(base: app)
+			} label: {
+				Text(.localized("Sign"))
+			}
+			.buttonStyle(NullSignSecondaryButtonStyle(height: 32))
+		}
+	}
+
+	private func _delete() {
+		UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+		if let uuid = app.uuid {
+			selectedAppUUIDs.remove(uuid)
+		}
+		// Safe to call twice or on an app that is already gone.
+		Storage.shared.deleteApp(for: app)
+	}
+
+	private enum MenuAction {
+		case info, open, install, sign, export, delete
+		case update(AppUpdate)
+		case downloadUpdate(AppUpdate)
+	}
+
+	private var _signedUpdateMenu: some View {
+		NullSignMenuSheet(
+			title: "Update Available", systemImage: "arrow.down.circle",
+			detail: _signedUpdateConfirmation.map { "\($0.appName) \($0.remoteVersion)" }
+		) {
+			NullSignSettingsCard {
+				NullSignMenuAction(title: "Install Current Version", systemImage: "square.and.arrow.down") {
+					_pendingAction = .install
+					_isSignedUpdateConfirmationPresented = false
+				}
+				if let update = _signedUpdateConfirmation {
+					NullSignSettingsDivider()
+					NullSignMenuAction(title: "Download Update", systemImage: "arrow.down.circle", tint: NullSignStyle.success) {
+						_pendingAction = .downloadUpdate(update)
+						_isSignedUpdateConfirmationPresented = false
+					}
+				}
 			}
 		}
 	}
-	
+
 	@ViewBuilder
-	private func _buttonActions(for app: AppInfoPresentable) -> some View {
-		Group {
-			if let update = _update {
-				if app.isSigned {
-					Button {
-						_signedUpdateConfirmation = update
-						_isSignedUpdateConfirmationPresented = true
-					} label: {
-						FRExpirationPillView(
-							title: .localized("Install"),
-							revoked: certRevoked,
-							expiration: certInfo
-						)
-					}
-				} else {
-					Button {
-						_startUpdateDownload(update)
-					} label: {
-						FRExpirationPillView(
-							title: .localized("Update"),
-							revoked: false,
-							expiration: nil
-						)
-					}
-				}
-			} else if app.isSigned {
-				Button {
-					selectedInstallAppPresenting = AnyApp(base: app)
-				} label: {
-					FRExpirationPillView(
-						title: .localized("Install"),
-						revoked: certRevoked,
-						expiration: certInfo
-					)
-				}
-			} else {
-				Button {
-					selectedSigningAppPresenting = AnyApp(base: app)
-				} label: {
-					FRExpirationPillView(
-						title: .localized("Sign"),
-						revoked: false,
-						expiration: nil
-					)
-				}
+	private var _menuActions: some View {
+		NullSignMenuAction(title: .localized("Get Info"), systemImage: "info.circle") { _chooseAction(.info) }
+		NullSignSettingsDivider()
+		if let update = _update {
+			NullSignMenuAction(title: .localized("Update"), systemImage: "arrow.down.circle", tint: NullSignStyle.success) {
+				_chooseAction(.update(update))
+			}
+			NullSignSettingsDivider()
+		}
+		if app.isSigned {
+			if app.identifier != nil {
+				NullSignMenuAction(title: .localized("Open"), systemImage: "app.badge.checkmark", tint: NullSignStyle.success) { _chooseAction(.open) }
+				NullSignSettingsDivider()
 			}
 		}
-		.buttonStyle(.borderless)
+		NullSignMenuAction(title: .localized("Install"), systemImage: "square.and.arrow.down") { _chooseAction(.install) }
+		NullSignSettingsDivider()
+		NullSignMenuAction(title: app.isSigned ? .localized("Re-sign") : .localized("Sign"), systemImage: "signature", tint: NullSignStyle.purple) { _chooseAction(.sign) }
+		if app.isSigned {
+			NullSignSettingsDivider()
+			NullSignMenuAction(title: .localized("Export"), systemImage: "square.and.arrow.up", tint: NullSignStyle.warning) { _chooseAction(.export) }
+		}
+		NullSignSettingsDivider()
+		NullSignMenuAction(title: .localized("Delete"), systemImage: "trash", isDestructive: true) { _chooseAction(.delete) }
 	}
-	
+
+	private func _chooseAction(_ action: MenuAction) {
+		_pendingAction = action
+		_isActionsPresenting = false
+	}
+
+	/// Dismiss before presenting signing/install/info UI or deleting this row.
+	private func _performPendingAction() {
+		guard let action = _pendingAction else { return }
+		_pendingAction = nil
+		switch action {
+		case .info: selectedInfoAppPresenting = AnyApp(base: app)
+		case .open:
+			if let id = app.identifier { UIApplication.openApp(with: id) }
+		case .install: selectedInstallAppPresenting = AnyApp(base: app)
+		case .sign: selectedSigningAppPresenting = AnyApp(base: app)
+		case .export: selectedInstallAppPresenting = AnyApp(base: app, archive: true)
+		case .delete: _delete()
+		case .downloadUpdate(let update): _startUpdateDownload(update)
+		case .update(let update):
+			if app.isSigned {
+				_signedUpdateConfirmation = update
+				_isSignedUpdateConfirmationPresented = true
+			} else {
+				_startUpdateDownload(update)
+			}
+		}
+	}
+
 	private func _startUpdateDownload(_ update: AppUpdate) {
 		_ = DownloadManager.shared.startDownload(
 			from: update.downloadURL,

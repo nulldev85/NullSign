@@ -24,7 +24,7 @@ struct SigningToggleCellView<T>: View {
 				_rowLabel
 				Spacer(minLength: 10)
 				Text(readOnlyLabel)
-					.font(.caption.weight(.semibold))
+					.font(.roundedUI(.caption, weight: .bold))
 					.foregroundStyle(.secondary)
 			}
 		} else {
@@ -52,11 +52,11 @@ struct SigningToggleCellView<T>: View {
 			SigningRowIcon(systemImage: systemImage)
 			VStack(alignment: .leading, spacing: detail == nil ? 0 : 2) {
 				Text(displayTitle ?? title)
-					.font(.body.weight(.medium))
+					.font(.roundedUI(.body, weight: .regular))
 					.lineLimit(2)
 				if let detail {
 					Text(detail)
-						.font(.caption)
+						.font(.roundedUI(.caption))
 						.foregroundStyle(.secondary)
 						.lineLimit(2)
 				}

@@ -13,8 +13,8 @@ struct SourceAppsDetailView: View {
 
 	var body: some View {
 		ScrollView {
-			LazyVStack(alignment: .leading, spacing: 22) {
-				_identity
+			LazyVStack(alignment: .leading, spacing: 26) {
+				_header
 
 				if let screenshots = app.screenshotURLs, !screenshots.isEmpty {
 					_detailSection(.localized("Screenshots")) {
@@ -26,37 +26,36 @@ struct SourceAppsDetailView: View {
 				   let notes = app.currentAppVersion?.localizedDescription,
 				   !notes.isEmpty {
 					_detailSection(.localized("What's New")) {
-						VStack(alignment: .leading, spacing: 13) {
+						VStack(alignment: .leading, spacing: 12) {
 							AppVersionInfo(version: version, date: app.currentDate?.date, description: notes)
 							if let versions = app.versions, versions.count > 1 {
 								NavigationLink {
 									VersionHistoryView(sourceURL: sourceURL, source: source, app: app, versions: versions)
-										.navigationTitle(.localized("Version History"))
+										.nullSignNavigationTitle(.localized("Version History"))
 										.navigationBarTitleDisplayMode(.inline)
 								} label: {
 									HStack {
 										Text(.localized("Version History"))
 										Spacer()
 										Image(systemName: "chevron.right")
-											.font(.caption.weight(.semibold))
+											.font(.roundedUI(.footnote, weight: .semibold))
 									}
-									.font(.subheadline.weight(.semibold))
 									.foregroundStyle(NullSignStyle.accent)
 								}
 								.buttonStyle(.plain)
 							}
 						}
-						.sourcePanel()
+						.sourcePanel(padding: 16)
 					}
 				}
 
 				if let description = app.localizedDescription, !description.isEmpty {
 					_detailSection(.localized("About")) {
 						ExpandableText(text: description, lineLimit: 5)
-							.font(.body)
-							.foregroundStyle(.secondary)
+							.font(.roundedUI(.subheadline))
+							.foregroundStyle(NullSignStyle.muted)
 							.frame(maxWidth: .infinity, alignment: .leading)
-							.sourcePanel()
+							.sourcePanel(padding: 16)
 					}
 				}
 
@@ -70,15 +69,15 @@ struct SourceAppsDetailView: View {
 				if let permissions = app.appPermissions {
 					_detailSection(.localized("Permissions")) {
 						_permissions(permissions)
-							.sourcePanel()
+							.sourcePanel(padding: 16)
 					}
 				}
 			}
 			.padding(.horizontal, 16)
-			.padding(.top, 10)
+			.padding(.top, 8)
 			.padding(.bottom, 36)
 		}
-		.background(Color.black)
+		.nullSignPage()
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {
 			NBToolbarButton(systemImage: "square.and.arrow.up", placement: .topBarTrailing) {
@@ -93,70 +92,41 @@ struct SourceAppsDetailView: View {
 		}
 	}
 
-	private var _identity: some View {
-		VStack(alignment: .leading, spacing: 16) {
-			HStack(alignment: .top, spacing: 15) {
-				_appIcon
+	private var _header: some View {
+		HStack(alignment: .top, spacing: 16) {
+			SourceRemoteIcon(
+				url: app.iconURL ?? source.currentIconURL,
+				relativeTo: sourceURL,
+				size: 100,
+				placeholderSystemImage: "app.dashed",
+				fallbackAssetName: SourceBundledIcon.assetName(forBundleIdentifier: app.id)
+			)
 
-				VStack(alignment: .leading, spacing: 5) {
-					Text(app.currentName)
-						.font(.title2.weight(.bold))
+			VStack(alignment: .leading, spacing: 4) {
+				Text(app.currentName)
+					.font(.roundedUI(.title2, weight: .heavy))
+					.lineLimit(2)
+
+				if let developer = app.developer, !developer.isEmpty {
+					Text(developer)
+						.font(.roundedUI(.subheadline))
+						.foregroundStyle(NullSignStyle.muted)
+						.lineLimit(1)
+				}
+
+				if let summary = app.subtitle ?? app.description, !summary.isEmpty {
+					Text(summary)
+						.font(.roundedUI(.footnote))
+						.foregroundStyle(NullSignStyle.faint)
 						.lineLimit(2)
-
-					if let developer = app.developer, !developer.isEmpty {
-						Text(developer)
-							.font(.subheadline.weight(.medium))
-							.foregroundStyle(NullSignStyle.accent)
-					}
-
-					if let summary = app.subtitle ?? app.description, !summary.isEmpty {
-						Text(summary)
-							.font(.caption)
-							.foregroundStyle(.secondary)
-							.lineLimit(2)
-					}
 				}
 
-				Spacer(minLength: 4)
-			}
+				Spacer(minLength: 8)
 
-			HStack(spacing: 8) {
-				if let version = app.currentVersion {
-					_metadata(icon: "tag", value: version)
-				}
-				if let size = app.size {
-					_metadata(icon: "archivebox", value: size.formattedByteCount)
-				}
-				Spacer()
 				DownloadButtonView(sourceURL: sourceURL, source: source, app: app)
 			}
+			.frame(maxWidth: .infinity, alignment: .leading)
 		}
-		.sourcePanel(padding: 15)
-	}
-
-	@ViewBuilder
-	private var _appIcon: some View {
-		if let iconURL = app.iconURL {
-			LazyImage(url: iconURL) { state in
-				if let image = state.image {
-					image.appIconStyle(size: 86, isCircle: false, background: NullSignStyle.raisedPanel)
-				} else {
-					Image("App_Unknown").appIconStyle(size: 86, isCircle: false)
-				}
-			}
-		} else {
-			Image("App_Unknown").appIconStyle(size: 86, isCircle: false)
-		}
-	}
-
-	private func _metadata(icon: String, value: String) -> some View {
-		Label(value, systemImage: icon)
-			.font(.caption.weight(.medium))
-			.foregroundStyle(.secondary)
-			.padding(.horizontal, 9)
-			.frame(height: 30)
-			.background(NullSignStyle.raisedPanel)
-			.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 	}
 
 	@ViewBuilder
@@ -193,18 +163,20 @@ struct SourceAppsDetailView: View {
 		VStack(spacing: 0) {
 			HStack(alignment: .firstTextBaseline, spacing: 14) {
 				Text(title)
-					.font(.subheadline)
+					.foregroundStyle(NullSignStyle.muted)
 				Spacer()
 				Text(value)
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
 					.multilineTextAlignment(.trailing)
 					.textSelection(.enabled)
 			}
+			.font(.roundedUI(.subheadline))
 			.padding(.horizontal, 14)
 			.padding(.vertical, 12)
 			if !isLast {
-				Divider().overlay(NullSignStyle.hairline).padding(.leading, 14)
+				Rectangle()
+					.fill(NullSignStyle.hairline)
+					.frame(height: 1)
+					.padding(.leading, 14)
 			}
 		}
 	}
@@ -227,23 +199,20 @@ struct SourceAppsDetailView: View {
 
 			if permissions.entitlements?.isEmpty != false && permissions.privacy?.isEmpty != false {
 				Text(.localized("No permissions are listed by this source."))
-					.font(.subheadline)
-					.foregroundStyle(.secondary)
+					.font(.roundedUI(.subheadline))
+					.foregroundStyle(NullSignStyle.muted)
 			}
 		}
 	}
 
 	private func _permissionGroup(icon: String, title: String, value: String) -> some View {
-		HStack(alignment: .top, spacing: 11) {
-			Image(systemName: icon)
-				.font(.subheadline.weight(.medium))
-				.foregroundStyle(NullSignStyle.accent)
-				.frame(width: 21)
+		HStack(alignment: .top, spacing: 12) {
+			NullSignIconTile(systemImage: icon)
 			VStack(alignment: .leading, spacing: 3) {
-				Text(title).font(.subheadline.weight(.semibold))
+				Text(title).font(.roundedUI(.subheadline, weight: .bold))
 				Text(value)
-					.font(.caption)
-					.foregroundStyle(.secondary)
+					.font(.roundedUI(.footnote))
+					.foregroundStyle(NullSignStyle.muted)
 					.fixedSize(horizontal: false, vertical: true)
 			}
 		}
@@ -251,28 +220,28 @@ struct SourceAppsDetailView: View {
 
 	private func _screenshots(_ urls: [URL]) -> some View {
 		ScrollView(.horizontal, showsIndicators: false) {
-			LazyHStack(spacing: 10) {
+			LazyHStack(spacing: 12) {
 				ForEach(urls.indices, id: \.self) { index in
 					LazyImage(url: urls[index]) { state in
 						if let image = state.image {
 							image
 								.resizable()
 								.aspectRatio(contentMode: .fit)
-								.frame(maxWidth: 250, maxHeight: 390)
-								.background(NullSignStyle.panel)
-								.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+								.frame(maxWidth: 250, maxHeight: 400)
+								.clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 								.overlay {
-									RoundedRectangle(cornerRadius: 14, style: .continuous)
-										.stroke(NullSignStyle.hairline, lineWidth: 1)
+									RoundedRectangle(cornerRadius: 16, style: .continuous)
+										.strokeBorder(NullSignStyle.hairline, lineWidth: 1)
 								}
 								.onTapGesture {
 									_selectedScreenshotIndex = index
 									_isScreenshotPreviewPresented = true
 								}
 						} else {
-							NullSignStyle.panel
-								.frame(width: 210, height: 360)
-								.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+							RoundedRectangle(cornerRadius: 16, style: .continuous)
+								.fill(NullSignStyle.surface)
+								.frame(width: 210, height: 380)
+								.overlay(ProgressView())
 						}
 					}
 				}

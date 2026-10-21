@@ -24,11 +24,11 @@ struct SigningDylibView: View {
 					SigningRowIcon(systemImage: "link")
 					VStack(alignment: .leading, spacing: 3) {
 						Text("\(_dylibs.count) app-linked \(_dylibs.count == 1 ? "library" : "libraries")")
-							.font(.headline)
+							.font(.roundedUI(.headline))
 						Text(options == nil
 							 ? "System libraries are hidden from this inspection view."
 							 : "Turn off a library to remove its load command while signing.")
-							.font(.caption)
+							.font(.roundedUI(.caption))
 							.foregroundStyle(.secondary)
 							.fixedSize(horizontal: false, vertical: true)
 					}
@@ -64,7 +64,7 @@ struct SigningDylibView: View {
 			} footer: {
 				if _hiddenDylibCount > 0 {
 					Text(verbatim: .localized("%lld required system dylibs are hidden.", arguments: _hiddenDylibCount))
-						.font(.footnote)
+						.font(.roundedUI(.footnote))
 						.foregroundStyle(.secondary)
 						.padding(.top, 4)
 				}
@@ -72,8 +72,8 @@ struct SigningDylibView: View {
 		}
 		.listStyle(.plain)
 		.scrollContentBackground(.hidden)
-		.background(Color.black)
-		.navigationTitle(.localized("Dylibs"))
+		.nullSignPage()
+		.nullSignNavigationTitle(.localized("Dylibs"))
 		.tint(NullSignStyle.accent)
 		.onAppear(perform: _loadDylibs)
 	}

@@ -15,17 +15,17 @@ struct SourceNewsCardInfoView: View {
 					VStack(alignment: .leading, spacing: 10) {
 						if let date = new.date?.date {
 							Text(date.formatted(date: .long, time: .omitted))
-								.font(.caption.weight(.medium))
+								.font(.roundedUI(.caption, weight: .regular))
 								.foregroundStyle(NullSignStyle.accent)
 						}
 
 						Text(new.title)
-							.font(.title2.weight(.bold))
+							.font(.roundedUI(.title2, weight: .heavy))
 							.fixedSize(horizontal: false, vertical: true)
 
 						if !new.caption.isEmpty {
 							Text(new.caption)
-								.font(.body)
+								.font(.roundedUI(.body))
 								.foregroundStyle(.secondary)
 								.fixedSize(horizontal: false, vertical: true)
 						}
@@ -34,19 +34,18 @@ struct SourceNewsCardInfoView: View {
 					if let url = new.url {
 						Button { UIApplication.shared.open(url) } label: {
 							Label(.localized("Open Link"), systemImage: "arrow.up.right")
-								.font(.subheadline.weight(.semibold))
 								.frame(maxWidth: .infinity)
-								.frame(height: 42)
 						}
-						.buttonStyle(.nullSign())
+						.buttonStyle(NullSignPrimaryButtonStyle(height: 46))
 					}
 				}
 				.padding(16)
 			}
-			.background(Color.black)
+			.nullSignPage()
 			.toolbar { NBToolbarButton(role: .close) }
 		}
 		.tint(NullSignStyle.accent)
+		.nullSignTypography()
 	}
 
 	@ViewBuilder
@@ -75,7 +74,7 @@ struct SourceNewsCardInfoView: View {
 		ZStack {
 			NullSignStyle.panel
 			Image(systemName: "newspaper")
-				.font(.largeTitle)
+				.font(.roundedUI(.largeTitle, weight: .regular))
 				.foregroundStyle(NullSignStyle.accent)
 		}
 	}

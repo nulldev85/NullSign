@@ -1,42 +1,39 @@
 import SwiftUI
 
 /// Shared pieces for signing destinations. Repeated information stays in a
-/// continuous list; elevated surfaces are reserved for summaries and actions.
+/// continuous list; cards are reserved for summaries.
 struct SigningSectionHeader: View {
 	let title: String
 	var detail: String? = nil
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 3) {
-			Text(title.uppercased())
-				.font(.caption.weight(.semibold))
-				.tracking(0.55)
-				.foregroundStyle(.secondary)
+		VStack(alignment: .leading, spacing: 4) {
+			NullSignSectionLabel(title: title)
 
 			if let detail {
 				Text(detail)
-					.font(.caption)
-					.foregroundStyle(NullSignStyle.muted)
+					.font(.roundedUI(.footnote))
+					.foregroundStyle(NullSignStyle.faint)
 					.fixedSize(horizontal: false, vertical: true)
 			}
 		}
 		.textCase(nil)
-		.padding(.top, 8)
+		.padding(.top, 10)
 		.padding(.bottom, 4)
 	}
 }
 
 struct SigningRowIcon: View {
 	let systemImage: String
-	var tint: Color = NullSignStyle.accent
+	var tint: Color = .white
 
 	var body: some View {
-		Image(systemName: systemImage)
-			.font(.system(size: 15, weight: .semibold))
-			.foregroundStyle(tint)
-			.frame(width: 30, height: 30)
-			.background(NullSignStyle.raisedPanel)
-			.clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+		NullSignIconTile(
+			systemImage: systemImage,
+			tint: tint == .white ? NullSignStyle.categoryColor(for: systemImage) : tint,
+			size: 30,
+			filled: true
+		)
 	}
 }
 
@@ -48,19 +45,19 @@ struct SigningEmptyState: View {
 	var body: some View {
 		VStack(spacing: 10) {
 			Image(systemName: systemImage)
-				.font(.system(size: 25, weight: .light))
-				.foregroundStyle(NullSignStyle.accent)
+				.font(.roundedUI(size: 30, weight: .regular))
+				.foregroundStyle(NullSignStyle.faint)
 			Text(title)
-				.font(.headline)
+				.font(.roundedUI(.headline))
 			Text(detail)
-				.font(.subheadline)
-				.foregroundStyle(.secondary)
+				.font(.roundedUI(.subheadline))
+				.foregroundStyle(NullSignStyle.muted)
 				.multilineTextAlignment(.center)
 				.fixedSize(horizontal: false, vertical: true)
 		}
 		.frame(maxWidth: .infinity)
 		.padding(.horizontal, 28)
-		.padding(.vertical, 32)
+		.padding(.vertical, 28)
 	}
 }
 
@@ -74,17 +71,7 @@ struct SigningSummaryCard<Content: View>: View {
 	var body: some View {
 		content
 			.padding(16)
-			.background(NullSignStyle.panel)
-			.overlay(alignment: .leading) {
-				Rectangle()
-					.fill(NullSignStyle.accent)
-					.frame(width: 2)
-			}
-			.overlay {
-				RoundedRectangle(cornerRadius: 14, style: .continuous)
-					.stroke(NullSignStyle.hairline, lineWidth: 1)
-			}
-			.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+			.nullSignSurface()
 	}
 }
 
@@ -97,14 +84,14 @@ extension View {
 	) -> some View {
 		self
 			.listRowInsets(EdgeInsets(top: top, leading: leading, bottom: bottom, trailing: trailing))
-			.listRowBackground(Color.black)
+			.listRowBackground(Color.clear)
 			.listRowSeparatorTint(NullSignStyle.hairline)
 	}
 
 	func signingSummaryRow() -> some View {
 		self
 			.listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 10, trailing: 16))
-			.listRowBackground(Color.black)
+			.listRowBackground(Color.clear)
 			.listRowSeparator(.hidden)
 	}
 }

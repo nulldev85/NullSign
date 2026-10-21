@@ -11,6 +11,8 @@ import NimbleViews
 // MARK: - View
 struct SigningTweaksView: View {
 	@State private var _isAddingPresenting = false
+	@State private var _actionFile: NullSignFileMenuTarget?
+	@State private var _pendingDeleteFile: URL?
 	
 	@Binding var options: Options
 	
@@ -22,9 +24,9 @@ struct SigningTweaksView: View {
 					SigningRowIcon(systemImage: "shippingbox.and.arrow.backward")
 					VStack(alignment: .leading, spacing: 3) {
 						Text(options.injectionFiles.isEmpty ? "No tweaks selected" : "\(options.injectionFiles.count) selected")
-							.font(.headline)
+							.font(.roundedUI(.headline))
 						Text("NullSign accepts .deb packages and standalone .dylib files.")
-							.font(.caption)
+							.font(.roundedUI(.caption))
 							.foregroundStyle(.secondary)
 							.fixedSize(horizontal: false, vertical: true)
 					}
@@ -53,9 +55,9 @@ struct SigningTweaksView: View {
 						SigningRowIcon(systemImage: "puzzlepiece.extension")
 						VStack(alignment: .leading, spacing: 2) {
 							Text(.localized("Inject into Extensions"))
-								.font(.body.weight(.medium))
+								.font(.roundedUI(.body, weight: .regular))
 							Text("Also patch compatible embedded extensions")
-								.font(.caption)
+								.font(.roundedUI(.caption))
 								.foregroundStyle(.secondary)
 						}
 					}
@@ -88,8 +90,8 @@ struct SigningTweaksView: View {
 		}
 		.listStyle(.plain)
 		.scrollContentBackground(.hidden)
-		.background(Color.black)
-		.navigationTitle(.localized("Tweaks"))
+		.nullSignPage()
+		.nullSignNavigationTitle(.localized("Tweaks"))
 		.tint(NullSignStyle.accent)
 		.toolbar {
 			NBToolbarButton(
@@ -117,6 +119,12 @@ struct SigningTweaksView: View {
 			.ignoresSafeArea()
 		}
 		.animation(.smooth, value: options.injectionFiles)
+		.sheet(item: $_actionFile, onDismiss: _deleteRequestedFile) { target in
+			NullSignFileMenu(url: target.url) {
+				_pendingDeleteFile = target.url
+				_actionFile = nil
+			}
+		}
 	}
 }
 
@@ -130,10 +138,10 @@ extension SigningTweaksView {
 			)
 			VStack(alignment: .leading, spacing: 2) {
 				Text(tweak.deletingPathExtension().lastPathComponent)
-					.font(.body.weight(.medium))
+					.font(.roundedUI(.body, weight: .regular))
 					.lineLimit(2)
 				Text(tweak.pathExtension.uppercased())
-					.font(.caption2.weight(.semibold))
+					.font(.roundedUI(.caption2, weight: .bold))
 					.foregroundStyle(.secondary)
 			}
 			Spacer(minLength: 0)
@@ -142,21 +150,29 @@ extension SigningTweaksView {
 			.swipeActions(edge: .trailing, allowsFullSwipe: true) {
 				_fileActions(tweak: tweak)
 			}
-			.contextMenu {
-				_fileActions(tweak: tweak)
-			}
+			.onLongPressGesture { _actionFile = NullSignFileMenuTarget(url: tweak) }
+			.accessibilityAction(named: Text("File Actions")) { _actionFile = NullSignFileMenuTarget(url: tweak) }
 	}
 	
 	@ViewBuilder
 	private func _fileActions(tweak: URL) -> some View {
 		Button(role: .destructive) {
-			FileManager.default.deleteStored(tweak) { url in
-				if let index = options.injectionFiles.firstIndex(where: { $0 == url }) {
-					options.injectionFiles.remove(at: index)
-				}
-			}
+			_deleteFile(tweak)
 		} label: {
 			Label(.localized("Delete"), systemImage: "trash")
+		}
+	}
+
+	private func _deleteRequestedFile() {
+		guard let url = _pendingDeleteFile else { return }
+		_pendingDeleteFile = nil
+		guard options.injectionFiles.contains(url) else { return }
+		_deleteFile(url)
+	}
+
+	private func _deleteFile(_ tweak: URL) {
+		FileManager.default.deleteStored(tweak) { url in
+			options.injectionFiles.removeAll { $0 == url }
 		}
 	}
 }

@@ -34,9 +34,10 @@ struct ConfigurationDictAddView: View {
 				NullSignSettingsSection("Rule") {
 					VStack(alignment: .leading, spacing: 6) {
 						Text("Match")
-							.font(.caption.weight(.semibold))
+							.font(.roundedUI(.caption, weight: .bold))
 							.foregroundStyle(.secondary)
 						TextField("Original value", text: $_newKey)
+							.font(.roundedUI(.body))
 							.textInputAutocapitalization(.never)
 							.autocorrectionDisabled()
 					}
@@ -45,9 +46,10 @@ struct ConfigurationDictAddView: View {
 
 					VStack(alignment: .leading, spacing: 6) {
 						Text("Replace With")
-							.font(.caption.weight(.semibold))
+							.font(.roundedUI(.caption, weight: .bold))
 							.foregroundStyle(.secondary)
 						TextField("New value", text: $_newValue)
+							.font(.roundedUI(.body))
 							.textInputAutocapitalization(.never)
 							.autocorrectionDisabled()
 					}
@@ -57,8 +59,8 @@ struct ConfigurationDictAddView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 28)
 		}
-		.background(Color.black.ignoresSafeArea())
-		.navigationTitle("New Rule")
+		.nullSignPage()
+		.nullSignNavigationTitle("New Rule")
 		.navigationBarTitleDisplayMode(.inline)
 		.toolbar {
 			NBToolbarButton(

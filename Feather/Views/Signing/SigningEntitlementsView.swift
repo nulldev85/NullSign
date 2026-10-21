@@ -11,6 +11,8 @@ import NimbleViews
 // MARK: - View
 struct SigningEntitlementsView: View {
 	@State private var _isAddingPresenting = false
+	@State private var _actionFile: NullSignFileMenuTarget?
+	@State private var _pendingDeleteFile: URL?
 	
 	@Binding var bindingValue: URL?
 	
@@ -23,15 +25,15 @@ struct SigningEntitlementsView: View {
 						SigningRowIcon(systemImage: "doc.text")
 						VStack(alignment: .leading, spacing: 2) {
 							Text(ent.lastPathComponent)
-								.font(.body.weight(.medium))
+								.font(.roundedUI(.body, weight: .regular))
 								.lineLimit(2)
 							Text("Selected entitlements file")
-								.font(.caption)
+								.font(.roundedUI(.caption))
 								.foregroundStyle(.secondary)
 						}
 						Spacer(minLength: 0)
 						Button("Replace") { _isAddingPresenting = true }
-							.font(.subheadline.weight(.semibold))
+							.font(.roundedUI(.subheadline, weight: .bold))
 					}
 					.signingDestinationRow()
 					.swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -39,11 +41,8 @@ struct SigningEntitlementsView: View {
 							_delete(ent)
 						}
 					}
-					.contextMenu {
-						Button(.localized("Delete"), systemImage: "trash", role: .destructive) {
-							_delete(ent)
-						}
-					}
+					.onLongPressGesture { _actionFile = NullSignFileMenuTarget(url: ent) }
+					.accessibilityAction(named: Text("File Actions")) { _actionFile = NullSignFileMenuTarget(url: ent) }
 				} else {
 					Button {
 						_isAddingPresenting = true
@@ -53,15 +52,15 @@ struct SigningEntitlementsView: View {
 								SigningRowIcon(systemImage: "doc.badge.plus")
 								VStack(alignment: .leading, spacing: 3) {
 									Text(.localized("Select Entitlements File"))
-										.font(.headline)
+										.font(.roundedUI(.headline))
 									Text("Choose a plist or .entitlements file for this signing session.")
-										.font(.caption)
+										.font(.roundedUI(.caption))
 										.foregroundStyle(.secondary)
 										.fixedSize(horizontal: false, vertical: true)
 								}
 								Spacer(minLength: 0)
 								Image(systemName: "chevron.right")
-									.font(.caption.weight(.semibold))
+									.font(.roundedUI(.caption, weight: .semibold))
 									.foregroundStyle(.secondary)
 							}
 						}
@@ -78,9 +77,15 @@ struct SigningEntitlementsView: View {
 		}
 		.listStyle(.plain)
 		.scrollContentBackground(.hidden)
-		.background(Color.black)
-		.navigationTitle(.localized("Entitlements"))
+		.nullSignPage()
+		.nullSignNavigationTitle(.localized("Entitlements"))
 		.tint(NullSignStyle.accent)
+		.sheet(item: $_actionFile, onDismiss: _deleteRequestedFile) { target in
+			NullSignFileMenu(url: target.url) {
+				_pendingDeleteFile = target.url
+				_actionFile = nil
+			}
+		}
 		.sheet(isPresented: $_isAddingPresenting) {
 			FileImporterRepresentableView(
 				allowedContentTypes:  [.xmlPropertyList, .plist, .entitlements],
@@ -100,5 +105,12 @@ struct SigningEntitlementsView: View {
 		FileManager.default.deleteStored(url) { _ in
 			bindingValue = nil
 		}
+	}
+
+	private func _deleteRequestedFile() {
+		guard let url = _pendingDeleteFile else { return }
+		_pendingDeleteFile = nil
+		guard bindingValue == url else { return }
+		_delete(url)
 	}
 }

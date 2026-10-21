@@ -71,9 +71,12 @@ class DownloadManager: NSObject, ObservableObject {
 	override init() {
 		super.init()
 		let configuration = URLSessionConfiguration.default
-		_session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
+		// Delegate callbacks are delivered on the main queue: `downloads` is
+		// read and mutated by SwiftUI there, and touching the array from the
+		// session's background queue at the same time is a data race.
+		_session = URLSession(configuration: configuration, delegate: self, delegateQueue: .main)
 	}
-	
+
 	func startDownload(
 		from url: URL,
 		id: String = UUID().uuidString,
@@ -83,7 +86,10 @@ class DownloadManager: NSObject, ObservableObject {
 		if let existingDownload = downloads.first(where: {
 			$0.url == url && ($0.sourceProvenance != nil) == requestHasSourceProvenance
 		}) {
-			resumeDownload(existingDownload)
+			// Already transferring: restarting would orphan the running task.
+			if existingDownload.task?.state != .running {
+				resumeDownload(existingDownload)
+			}
 			return existingDownload
 		}
 		

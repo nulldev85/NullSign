@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="Feather/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png" width="160" alt="NullSign app icon">
+  <img src="Feather/Resources/Assets.xcassets/NullSignBlue.appiconset/nullsign.png" width="160" alt="NullSign app icon">
   <h1>NullSign</h1>
   <p>An on-device IPA signer with a small footprint and no certificate uploads.</p>
 </div>
@@ -35,6 +35,11 @@ That first sign is the bootstrap step. Once NullSign is installed, it can handle
 The included GitHub Actions workflow builds on a hosted Mac, so you do not need to own one. It checks out the submodules, builds the iPhone target with Xcode, packages the app as `NullSign-unsigned.ipa`, and stores it as a workflow artifact.
 
 No repository secrets are required for the unsigned build.
+
+The pinned iOS Zsign package includes a reviewed resource-signing backport.
+`make iphoneos` and the shared Xcode scheme apply it automatically; custom build
+schemes should first run `python3 Tools/prepare-zsign.py`. See
+[signing update notes](docs/signing-resource-update.md) for details and tests.
 
 ## A note about certificates
 

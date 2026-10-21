@@ -35,6 +35,27 @@ final class FRIconCache {
 	}
 }
 
+/// Renders icons one at a time. IconServices is private API with no
+/// thread-safety guarantees, and a list appearing used to start one render
+/// per row at once.
+private actor FRIconRenderer {
+	static let shared = FRIconRenderer()
+
+	func render(bundleURL: URL) -> UIImage? {
+		// The bundle can be deleted between a row appearing and this running;
+		// never hand IconServices a bundle that is no longer on disk.
+		guard let info = NSDictionary(contentsOf: bundleURL.appendingPathComponent("Info.plist")) as? [String: Any] else {
+			return nil
+		}
+
+		// An unreadable tvOS catalog must not enter IconServices' iOS recipe.
+		if TVIconSelection.isTVApp(info) {
+			return tvOSIcon(in: bundleURL, info: info)
+		}
+		return iconTest(bundleURL)
+	}
+}
+
 @MainActor
 final class FRAppIconLoader: ObservableObject {
 	@Published var image: UIImage?
@@ -53,9 +74,7 @@ final class FRAppIconLoader: ObservableObject {
 
 		image = nil
 		task = Task {
-			let generated = await Task.detached(priority: .userInitiated) {
-				return tvOSIcon(in: bundleURL) ?? iconTest(bundleURL)
-			}.value
+			let generated = await FRIconRenderer.shared.render(bundleURL: bundleURL)
 
 			guard !Task.isCancelled, representedRequest == request else { return }
 
@@ -71,50 +90,25 @@ final class FRAppIconLoader: ObservableObject {
 	}
 }
 
-/// tvOS app icons are layered brand assets rather than the single iOS icon
-/// IconServices expects. Ask the imported bundle's asset catalog for the
-/// declared brand asset first, then fall back to any bundled square artwork.
-private func tvOSIcon(in bundleURL: URL) -> UIImage? {
-	guard let bundle = Bundle(url: bundleURL) else { return nil }
-	let families = bundle.object(forInfoDictionaryKey: "UIDeviceFamily") as? [Int] ?? []
-	let platforms = bundle.object(forInfoDictionaryKey: "CFBundleSupportedPlatforms") as? [String] ?? []
-	guard families.contains(3) || platforms.contains(where: { $0.localizedCaseInsensitiveContains("appletv") }) else {
-		return nil
+/// Read the package's own bitmap renditions. Do not ask UIKit/IconServices to
+/// flatten a foreign tvOS layer stack, or substitute bundled copies of an icon.
+private func tvOSIcon(in bundleURL: URL, info: [String: Any]) -> UIImage? {
+	let names = TVIconSelection.assetNames(in: info)
+	if let image = tvOSIconTest(bundleURL, names), image.size.width > 1 {
+		return image
 	}
 
-	var names: [String] = []
-	if let icons = bundle.object(forInfoDictionaryKey: "CFBundleIcons") as? [String: Any],
-	   let primary = icons["CFBundlePrimaryIcon"] as? [String: Any] {
-		if let name = primary["CFBundleIconName"] as? String { names.append(name) }
-		if let files = primary["CFBundleIconFiles"] as? [String] { names.append(contentsOf: files.reversed()) }
-	}
-	names.append(contentsOf: ["App Icon", "App Icon - Small", "AppIcon"])
-
-	for name in names where !name.isEmpty {
-		if let image = UIImage(named: name, in: bundle, compatibleWith: nil), image.size.width > 1 {
-			return image
+	let root = bundleURL.standardizedFileURL.resolvingSymlinksInPath().path + "/"
+	for name in names {
+		for file in TVIconSelection.looseFileNames(for: name) {
+			let url = bundleURL.appendingPathComponent(file).standardizedFileURL.resolvingSymlinksInPath()
+			guard url.path.hasPrefix(root) else { continue }
+			if let image = UIImage(contentsOfFile: url.path), image.size.width > 1, image.size.height > 1 {
+				return image
+			}
 		}
 	}
-
-	let keys: [URLResourceKey] = [.isRegularFileKey, .fileSizeKey]
-	let candidates = (FileManager.default.enumerator(
-		at: bundleURL,
-		includingPropertiesForKeys: keys,
-		options: [.skipsHiddenFiles]
-	) as? FileManager.DirectoryEnumerator)?
-		.compactMap { $0 as? URL }
-		.filter {
-			$0.pathExtension.lowercased() == "png" &&
-			!$0.lastPathComponent.localizedCaseInsensitiveContains("top shelf") &&
-			!$0.lastPathComponent.localizedCaseInsensitiveContains("topshelf")
-		} ?? []
-
-	return candidates
-		.compactMap { url -> (UIImage, CGFloat)? in
-			guard let image = UIImage(contentsOfFile: url.path), image.size.width == image.size.height else { return nil }
-			return (image, image.size.width)
-		}
-		.max(by: { $0.1 < $1.1 })?.0
+	return nil
 }
 
 struct FRAppIconView: View {
@@ -123,11 +117,11 @@ struct FRAppIconView: View {
 
 	@Environment(\.colorScheme) private var colorScheme
 	@StateObject private var loader = FRAppIconLoader()
-	
+
 	@AppStorage("Feather.userTintColor") private var selectedColorHex: String = "#FFFFFF"
 	@AppStorage("Feather.shouldTintIcons") private var shouldTintIcons: Bool = false
 	@AppStorage("Feather.shouldChangeIconsBasedOffStyle") private var shouldChangeIconsBasedOffStyle: Bool = false
-	
+
 	init(app: AppInfoPresentable? = nil, size: CGFloat = 87) {
 		self.app = app
 		self.size = size
@@ -139,7 +133,11 @@ struct FRAppIconView: View {
 
 	var body: some View {
 		Group {
-			if let image = loader.image {
+			if app == nil {
+				Image("NullSignBrand")
+					.renderingMode(.original)
+					.appIconStyle(size: size)
+			} else if let image = loader.image {
 				Image(uiImage: image)
 					.appIconStyle(size: size)
 			} else {
@@ -147,14 +145,18 @@ struct FRAppIconView: View {
 					.appIconStyle(size: size)
 			}
 		}
-		.task(id: "\(appearance.rawValue)\(selectedColorHex)\(shouldTintIcons)\(shouldChangeIconsBasedOffStyle)") {
-			_load()
+		.task(id: "\(app?.uuid ?? "self")\(appearance.rawValue)\(selectedColorHex)\(shouldTintIcons)\(shouldChangeIconsBasedOffStyle)") {
+			if app != nil {
+				_load()
+			} else {
+				loader.cancel()
+			}
 		}
 		.onDisappear {
 			loader.cancel()
 		}
 	}
-	
+
 	private func _load() {
 		let bundleURL: URL
 

@@ -1,113 +1,129 @@
 import SwiftUI
 import AltSourceKit
-import NukeUI
 
 struct SourcesCellView: View {
+	@State private var _isActionsPresenting = false
+	@State private var _didCopyURL = false
+	@State private var _deleteAfterDismissal = false
 	let source: AltSource
 	let repository: ASRepository?
 	let isFetching: Bool
 	let didFail: Bool
+	let onSelect: () -> Void
 
 	var body: some View {
-		HStack(spacing: 13) {
-			_sourceIcon
+		HStack(spacing: 12) {
+			SourceRemoteIcon(
+				url: source.iconURL ?? repository?.currentIconURL,
+				relativeTo: source.sourceURL,
+				size: 46,
+				fallbackAssetName: SourceBundledIcon.assetName(for: repository)
+			)
 
-			VStack(alignment: .leading, spacing: 5) {
+			VStack(alignment: .leading, spacing: 2) {
 				Text(source.name ?? repository?.name ?? .localized("Unknown"))
-					.font(.body.weight(.semibold))
-					.foregroundStyle(.primary)
+					.font(.roundedUI(.headline))
+					.foregroundStyle(.white)
 					.lineLimit(1)
 
 				Text(_displayHost)
-					.font(.caption)
-					.foregroundStyle(.secondary)
+					.font(.roundedUI(.subheadline))
+					.foregroundStyle(NullSignStyle.muted)
 					.lineLimit(1)
 
 				_status
+					.padding(.top, 2)
 			}
 
 			Spacer(minLength: 8)
+
+			Image(systemName: "chevron.right")
+				.font(.roundedUI(.footnote, weight: .semibold))
+				.foregroundStyle(NullSignStyle.faint)
 		}
-		.padding(.vertical, 9)
-		.contentShape(Rectangle())
+		.padding(16)
+		.nullSignSurface()
+		.contentShape(RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous))
 		.swipeActions {
 			_actions(for: source)
 			_contextActions(for: source)
 		}
-		.contextMenu {
-			_contextActions(for: source)
-			Divider()
-			_actions(for: source)
-		}
-	}
-
-	@ViewBuilder
-	private var _sourceIcon: some View {
-		if let iconURL = source.iconURL ?? repository?.currentIconURL {
-			LazyImage(url: iconURL) { state in
-				if let image = state.image {
-					image.appIconStyle(size: 50, isCircle: false, background: NullSignStyle.raisedPanel)
-				} else {
-					_placeholderIcon
+		.gesture(
+			LongPressGesture().exclusively(before: TapGesture()).onEnded { value in
+				switch value {
+				case .first:
+					_didCopyURL = false
+					UIImpactFeedbackGenerator(style: .light).impactOccurred()
+					_isActionsPresenting = true
+				case .second: onSelect()
 				}
 			}
-		} else {
-			_placeholderIcon
+		)
+		.accessibilityElement(children: .combine)
+		.accessibilityAddTraits(.isButton)
+		.accessibilityAction { onSelect() }
+		.accessibilityAction(named: Text(.localized("Repository Actions"))) {
+			_didCopyURL = false
+			_isActionsPresenting = true
+		}
+		.sheet(isPresented: $_isActionsPresenting, onDismiss: _deleteRequestedSource) {
+			NullSignMenuSheet(
+				title: source.name ?? repository?.name ?? .localized("Repository"),
+				systemImage: "externaldrive.connected.to.line.below", detail: _displayHost
+			) {
+				NullSignSettingsCard {
+					NullSignMenuAction(
+						title: _didCopyURL ? .localized("Copied") : .localized("Copy Source URL"),
+						systemImage: _didCopyURL ? "checkmark" : "doc.on.clipboard",
+						isDisabled: source.sourceURL == nil
+					) {
+						UIPasteboard.general.string = source.sourceURL?.absoluteString
+						_didCopyURL = true
+						UINotificationFeedbackGenerator().notificationOccurred(.success)
+					}
+					NullSignSettingsDivider()
+					NullSignMenuAction(title: .localized("Delete"), systemImage: "trash", isDestructive: true) {
+						_deleteAfterDismissal = true
+						_isActionsPresenting = false
+					}
+				}
+			}
 		}
 	}
 
-	private var _placeholderIcon: some View {
-		ZStack {
-			RoundedRectangle(cornerRadius: 12, style: .continuous)
-				.fill(NullSignStyle.raisedPanel)
-			Image(systemName: "shippingbox")
-				.font(.system(size: 20, weight: .medium))
-				.foregroundStyle(NullSignStyle.accent)
-		}
-		.frame(width: 50, height: 50)
-		.overlay {
-			RoundedRectangle(cornerRadius: 12, style: .continuous)
-				.stroke(NullSignStyle.hairline, lineWidth: 1)
-		}
+	private func _deleteRequestedSource() {
+		guard _deleteAfterDismissal else { return }
+		_deleteAfterDismissal = false
+		guard source.managedObjectContext != nil, !source.isDeleted else { return }
+		Storage.shared.deleteSource(for: source)
 	}
 
 	@ViewBuilder
 	private var _status: some View {
-		if let repository {
-			HStack(spacing: 5) {
-				if isFetching && !didFail {
-					ProgressView().controlSize(.mini).tint(NullSignStyle.accent)
-				} else {
-					Circle()
-						.fill(didFail ? NullSignStyle.warning : NullSignStyle.accent)
-						.frame(width: 5, height: 5)
-				}
-				Text(_loadedStatus(repository.apps.count))
+		HStack(spacing: 6) {
+			if isFetching && !didFail {
+				ProgressView()
+					.controlSize(.mini)
+			} else {
+				Circle()
+					.fill(didFail ? NullSignStyle.danger : NullSignStyle.success)
+					.frame(width: 6, height: 6)
 			}
-			.font(.caption2.weight(.medium))
-			.foregroundStyle(didFail ? NullSignStyle.warning : Color.secondary)
-		} else if isFetching && !didFail {
-			HStack(spacing: 6) {
-				ProgressView().controlSize(.mini).tint(NullSignStyle.accent)
-				Text("Updating")
-			}
-			.font(.caption2)
-			.foregroundStyle(.secondary)
-		} else if didFail {
-			Label("Unavailable — pull to retry", systemImage: "exclamationmark.circle")
-				.font(.caption2)
-				.foregroundStyle(NullSignStyle.warning)
-		} else {
-			Text("Waiting to update")
-				.font(.caption2)
-				.foregroundStyle(.secondary)
+			Text(_statusText)
+				.font(.roundedUI(.caption))
+				.foregroundStyle(didFail ? NullSignStyle.danger : NullSignStyle.muted)
+				.lineLimit(1)
 		}
 	}
 
-	private func _loadedStatus(_ count: Int) -> String {
-		if didFail { return "\(count.formatted()) apps cached — update failed" }
-		if isFetching { return "\(count.formatted()) apps — updating" }
-		return .localized("%lld Apps", arguments: count)
+	private var _statusText: String {
+		guard let repository else {
+			if didFail { return "Couldn't load · pull to retry" }
+			return isFetching ? "Updating…" : "Waiting to update"
+		}
+		let count = repository.apps.count == 1 ? "1 app" : "\(repository.apps.count.formatted()) apps"
+		if didFail { return "\(count) · offline" }
+		return count
 	}
 
 	private var _displayHost: String {
@@ -122,12 +138,15 @@ extension SourcesCellView {
 		Button(.localized("Delete"), systemImage: "trash", role: .destructive) {
 			Storage.shared.deleteSource(for: source)
 		}
+		.tint(NullSignStyle.danger)
 	}
 
 	@ViewBuilder
 	private func _contextActions(for source: AltSource) -> some View {
 		Button(.localized("Copy"), systemImage: "doc.on.clipboard") {
 			UIPasteboard.general.string = source.sourceURL?.absoluteString
+			UINotificationFeedbackGenerator().notificationOccurred(.success)
 		}
+		.tint(NullSignStyle.accent)
 	}
 }

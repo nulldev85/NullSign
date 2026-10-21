@@ -27,16 +27,15 @@ struct AboutView: View {
 		ScrollView {
 			VStack(spacing: 22) {
 				VStack(spacing: 10) {
-					FRAppIconView(size: 76)
-						.clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+					FRAppIconView(size: 84)
 					Text("NullSign")
-						.font(.title2.weight(.bold))
-					Text("Version \(Bundle.main.version) · Build \(_build)")
-						.font(.subheadline)
-						.foregroundStyle(.secondary)
+						.font(.roundedUI(.title2, weight: .heavy))
+					Text("Version \(Bundle.main.version) (\(_build))")
+						.font(.roundedUI(.subheadline))
+						.foregroundStyle(NullSignStyle.muted)
 				}
 				.frame(maxWidth: .infinity)
-				.padding(.vertical, 8)
+				.padding(.vertical, 12)
 
 				NullSignSettingsSection("App Updates", detail: _selfUpdateDetail) {
 					Button {
@@ -107,8 +106,8 @@ struct AboutView: View {
 			.padding(.top, 16)
 			.padding(.bottom, 28)
 		}
-		.background(Color.black.ignoresSafeArea())
-		.navigationTitle("About")
+		.nullSignPage()
+		.nullSignNavigationTitle("About")
 		.navigationBarTitleDisplayMode(.inline)
 		.task {
 			if _selfUpdateState == .idle {

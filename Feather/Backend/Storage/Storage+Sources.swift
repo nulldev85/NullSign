@@ -96,9 +96,11 @@ extension Storage {
 		completion(firstError)
 	}
 
+	/// Must be called on the main queue.
 	func deleteSource(for source: AltSource) {
+		guard source.managedObjectContext === context, !source.isDeleted else { return }
 		context.delete(source)
-		saveContext()
+		saveContextNow()
 	}
 
 	func sourceExists(_ identifier: String) -> Bool {

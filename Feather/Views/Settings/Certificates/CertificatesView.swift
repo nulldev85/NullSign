@@ -9,6 +9,8 @@ struct CertificatesView: View {
 	@State private var _isSelectedInfoPresenting: CertificatePair?
 	@State private var _certToRename: CertificatePair?
 	@State private var _newNickname = ""
+	@State private var _actionCertificate: CertificatePair?
+	@State private var _pendingCertificateAction: (CertificatePair, CertificateAction)?
 
 	@FetchRequest(
 		entity: CertificatePair.entity(),
@@ -33,9 +35,27 @@ struct CertificatesView: View {
 				_header
 
 				if _certificates.isEmpty {
-					_emptyState
+					NullSignEmptyState(
+						systemImage: "checkmark.seal",
+						title: "No Certificates",
+						message: "Import your .p12 and its provisioning profile. Certificate files and passwords never leave this device."
+					) {
+						Button {
+							_isAddingPresenting = true
+						} label: {
+							Text("Import Certificate")
+								.frame(minWidth: 160)
+						}
+						.buttonStyle(NullSignPrimaryButtonStyle())
+						.padding(.top, 4)
+					}
+					.padding(.top, 20)
 				} else {
-					ForEach(Array(_certificates.enumerated()), id: \.element.uuid) { index, cert in
+					NullSignSectionLabel(title: "Saved", count: _certificates.count)
+						.padding(.horizontal, 4)
+						.padding(.top, 10)
+
+					ForEach(Array(_certificates.enumerated()), id: \.element.objectID) { index, cert in
 						_cellButton(for: cert, at: index)
 					}
 				}
@@ -44,8 +64,20 @@ struct CertificatesView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 24)
 		}
-		.background(Color.black.ignoresSafeArea())
-		.navigationTitle("Certificates")
+		.nullSignPage()
+		.nullSignNavigationTitle("Certificates")
+		.navigationBarTitleDisplayMode(.inline)
+		.toolbar {
+			ToolbarItem(placement: .topBarTrailing) {
+				Button {
+					_isAddingPresenting = true
+				} label: {
+					Image(systemName: "plus")
+						.foregroundStyle(NullSignStyle.accent)
+				}
+				.accessibilityLabel("Import Certificate")
+			}
+		}
 		.sheet(item: $_isSelectedInfoPresenting) { cert in
 			CertificatesInfoView(cert: cert)
 		}
@@ -53,156 +85,131 @@ struct CertificatesView: View {
 			CertificatesAddView()
 				.presentationDetents([.medium, .large])
 		}
-		.alert("Rename Certificate", isPresented: $_isRenamingPresenting, presenting: _certToRename) { cert in
-			TextField("Nickname", text: $_newNickname)
-			Button("Cancel", role: .cancel) { }
-			Button("Save") {
-				cert.nickname = _newNickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-					? nil
-					: _newNickname.trimmingCharacters(in: .whitespacesAndNewlines)
-				Storage.shared.saveContext()
-			}
-		}
+		.sheet(item: $_actionCertificate, onDismiss: _performCertificateAction) { cert in _certificateMenu(cert) }
+		.sheet(isPresented: $_isRenamingPresenting) { _renamePrompt }
 	}
 }
 
 extension CertificatesView {
-	private var _header: some View {
-		NullSignSettingsCard {
-			HStack(spacing: 14) {
-				VStack(alignment: .leading, spacing: 4) {
-					Text("Signing identities")
-						.font(.headline)
-					Text(_certificates.isEmpty
-						 ? "A .p12 and matching provisioning profile are required."
-						 : "\(_certificates.count) saved on this iPhone")
-						.font(.subheadline)
-						.foregroundStyle(.secondary)
-						.fixedSize(horizontal: false, vertical: true)
-				}
+	private enum CertificateAction { case info, rename, revoke, delete }
 
-				Spacer(minLength: 8)
+	private func _chooseCertificateAction(_ action: CertificateAction, for cert: CertificatePair) {
+		_pendingCertificateAction = (cert, action)
+		_actionCertificate = nil
+	}
 
-				Button {
-					_isAddingPresenting = true
-				} label: {
-					Label("Import", systemImage: "plus")
-						.font(.subheadline.weight(.semibold))
-						.padding(.horizontal, 12)
-						.frame(height: 36)
+	private func _performCertificateAction() {
+		guard let (cert, action) = _pendingCertificateAction else { return }
+		_pendingCertificateAction = nil
+		guard cert.managedObjectContext != nil, !cert.isDeleted else { return }
+		switch action {
+		case .info: _isSelectedInfoPresenting = cert
+		case .rename:
+			_newNickname = cert.nickname ?? ""
+			_certToRename = cert
+			_isRenamingPresenting = true
+		case .revoke: Storage.shared.revokagedCertificate(for: cert)
+		case .delete: if cert.isDefault != true { _delete(cert) }
+		}
+	}
+
+	private func _certificateMenu(_ cert: CertificatePair) -> some View {
+		NullSignMenuSheet(title: cert.nickname ?? "Certificate", systemImage: "checkmark.seal", detail: "Manage this local signing identity.") {
+			NullSignSettingsCard {
+				NullSignMenuAction(title: "Get Info", systemImage: "info.circle") { _chooseCertificateAction(.info, for: cert) }
+				NullSignSettingsDivider()
+				NullSignMenuAction(title: "Rename", systemImage: "pencil", tint: NullSignStyle.purple) { _chooseCertificateAction(.rename, for: cert) }
+				NullSignSettingsDivider()
+				NullSignMenuAction(title: "Check Revocation", systemImage: "checkmark.shield", tint: NullSignStyle.success) { _chooseCertificateAction(.revoke, for: cert) }
+				if cert.isDefault != true {
+					NullSignSettingsDivider()
+					NullSignMenuAction(title: "Delete", systemImage: "trash", isDestructive: true) { _chooseCertificateAction(.delete, for: cert) }
 				}
-				.buttonStyle(.nullSign(cornerRadius: 10))
 			}
 		}
 	}
 
-	private var _emptyState: some View {
-		VStack(spacing: 11) {
-			Image(systemName: "checkmark.seal")
-				.font(.system(size: 25, weight: .medium))
-				.foregroundStyle(NullSignStyle.accent)
-			Text("No certificates yet")
-				.font(.headline)
-			Text("Use Import above to add your signing identity. Certificate files and passwords remain on this device.")
-				.font(.subheadline)
-				.foregroundStyle(.secondary)
-				.multilineTextAlignment(.center)
+	@ViewBuilder
+	private var _renamePrompt: some View {
+		if let cert = _certToRename {
+			NullSignTextPrompt(
+				title: "Rename Certificate", detail: "Set a nickname, or leave it empty to use the original certificate name.",
+				placeholder: "Nickname", text: $_newNickname, allowsEmpty: true
+			) {
+				guard cert.managedObjectContext != nil, !cert.isDeleted else { return }
+				let value = _newNickname.trimmingCharacters(in: .whitespacesAndNewlines)
+				cert.nickname = value.isEmpty ? nil : value
+				Storage.shared.saveContext()
+			}
 		}
-		.frame(maxWidth: .infinity)
-		.padding(.vertical, 38)
-		.padding(.horizontal, 24)
-		.background(NullSignStyle.panel)
-		.overlay {
-			RoundedRectangle(cornerRadius: 18, style: .continuous)
-				.stroke(NullSignStyle.hairline, lineWidth: 1)
-		}
-		.clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+	}
+
+	private var _header: some View {
+		NullSignSettingsIntro(
+			systemImage: "checkmark.seal",
+			title: "Signing Certificates",
+			detail: _platform == .tvOS
+				? "Choose a certificate whose provisioning profile includes tvOS."
+				: "Each certificate is a .p12 paired with its provisioning profile."
+		)
 	}
 
 	@ViewBuilder
 	private func _cellButton(for cert: CertificatePair, at index: Int) -> some View {
 		let isSelected = _selectedCertBinding.wrappedValue == index
 		let isCompatible = _platform.map { Storage.shared.certificate(cert, supports: $0) } ?? true
+		let shape = RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous)
 
 		HStack(spacing: 0) {
 			Button {
 				if isCompatible {
+					UISelectionFeedbackGenerator().selectionChanged()
 					_selectedCertBinding.wrappedValue = index
 				}
 			} label: {
 				CertificatesCellView(cert: cert, isSelected: isSelected)
 					.padding(.vertical, 14)
-					.padding(.leading, 16)
+					.padding(.leading, 14)
 					.frame(maxWidth: .infinity, alignment: .leading)
 			}
 			.buttonStyle(.plain)
 			.disabled(!isCompatible)
-			.opacity(isCompatible ? 1 : 0.45)
+			.opacity(isCompatible ? 1 : 0.4)
 
-			Menu {
-				_contextActions(for: cert)
-				if cert.isDefault != true {
-					Divider()
-					_actions(for: cert)
-				}
+			Button {
+				_actionCertificate = cert
 			} label: {
 				Image(systemName: "ellipsis")
-					.font(.body.weight(.semibold))
-					.foregroundStyle(.secondary)
-					.frame(width: 48, height: 48)
+					.font(.roundedUI(size: 15, weight: .bold))
+					.foregroundStyle(NullSignStyle.accent)
+					.frame(width: 46, height: 52)
 					.contentShape(Rectangle())
 			}
+			.buttonStyle(.plain)
 			.accessibilityLabel("Certificate actions")
 		}
-		.background(NullSignStyle.panel)
-		.overlay(alignment: .leading) {
-			Capsule()
-				.fill(isSelected ? NullSignStyle.accent : Color.clear)
-				.frame(width: 3)
-				.padding(.vertical, 12)
-		}
+		.nullSignSurface(fill: NullSignStyle.groupedSurface)
 		.overlay {
-			RoundedRectangle(cornerRadius: 18, style: .continuous)
-				.stroke(isSelected ? NullSignStyle.accent.opacity(0.5) : NullSignStyle.hairline, lineWidth: 1)
+			if isSelected {
+				shape.strokeBorder(NullSignStyle.accent, lineWidth: 2)
+			}
 		}
-		.clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 		.transaction { $0.animation = nil }
 	}
 
-	@ViewBuilder
-	private func _actions(for cert: CertificatePair) -> some View {
-		Button("Delete", systemImage: "trash", role: .destructive) {
-			_delete(cert)
-		}
-	}
-
-	@ViewBuilder
-	private func _contextActions(for cert: CertificatePair) -> some View {
-		Button("Get Info", systemImage: "info.circle") {
-			_isSelectedInfoPresenting = cert
-		}
-		Button("Rename", systemImage: "pencil") {
-			_newNickname = cert.nickname ?? ""
-			_certToRename = cert
-			_isRenamingPresenting = true
-		}
-		Divider()
-		Button("Check Revocation", systemImage: "checkmark.shield") {
-			Storage.shared.revokagedCertificate(for: cert)
-		}
-	}
 
 	private func _delete(_ cert: CertificatePair) {
 		let selectedIndex = _selectedCertBinding.wrappedValue
 		let selectedUUID = _certificates.indices.contains(selectedIndex)
 			? _certificates[selectedIndex].uuid
 			: nil
+		let deletedUUID = cert.uuid
 
 		Storage.shared.deleteCertificate(for: cert)
 		let remaining = Storage.shared.getAllCertificates()
 
 		if let selectedUUID,
-		   selectedUUID != cert.uuid,
+		   selectedUUID != deletedUUID,
 		   let preservedIndex = remaining.firstIndex(where: { $0.uuid == selectedUUID }) {
 			_selectedCertBinding.wrappedValue = preservedIndex
 		} else {

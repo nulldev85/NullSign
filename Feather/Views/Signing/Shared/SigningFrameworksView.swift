@@ -27,11 +27,11 @@ struct SigningFrameworksView: View {
 					SigningRowIcon(systemImage: "shippingbox")
 					VStack(alignment: .leading, spacing: 3) {
 						Text("\((_frameworks.count + _plugins.count)) embedded items")
-							.font(.headline)
+							.font(.roundedUI(.headline))
 						Text(options == nil
 							 ? "A read-only view of bundled frameworks and app extensions."
 							 : "Turn off an item to remove it from the signed package.")
-							.font(.caption)
+							.font(.roundedUI(.caption))
 							.foregroundStyle(.secondary)
 							.fixedSize(horizontal: false, vertical: true)
 					}
@@ -89,8 +89,8 @@ struct SigningFrameworksView: View {
 		}
 		.listStyle(.plain)
 		.scrollContentBackground(.hidden)
-		.background(Color.black)
-		.navigationTitle(.localized("Frameworks & PlugIns"))
+		.nullSignPage()
+		.nullSignNavigationTitle(.localized("Frameworks & PlugIns"))
 		.tint(NullSignStyle.accent)
 		.onAppear(perform: _listFrameworksAndPlugins)
 	}

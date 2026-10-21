@@ -2,6 +2,9 @@ import SwiftUI
 
 struct ConfigurationDictView: View {
 	@State private var _isAddingPresenting = false
+	@State private var _isRuleMenuPresenting = false
+	@State private var _actionRuleKey: String?
+	@State private var _pendingDeleteRule: String?
 
 	let title: String
 	@Binding var dataDict: [String: String]
@@ -13,9 +16,9 @@ struct ConfigurationDictView: View {
 					HStack(spacing: 12) {
 						VStack(alignment: .leading, spacing: 3) {
 							Text(title)
-								.font(.headline)
+								.font(.roundedUI(.headline))
 							Text("\(dataDict.count) automatic \(dataDict.count == 1 ? "rule" : "rules")")
-								.font(.subheadline)
+								.font(.roundedUI(.subheadline))
 								.foregroundStyle(.secondary)
 						}
 						Spacer()
@@ -23,23 +26,20 @@ struct ConfigurationDictView: View {
 							_isAddingPresenting = true
 						} label: {
 							Label("Add", systemImage: "plus")
-								.font(.subheadline.weight(.semibold))
-								.padding(.horizontal, 12)
-								.frame(height: 36)
 						}
-						.buttonStyle(.nullSign(cornerRadius: 10))
+						.buttonStyle(NullSignPrimaryButtonStyle(height: 36))
 					}
 				}
 
 				if dataDict.isEmpty {
 					VStack(spacing: 9) {
 						Image(systemName: "arrow.triangle.swap")
-							.font(.title2)
+							.font(.roundedUI(.title2, weight: .regular))
 							.foregroundStyle(NullSignStyle.accent)
 						Text("No rules configured")
-							.font(.headline)
+							.font(.roundedUI(.headline))
 						Text("Apps keep their original value unless a matching rule is added.")
-							.font(.subheadline)
+							.font(.roundedUI(.subheadline))
 							.foregroundStyle(.secondary)
 							.multilineTextAlignment(.center)
 					}
@@ -62,10 +62,20 @@ struct ConfigurationDictView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 28)
 		}
-		.background(Color.black.ignoresSafeArea())
-		.navigationTitle(title)
+		.nullSignPage()
+		.nullSignNavigationTitle(title)
 		.navigationDestination(isPresented: $_isAddingPresenting) {
 			ConfigurationDictAddView(dataDict: $dataDict)
+		}
+		.sheet(isPresented: $_isRuleMenuPresenting, onDismiss: _deleteRequestedRule) {
+			NullSignMenuSheet(title: "Rule Actions", systemImage: "doc.text", detail: _actionRuleKey) {
+				NullSignSettingsCard {
+					NullSignMenuAction(title: "Delete", systemImage: "trash", isDestructive: true) {
+						_pendingDeleteRule = _actionRuleKey
+						_isRuleMenuPresenting = false
+					}
+				}
+			}
 		}
 	}
 
@@ -73,30 +83,29 @@ struct ConfigurationDictView: View {
 		HStack(spacing: 12) {
 			VStack(alignment: .leading, spacing: 6) {
 				Text(key)
-					.font(.subheadline.weight(.medium))
+					.font(.roundedUI(.subheadline, weight: .regular))
 					.foregroundStyle(.secondary)
 					.lineLimit(1)
 				HStack(spacing: 7) {
 					Image(systemName: "arrow.right")
-						.font(.caption.weight(.semibold))
+						.font(.roundedUI(.caption, weight: .semibold))
 						.foregroundStyle(NullSignStyle.accent)
 					Text(value)
-						.font(.body.weight(.semibold))
+						.font(.roundedUI(.body, weight: .bold))
 						.lineLimit(2)
 				}
 			}
 			Spacer()
-			Menu {
-				Button("Delete", systemImage: "trash", role: .destructive) {
-					dataDict.removeValue(forKey: key)
-					OptionsManager.shared.saveOptions()
-				}
+			Button {
+				_actionRuleKey = key
+				_isRuleMenuPresenting = true
 			} label: {
 				Image(systemName: "ellipsis")
-					.font(.body.weight(.semibold))
+					.font(.roundedUI(.body, weight: .semibold))
 					.foregroundStyle(.secondary)
 					.frame(width: 40, height: 40)
 			}
+			.buttonStyle(.plain)
 		}
 		.padding(14)
 		.background(NullSignStyle.panel)
@@ -105,5 +114,12 @@ struct ConfigurationDictView: View {
 				.stroke(NullSignStyle.hairline, lineWidth: 1)
 		}
 		.clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+	}
+
+	private func _deleteRequestedRule() {
+		guard let key = _pendingDeleteRule else { return }
+		_pendingDeleteRule = nil
+		guard dataDict.removeValue(forKey: key) != nil else { return }
+		OptionsManager.shared.saveOptions()
 	}
 }

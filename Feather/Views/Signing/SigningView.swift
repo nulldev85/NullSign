@@ -20,6 +20,8 @@ struct SigningView: View {
 	@State private var _isAltPickerPresenting = false
 	@State private var _isFilePickerPresenting = false
 	@State private var _isImagePickerPresenting = false
+	@State private var _isIconMenuPresenting = false
+	@State private var _pendingIconPicker: IconPicker?
 	@State private var _isSigning = false
 	@State private var _selectedPhoto: PhotosPickerItem? = nil
 	@State var appIcon: UIImage?
@@ -49,7 +51,9 @@ struct SigningView: View {
 	var body: some View {
 		NBNavigationView("", displayMode: .inline) {
 			Form {
-				NullSignSigningHeader(app: app)
+				NullSignSigningHeader(app: app) {
+					_iconMenu(for: app)
+				}
 				_customizationOptions(for: app)
 					.listRowBackground(NullSignStyle.panel)
 				_cert()
@@ -58,54 +62,45 @@ struct SigningView: View {
 					.listRowBackground(NullSignStyle.panel)
 				_customizationProperties(for: app)
 					.listRowBackground(NullSignStyle.panel)
-				
-				// horrible
-				Rectangle()
-					.foregroundStyle(.clear)
-					.frame(height: 30)
-					.listRowBackground(EmptyView())
 			}
 			.scrollContentBackground(.hidden)
-			.background(Color.black)
-			.overlay {
-				VStack(spacing: 0) {
-					Spacer()
-					NBVariableBlurView()
-						.frame(height: UIDevice.current.userInterfaceIdiom == .pad ? 60 : 80)
-						.rotationEffect(.degrees(180))
-						.overlay {
-							Button {
-								_start()
-							} label: {
-								HStack {
-									Image(systemName: "checkmark.seal")
-									Text(_isSigning ? .localized("Signing…") : .localized("Sign App"))
-										.font(.system(size: 15, weight: .semibold))
-									Spacer()
-									if _isSigning {
-										ProgressView()
-											.tint(.black)
-									} else {
-										Image(systemName: "arrow.right")
-									}
-								}
-								.padding(.horizontal, 17)
-								.frame(height: 50)
-							}
-							.buttonStyle(.nullSign(cornerRadius: 13, dimsWhenDisabled: false))
-							.padding(.horizontal, 16)
-							.animation(_reduceMotion ? nil : .easeInOut(duration: 0.2), value: _isSigning)
-							.offset(y: UIDevice.current.userInterfaceIdiom == .pad ? -20 : -40)
+			.nullSignPage()
+			.tint(NullSignStyle.accent)
+			.safeAreaInset(edge: .bottom, spacing: 0) {
+				Button {
+					_start()
+				} label: {
+					HStack(spacing: 8) {
+						if _isSigning {
+							ProgressView()
+								.tint(.white)
 						}
+						Text(_isSigning ? .localized("Signing…") : .localized("Sign App"))
+					}
+					.frame(minWidth: 160)
 				}
-				.ignoresSafeArea(edges: .bottom)
+				.buttonStyle(NullSignPrimaryButtonStyle(height: 52, dimsWhenDisabled: false))
+				.animation(_reduceMotion ? nil : .easeInOut(duration: 0.2), value: _isSigning)
+				// The button hugs its label; the fade behind it stays full width.
+				.frame(maxWidth: .infinity)
+				.padding(.horizontal, 16)
+				.padding(.top, 14)
+				.padding(.bottom, 8)
+				.background(
+					LinearGradient(
+						colors: [NullSignStyle.canvas.opacity(0), NullSignStyle.canvas.opacity(0.85), NullSignStyle.canvas],
+						startPoint: .top,
+						endPoint: .bottom
+					)
+					.ignoresSafeArea()
+				)
 			}
 
 			.toolbar {
 				NBToolbarButton(role: .dismiss)
 				ToolbarItem(placement: .principal) {
 					Text("Sign App")
-						.font(.headline)
+						.font(.roundedUI(.headline))
 				}
 				NBToolbarButton(
 					.localized("Reset"),
@@ -114,6 +109,20 @@ struct SigningView: View {
 				) {
 					_temporaryOptions = OptionsManager.shared.options
 					appIcon = nil
+				}
+			}
+			.sheet(isPresented: $_isIconMenuPresenting, onDismiss: _openPendingIconPicker) {
+				NullSignMenuSheet(
+					title: .localized("Change App Icon"), systemImage: "app.dashed",
+					detail: "Choose artwork for this signing session. The original app stays unchanged."
+				) {
+					NullSignSettingsCard {
+						NullSignMenuAction(title: .localized("Select Alternative Icon"), systemImage: "app.dashed", tint: NullSignStyle.purple) { _chooseIconPicker(.alternative) }
+						NullSignSettingsDivider()
+						NullSignMenuAction(title: .localized("Choose from Files"), systemImage: "folder", tint: NullSignStyle.warning) { _chooseIconPicker(.files) }
+						NullSignSettingsDivider()
+						NullSignMenuAction(title: .localized("Choose from Photos"), systemImage: "photo", tint: NullSignStyle.success) { _chooseIconPicker(.photos) }
+					}
 				}
 			}
 			.sheet(isPresented: $_isAltPickerPresenting) { SigningAlternativeIconView(app: app, appIcon: $appIcon, isModifing: .constant(true)) }
@@ -175,22 +184,55 @@ struct SigningView: View {
 
 // MARK: - Extension: View
 extension SigningView {
-	@ViewBuilder
-	private func _customizationOptions(for app: AppInfoPresentable) -> some View {
-		NBSection(.localized("Customization")) {
-			Menu {
-				Button(.localized("Select Alternative Icon"), systemImage: "app.dashed") { _isAltPickerPresenting = true }
-				Button(.localized("Choose from Files"), systemImage: "folder") { _isFilePickerPresenting = true }
-				Button(.localized("Choose from Photos"), systemImage: "photo") { _isImagePickerPresenting = true }
-			} label: {
+	/// The header icon doubles as the icon picker.
+	private func _iconMenu(for app: AppInfoPresentable) -> some View {
+		Button {
+			_isIconMenuPresenting = true
+		} label: {
+			Group {
 				if let icon = appIcon {
 					Image(uiImage: icon)
-						.appIconStyle()
+						.appIconStyle(size: 84)
 				} else {
-					FRAppIconView(app: app, size: 56)
+					FRAppIconView(app: app, size: 84)
 				}
 			}
-			
+			.overlay(alignment: .bottomTrailing) {
+				Image(systemName: "pencil")
+					.font(.roundedUI(size: 11, weight: .bold))
+					.foregroundStyle(.white)
+					.frame(width: 26, height: 26)
+					.background(Circle().fill(NullSignStyle.raisedPanel))
+					.overlay(Circle().strokeBorder(NullSignStyle.groupedSurface, lineWidth: 2))
+					.offset(x: 6, y: 6)
+			}
+		}
+		.buttonStyle(NullSignPressableStyle())
+		.accessibilityLabel("Change app icon")
+	}
+
+	private enum IconPicker {
+		case alternative, files, photos
+	}
+
+	private func _chooseIconPicker(_ picker: IconPicker) {
+		_pendingIconPicker = picker
+		_isIconMenuPresenting = false
+	}
+
+	private func _openPendingIconPicker() {
+		guard let picker = _pendingIconPicker else { return }
+		_pendingIconPicker = nil
+		switch picker {
+		case .alternative: _isAltPickerPresenting = true
+		case .files: _isFilePickerPresenting = true
+		case .photos: _isImagePickerPresenting = true
+		}
+	}
+
+	@ViewBuilder
+	private func _customizationOptions(for app: AppInfoPresentable) -> some View {
+		Section {
 			_infoCell(.localized("Name"), desc: _temporaryOptions.appName ?? app.name) {
 				SigningPropertiesView(
 					title: .localized("Name"),
@@ -212,12 +254,14 @@ extension SigningView {
 					bindingValue: $_temporaryOptions.appVersion
 				)
 			}
+		} header: {
+			SigningSectionHeader(title: .localized("Customization"))
 		}
 	}
-	
+
 	@ViewBuilder
 	private func _cert() -> some View {
-		NBSection(.localized("Signing")) {
+		Section {
 			if let cert = _selectedCert() {
 				NavigationLink {
 					CertificatesView(selectedCert: $_temporaryCertificate, platform: app.platform)
@@ -230,37 +274,58 @@ extension SigningView {
 				NavigationLink {
 					CertificatesView(selectedCert: $_temporaryCertificate, platform: app.platform)
 				} label: {
-					Label(.localized("Choose Certificate"), systemImage: "checkmark.seal")
+					HStack(spacing: 12) {
+						SigningRowIcon(systemImage: "checkmark.seal", tint: NullSignStyle.warning)
+						VStack(alignment: .leading, spacing: 2) {
+							Text(.localized("Choose Certificate"))
+								.font(.roundedUI(size: 16, weight: .bold))
+							Text("No compatible certificate selected")
+								.font(.roundedUI(.caption))
+								.foregroundStyle(NullSignStyle.muted)
+						}
+					}
 				}
 			}
+		} header: {
+			SigningSectionHeader(title: .localized("Signing"))
 		}
 	}
 
 	@ViewBuilder
 	private func _tweaks() -> some View {
-		NBSection("Tweaks & Injection") {
+		Section {
 			NavigationLink {
 				SigningTweaksView(options: $_temporaryOptions)
 			} label: {
 				LabeledContent {
 					Text(_temporaryOptions.injectionFiles.count.description)
-						.foregroundStyle(.secondary)
+						.foregroundStyle(NullSignStyle.muted)
 				} label: {
-					Label("Add .deb or .dylib", systemImage: "shippingbox.and.arrow.backward")
+					HStack(spacing: 12) {
+						SigningRowIcon(systemImage: "shippingbox.and.arrow.backward")
+						Text("Add .deb or .dylib")
+					}
 				}
 			}
 
 			Toggle(isOn: $_temporaryOptions.experiment_replaceSubstrateWithEllekit) {
-				Label("Replace Substrate with ElleKit", systemImage: "arrow.triangle.2.circlepath")
+				HStack(spacing: 12) {
+					SigningRowIcon(systemImage: "arrow.triangle.2.circlepath")
+					Text("Replace Substrate with ElleKit")
+				}
 			}
+		} header: {
+			SigningSectionHeader(title: "Tweaks & Injection")
 		} footer: {
 			Text("NullSign adds ElleKit when an imported tweak needs a hooking runtime. Enable replacement only when the app already contains Cydia Substrate and you want to swap it for ElleKit.")
+				.font(.roundedUI(.footnote))
+				.foregroundStyle(NullSignStyle.faint)
 		}
 	}
-	
+
 	@ViewBuilder
 	private func _customizationProperties(for app: AppInfoPresentable) -> some View {
-		NBSection(.localized("Advanced")) {
+		Section {
 			DisclosureGroup(.localized("Modify")) {
 				NavigationLink(.localized("Existing Dylibs")) {
 					SigningDylibView(
@@ -289,18 +354,26 @@ extension SigningView {
 					options: $_temporaryOptions,
 					temporaryOptions: _optionsManager.options
 				)}
-				.navigationTitle(.localized("Properties"))
+				.scrollContentBackground(.hidden)
+				.nullSignPage()
+				.nullSignNavigationTitle(.localized("Properties"))
 			}
+		} header: {
+			SigningSectionHeader(title: .localized("Advanced"))
 		}
 	}
-	
+
 	@ViewBuilder
 	private func _infoCell<V: View>(_ title: String, desc: String?, @ViewBuilder destination: () -> V) -> some View {
 		NavigationLink {
 			destination()
 		} label: {
-			LabeledContent(title) {
+			LabeledContent {
 				Text(desc ?? .localized("Unknown"))
+					.foregroundStyle(NullSignStyle.muted)
+					.lineLimit(1)
+			} label: {
+				Text(title)
 			}
 		}
 	}

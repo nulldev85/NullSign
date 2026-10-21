@@ -36,13 +36,7 @@ struct InstallPreviewView: View {
 	
 	// MARK: Body
 	var body: some View {
-		let cornerRadius = {
-			if #available(iOS 26.0, *) {
-				28.0
-			} else {
-				10.5
-			}
-		}()
+		let cornerRadius = NullSignStyle.cardRadius
 		
 		VStack(alignment: .leading, spacing: 16) {
 			HStack(spacing: 16) {
@@ -50,7 +44,7 @@ struct InstallPreviewView: View {
 				VStack(alignment: .leading, spacing: 6) {
 					HStack(spacing: 7) {
 						Text(app.name ?? "App")
-							.font(.system(size: 18, weight: .semibold, design: .rounded))
+							.font(.roundedUI(.headline))
 							.lineLimit(1)
 						PlatformBadge(platform: app.platform)
 					}
@@ -67,8 +61,7 @@ struct InstallPreviewView: View {
 		}
 		.padding(20)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-		.background(Color(red: 0.110, green: 0.110, blue: 0.118))
-		.cornerRadius(cornerRadius)
+		.background(NullSignStyle.groupedSurface, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
 		.padding()
 		.sheet(isPresented: $_isWebviewPresenting) {
 			SafariRepresentableView(url: installer.pageEndpoint).ignoresSafeArea()
@@ -129,8 +122,8 @@ struct InstallPreviewView: View {
 	@ViewBuilder
 	private func _status() -> some View {
 		Label(viewModel.statusLabel, systemImage: viewModel.statusImage)
-			.font(.system(size: 12, weight: .semibold))
-			.foregroundStyle(viewModel.isCompleted ? NullSignStyle.accent : NullSignStyle.muted)
+			.font(.roundedUI(.footnote, weight: .bold))
+			.foregroundStyle(viewModel.isCompleted ? NullSignStyle.success : NullSignStyle.muted)
 			.animation(.smooth, value: viewModel.statusImage)
 	}
 	
@@ -158,11 +151,8 @@ struct InstallPreviewView: View {
 	private func _actionButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
 		Button(action: action) {
 			Label(title, systemImage: icon)
-				.font(.system(size: 12, weight: .semibold))
-				.padding(.horizontal, 12)
-				.frame(height: 34)
 		}
-		.buttonStyle(.nullSign(cornerRadius: 17))
+		.buttonStyle(NullSignPrimaryButtonStyle(height: 34))
 	}
 	
 	private func _install() {

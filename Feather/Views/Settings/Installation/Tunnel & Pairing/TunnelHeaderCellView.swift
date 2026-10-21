@@ -6,16 +6,16 @@ struct TunnelHeaderView: View {
 	var body: some View {
 		HStack(spacing: 12) {
 			Image(systemName: "wave.3.right")
-				.font(.system(size: 15, weight: .semibold))
+				.font(.roundedUI(size: 15, weight: .semibold))
 				.foregroundStyle(NullSignStyle.accent)
 				.frame(width: 32, height: 32)
 				.background(NullSignStyle.raisedPanel)
 				.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 			VStack(alignment: .leading, spacing: 2) {
 				Text("Heartbeat")
-					.font(.body.weight(.medium))
+					.font(.roundedUI(.body, weight: .regular))
 				Text("Local device connection")
-					.font(.caption)
+					.font(.roundedUI(.caption))
 					.foregroundStyle(.secondary)
 			}
 			Spacer()
@@ -40,7 +40,7 @@ struct TunnelPulseRing: View {
 					.fill(color)
 					.frame(width: 7, height: 7)
 				Text(age < 5 ? "Live" : (age < 10 ? "Waiting" : "Offline"))
-					.font(.caption.weight(.medium))
+					.font(.roundedUI(.caption, weight: .regular))
 					.foregroundStyle(color)
 			}
 		}

@@ -2,7 +2,6 @@ import SwiftUI
 
 struct InstallationView: View {
 	@AppStorage("Feather.installationMethod") private var _installationMethod = 0
-	@State private var _showMethodChangedAlert = false
 
 	var body: some View {
 		ScrollView {
@@ -21,11 +20,10 @@ struct InstallationView: View {
 					"Delivery Route",
 					detail: "The route is used only after an app has signed and passed verification."
 				) {
-					Picker("Installation method", selection: $_installationMethod) {
-						Text("iPhone").tag(0)
-						Text("Apple TV / Tunnel").tag(1)
-					}
-					.pickerStyle(.segmented)
+					NullSignSegmentedControl(
+						options: [0, 1], selection: $_installationMethod,
+						title: { $0 == 0 ? "iPhone" : "Apple TV / Tunnel" }
+					)
 				}
 
 				if _installationMethod == 0 {
@@ -38,20 +36,8 @@ struct InstallationView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 28)
 		}
-		.background(Color.black.ignoresSafeArea())
-		.navigationTitle("Installation")
-		.onChange(of: _installationMethod) { newValue in
-			guard newValue == 1 else { return }
-			_showMethodChangedAlert = true
-		}
-		.alert("Apple TV & Device", isPresented: $_showMethodChangedAlert) {
-			Button("Use iPhone Instead", role: .destructive) {
-				_installationMethod = 0
-			}
-			Button("Continue", role: .cancel) { }
-		} message: {
-			Text("Apple TV pairing works over Wi-Fi without a VPN or imported pairing file. The pairing file and loopback VPN are only for installing directly on this iPhone.")
-		}
+		.nullSignPage()
+		.nullSignNavigationTitle("Installation")
 		.animation(.easeInOut(duration: 0.2), value: _installationMethod)
 	}
 }

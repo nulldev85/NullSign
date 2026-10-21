@@ -24,13 +24,13 @@ struct TunnelView: View {
 				if _appleTV.pairedDevice == nil {
 					VStack(alignment: .leading, spacing: 5) {
 						Text("ON YOUR APPLE TV")
-							.font(.system(size: 10, weight: .bold, design: .rounded))
+							.font(.roundedUI(size: 10, weight: .bold))
 							.foregroundStyle(NullSignStyle.accent)
 						Text("Settings  ›  Remotes and Devices  ›  Remote App and Devices")
-							.font(.caption.weight(.medium))
+							.font(.roundedUI(.caption, weight: .regular))
 							.foregroundStyle(.secondary)
 						Text("No VPN or imported pairing file is needed.")
-							.font(.caption2)
+							.font(.roundedUI(.caption2))
 							.foregroundStyle(.secondary)
 					}
 					.frame(maxWidth: .infinity, alignment: .leading)
@@ -45,13 +45,13 @@ struct TunnelView: View {
 							.background(NullSignStyle.raisedPanel)
 							.clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 						VStack(alignment: .leading, spacing: 2) {
-							Text(paired.name).font(.body.weight(.medium))
+							Text(paired.name).font(.roundedUI(.body, weight: .regular))
 							Text(paired.connectionPort == nil ? "Saved • looking nearby" : "Saved • available")
-								.font(.caption).foregroundStyle(.secondary)
+								.font(.roundedUI(.caption)).foregroundStyle(.secondary)
 						}
 						Spacer()
 						Button("Forget", role: .destructive) { _appleTV.forget() }
-							.font(.subheadline.weight(.semibold))
+							.font(.roundedUI(.subheadline, weight: .bold))
 					}
 				} else if _appleTV.discovered.isEmpty {
 					HStack {
@@ -59,7 +59,7 @@ struct TunnelView: View {
 							.foregroundStyle(.secondary)
 					Spacer()
 					Button(_appleTV.isScanning ? "Refresh" : "Scan") { _appleTV.refresh() }
-						.font(.subheadline.weight(.semibold)).foregroundStyle(NullSignStyle.accent)
+						.font(.roundedUI(.subheadline, weight: .bold)).foregroundStyle(NullSignStyle.accent)
 					}
 				} else {
 					ForEach(Array(_appleTV.discovered.enumerated()), id: \.element.id) { index, device in

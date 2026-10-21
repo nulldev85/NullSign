@@ -60,15 +60,15 @@ struct SigningPropertiesView: View {
 
 				if text != initialValue {
 					Label("Unsaved change", systemImage: "circle.fill")
-						.font(.caption)
+						.font(.roundedUI(.caption))
 						.foregroundStyle(NullSignStyle.accent)
 				}
 			}
 			.padding(.horizontal, 16)
 			.padding(.top, 12)
 		}
-		.background(Color.black.ignoresSafeArea())
-		.navigationTitle(title)
+		.nullSignPage()
+		.nullSignNavigationTitle(title)
 		.tint(NullSignStyle.accent)
 		.toolbar {
 			NBToolbarButton(

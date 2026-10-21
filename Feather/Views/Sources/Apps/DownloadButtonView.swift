@@ -35,16 +35,17 @@ struct DownloadButtonView: View {
 					}
 				} label: {
 					Text(.localized("Get"))
-						.font(.caption.weight(.bold))
-						.frame(width: 54, height: 32)
+						.frame(minWidth: 36)
 				}
-				.buttonStyle(.nullSign(cornerRadius: 9, minTapHeight: 44))
+				.buttonStyle(NullSignSecondaryButtonStyle(height: 30))
+				.frame(minHeight: 44)
+				.disabled(app.currentDownloadUrl == nil)
 				.compatTransition()
 			}
 		}
-		.animation(.easeInOut(duration: 0.22), value: downloadManager.getDownload(by: app.currentUniqueId)?.id)
+		.animation(.easeInOut(duration: 0.2), value: downloadManager.getDownload(by: app.currentUniqueId)?.id)
 	}
-	
+
 	private func _sourceProvenance() -> SourceAppProvenance? {
 		guard let source else { return nil }
 		return SourceAppProvenance(sourceURL: sourceURL, repository: source, app: app)
@@ -62,17 +63,11 @@ private struct DownloadProgressButton: View {
 	var body: some View {
 		Button(action: cancel) {
 			ZStack {
-				Circle()
-					.stroke(NullSignStyle.accent.opacity(0.18), lineWidth: 2.5)
-				Circle()
-					.trim(from: 0, to: max(0.03, progress))
-					.stroke(NullSignStyle.accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-					.rotationEffect(.degrees(-90))
-				Image(systemName: progress >= 0.75 ? "archivebox" : "stop.fill")
-					.font(.system(size: 9, weight: .bold))
-					.foregroundStyle(NullSignStyle.accent)
+				NullSignRing(progress: max(0.03, progress), size: 30, lineWidth: 3, tint: NullSignStyle.accent)
+				Image(systemName: progress >= 0.75 ? "archivebox.fill" : "stop.fill")
+					.font(.roundedUI(size: 9, weight: .bold))
+					.foregroundStyle(.white)
 			}
-			.frame(width: 33, height: 33)
 			.frame(width: 44, height: 44)
 		}
 		.buttonStyle(.plain)
