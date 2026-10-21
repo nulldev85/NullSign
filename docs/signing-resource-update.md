@@ -41,7 +41,9 @@ No fixed device-specific bottom padding or file-selection behavior changes.
 and tests missing resources, broken links, empty and nonempty resources,
 ordinary/nested/Unicode filenames, readable links, exact SHA-1/SHA-256 resource
 seals, ad-hoc Mach-O signing, and propagation of nested bundle failures. Fixtures
-are synthetic; no certificate or private app data is required.
+are synthetic; no certificate or private app data is required. CI installs and
+selects Homebrew OpenSSL 3 for this native test because the pinned Zsign source
+uses ASN.1 structure fields that OpenSSL 4 makes opaque.
 
 `python3 Tools/test-zsign-handler.py` compiles the actual Swift app handler with
 a controlled engine boundary on macOS. It covers native failures with and

@@ -22,6 +22,11 @@ jobs:
       - name: Apply pinned Zsign resource fix
         run: python3 Tools/prepare-zsign.py
 
+      - name: Select OpenSSL 3 for native regression tests
+        run: |
+          brew install openssl@3
+          echo "OPENSSL_PREFIX=$(brew --prefix openssl@3)" >> "$GITHUB_ENV"
+
       - name: Test native resource sealing and signing failure handling
         run: |
           python3 Tools/test-zsign-resources.py

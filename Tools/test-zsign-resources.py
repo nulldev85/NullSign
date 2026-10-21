@@ -18,6 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def openssl_flags():
+    prefix = os.environ.get("OPENSSL_PREFIX")
+    if prefix:
+        return [f"-I{prefix}/include", f"-L{prefix}/lib", "-lcrypto", "-lssl"]
     if shutil.which("pkg-config"):
         result = subprocess.run(
             ["pkg-config", "--cflags", "--libs", "openssl"], capture_output=True, text=True
