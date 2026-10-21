@@ -17,6 +17,7 @@ with tempfile.TemporaryDirectory(prefix="nullsign-handler-tests-") as directory:
     subprocess.run([
         "xcrun", "swiftc", "-I", str(work), "-L", str(work), "-lZsignSwift",
         "-Xlinker", "-rpath", "-Xlinker", str(work),
+        str(ROOT / "NimbleKit/Sources/NimbleExtensions/Bundle/Bundle+keys.swift"),
         str(ROOT / "Feather/Utilities/Handlers/ZsignHandler.swift"),
         str(ROOT / "Tools/Fixtures/ZsignHandlerTests.swift"),
         "-o", str(work / "handler-tests"),

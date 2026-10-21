@@ -45,10 +45,11 @@ are synthetic; no certificate or private app data is required. CI installs and
 selects Homebrew OpenSSL 3 for this native test because the pinned Zsign source
 uses ASN.1 structure fields that OpenSSL 4 makes opaque.
 
-`python3 Tools/test-zsign-handler.py` compiles the actual Swift app handler with
-a controlled engine boundary on macOS. It covers native failures with and
-without callback errors, existing non-strict callback errors, and successful
-retries for both certificate and ad-hoc signing.
+`python3 Tools/test-zsign-handler.py` compiles the actual Swift app handler and
+its production `Bundle.exec` extension with a controlled engine boundary on
+macOS. It covers native failures with and without callback errors, existing
+non-strict callback errors, and successful retries for both certificate and
+ad-hoc signing.
 
 The GitHub workflow runs both before the existing Release build and IPA checks.
 Local Ubuntu validation passed all seven native regressions. Against an isolated
