@@ -1,7 +1,12 @@
 name: Build NullSign IPA
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -94,3 +99,37 @@ jobs:
           path: packages/NullSign-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish public source release from main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_TAG: source-${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ipa="packages/NullSign-unsigned.ipa"
+          workdir="$(mktemp -d)"
+          trap 'rm -rf "$workdir"' EXIT
+          unzip -q "$ipa" -d "$workdir"
+          plist="$workdir/Payload/NullSign.app/Info.plist"
+          bundle_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")
+          version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")
+          build=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")
+          minimum_os=$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$plist")
+          test "$bundle_id" = "com.elmat.NullSign"
+          {
+            echo "Source-App: NullSign"
+            echo "Source-Bundle-Identifier: $bundle_id"
+            echo "Source-Version: $version"
+            echo "Source-Build-Version: $build"
+            echo "Source-Minimum-OS-Version: $minimum_os"
+            echo "Source-Branch: main"
+            echo "Source-SHA: $GITHUB_SHA"
+          } > "$RUNNER_TEMP/source-release-notes.md"
+          gh release create "$SOURCE_TAG" "$ipa#NullSign.ipa" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "NullSign $version ($build)" \
+            --notes-file "$RUNNER_TEMP/source-release-notes.md" \
+            --target "$GITHUB_SHA" \
+            --latest=false
