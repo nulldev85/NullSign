@@ -57,26 +57,10 @@ struct AboutView: View {
 					.disabled(_selfUpdateState == .checking || _selfUpdateState == .downloading)
 				}
 
-				NullSignSettingsSection("Project") {
-					_linkRow(
-						title: "Source Code",
-						detail: "nulldev85/NullSign",
-						systemImage: "chevron.left.forwardslash.chevron.right",
-						url: "https://github.com/nulldev85/NullSign"
-					)
-				}
-
 				NullSignSettingsSection(
 					"Credits",
 					detail: "NullSign is a fork of Feather. Its signing, repository, and installation foundations came from Feather and its contributors."
 				) {
-					_linkRow(
-						title: "nulldev85",
-						detail: "NullSign maintainer",
-						systemImage: "person",
-						url: "https://github.com/nulldev85"
-					)
-					NullSignSettingsDivider()
 					_linkRow(
 						title: "Feather",
 						detail: "Original project by claration and contributors",
@@ -112,9 +96,9 @@ struct AboutView: View {
 				) {
 					_linkRow(
 						title: "GNU GPL v3",
-						detail: "Read the license in this repository",
+						detail: "Read the full license text",
 						systemImage: "doc.text",
-						url: "https://github.com/nulldev85/NullSign/blob/main/LICENSE"
+						url: "https://www.gnu.org/licenses/gpl-3.0.html"
 					)
 				}
 			}
