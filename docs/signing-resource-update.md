@@ -1,4 +1,4 @@
-# NullSign 1.4.0 (28)
+# NullSign 1.4.0 (29)
 
 This update keeps the current redesign and ports the unreadable-resource fix
 from [Zsign 1.1.3](https://github.com/zhlynn/zsign/releases/tag/v1.1.3), upstream
@@ -28,12 +28,12 @@ the parent repository rather than by a new dependency fork.
 
 ## Signer list layout
 
-The floating bottom navigation dock now occupies a real sibling row in a
-vertical layout. Each navigation stack receives the remaining viewport above
-it, with content clipped to that viewport. This prevents imported/signed IPA
-rows and the selection toolbar from extending behind the dock. The dock uses
-its intrinsic height, including larger text, and still hides for the keyboard.
-No fixed device-specific bottom padding or file-selection behavior changes.
+The tab root measures the dock and gives each navigation stack an explicit
+viewport ending above it. This keeps UIKit-backed List rows inside the visible
+area rather than drawing below a flexible sibling. The measured dock height
+also follows larger accessibility text, and the full list viewport returns
+when the keyboard hides the dock. No device-specific bottom padding or
+file-selection behavior changes.
 
 ## Validation
 

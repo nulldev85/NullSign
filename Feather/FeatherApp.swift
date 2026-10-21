@@ -29,6 +29,7 @@ struct NullSignApp: App {
 					.onOpenURL(perform: _handleURL)
 					.transition(.move(edge: .top).combined(with: .opacity))
 			}
+			.frame(maxWidth: .infinity, maxHeight: .infinity)
 			.background(NullSignStyle.canvas.ignoresSafeArea())
 			.preferredColorScheme(.dark)
 			.tint(NullSignStyle.accent)

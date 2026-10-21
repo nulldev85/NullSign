@@ -14,48 +14,64 @@ struct VariedTabbarView: View {
 	@State private var visitedTabs: Set<TabEnum> = [.signer]
 	@State private var rootGeneration: [TabEnum: Int] = [:]
 	@State private var isKeyboardVisible = false
+	// The first pass uses the dock's current compact height; its measured height
+	// replaces this value so larger accessibility text also gets a matching viewport.
+	@State private var dockHeight: CGFloat = 72
 
 	init() {}
 
 	var body: some View {
-		VStack(spacing: 0) {
-			ZStack {
-				ForEach(TabEnum.defaultTabs.filter { visitedTabs.contains($0) }, id: \.self) { tab in
-					TabEnum.view(for: tab)
-						.id("\(tab.rawValue)-\(rootGeneration[tab, default: 0])")
-						.opacity(selectedTab == tab ? 1 : 0)
-						.allowsHitTesting(selectedTab == tab)
-						.accessibilityHidden(selectedTab != tab)
+		GeometryReader { geometry in
+			VStack(spacing: 0) {
+				ZStack {
+					ForEach(TabEnum.defaultTabs.filter { visitedTabs.contains($0) }, id: \.self) { tab in
+						TabEnum.view(for: tab)
+							.id("\(tab.rawValue)-\(rootGeneration[tab, default: 0])")
+							.opacity(selectedTab == tab ? 1 : 0)
+							.allowsHitTesting(selectedTab == tab)
+							.accessibilityHidden(selectedTab != tab)
+					}
 				}
-			}
-			// Give navigation stacks a real viewport above the dock. An outer
-			// safe-area inset can be lost by nested List/NavigationStack layouts.
-			.frame(maxWidth: .infinity, maxHeight: .infinity)
-			.clipped()
+				// Bound NavigationStack/List to the measured space above the dock.
+				// A flexible sibling alone lets UIKit-backed List content draw below it.
+				.frame(width: geometry.size.width, height: max(0, geometry.size.height - (isKeyboardVisible ? 0 : dockHeight)), alignment: .top)
+				.clipped()
 
-			if !isKeyboardVisible {
-				NullSignDock(
-					selection: Binding(
-						get: { selectedTab },
-						set: { tab in
-							visitedTabs.insert(tab)
-							selectedTab = tab
+				if !isKeyboardVisible {
+					NullSignDock(
+						selection: Binding(
+							get: { selectedTab },
+							set: { tab in
+								visitedTabs.insert(tab)
+								selectedTab = tab
+								UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+							}
+						),
+						onReselect: { tab in
 							UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+							var transaction = Transaction()
+							transaction.disablesAnimations = true
+							withTransaction(transaction) {
+								rootGeneration[tab, default: 0] += 1
+							}
 						}
-					),
-					onReselect: { tab in
-						UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-						var transaction = Transaction()
-						transaction.disablesAnimations = true
-						withTransaction(transaction) {
-							rootGeneration[tab, default: 0] += 1
+					)
+					.background {
+						GeometryReader { dockGeometry in
+							Color.clear.preference(key: NullSignDockHeightPreferenceKey.self, value: dockGeometry.size.height)
 						}
 					}
-				)
-				.transition(.opacity)
+					.transition(.opacity)
+				}
 			}
+			.frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
 		}
+		.frame(maxWidth: .infinity, maxHeight: .infinity)
 		.background(NullSignStyle.canvas)
+		.onPreferenceChange(NullSignDockHeightPreferenceKey.self) { height in
+			guard height > 0, abs(height - dockHeight) > 0.5 else { return }
+			dockHeight = height
+		}
 		// The dock steps aside for the keyboard instead of riding on top of it.
 		.onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
 			withAnimation(.easeOut(duration: 0.2)) { isKeyboardVisible = true }
@@ -63,6 +79,15 @@ struct VariedTabbarView: View {
 		.onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
 			withAnimation(.easeOut(duration: 0.2)) { isKeyboardVisible = false }
 		}
+	}
+}
+
+private struct NullSignDockHeightPreferenceKey: PreferenceKey {
+	static let defaultValue: CGFloat = 0
+
+	static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+		let height = nextValue()
+		if height > 0 { value = height }
 	}
 }
 
