@@ -96,6 +96,7 @@ private struct NullSignDock: View {
 	@Binding var selection: TabEnum
 	let onReselect: (TabEnum) -> Void
 	@Environment(\.accessibilityReduceMotion) private var _reduceMotion
+	@ObservedObject private var _updateManager = UpdateManager.shared
 
 	var body: some View {
 		HStack(spacing: 2) {
@@ -129,6 +130,11 @@ private struct NullSignDock: View {
 				Image(systemName: tab.icon)
 					.font(.roundedUI(size: 22, weight: .semibold))
 					.accessibilityHidden(true)
+					.overlay(alignment: .topTrailing) {
+						if tab == .signer, _updateManager.availableUpdateCount > 0 {
+							_updateBadge(_updateManager.availableUpdateCount)
+						}
+					}
 				Text(tab.title)
 					.font(.roundedUI(.caption2, weight: .heavy))
 					.lineLimit(1)
@@ -146,7 +152,28 @@ private struct NullSignDock: View {
 		}
 		.buttonStyle(.plain)
 		.accessibilityLabel(tab.title)
+		.accessibilityValue(_updatesValue(for: tab))
 		.accessibilityAddTraits(isSelected ? .isSelected : [])
+	}
+
+	/// The Library's tab carries a count of apps with updates, found when the
+	/// app opens or by Check for Updates, so they show from any tab.
+	private func _updateBadge(_ count: Int) -> some View {
+		Text(count > 99 ? "99+" : "\(count)")
+			.font(.roundedUI(size: 11, weight: .heavy))
+			.foregroundStyle(.white)
+			.padding(.horizontal, 5)
+			.frame(minWidth: 18, minHeight: 18)
+			.background(NullSignStyle.danger, in: Capsule())
+			.overlay(Capsule().strokeBorder(Color.black.opacity(0.55), lineWidth: 1.5))
+			.offset(x: 11, y: -7)
+			.accessibilityHidden(true)
+	}
+
+	private func _updatesValue(for tab: TabEnum) -> String {
+		let count = _updateManager.availableUpdateCount
+		guard tab == .signer, count > 0 else { return "" }
+		return count == 1 ? .localized("1 update available") : .localized("%lld updates available", arguments: count)
 	}
 }
 
