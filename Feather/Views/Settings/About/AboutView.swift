@@ -127,7 +127,7 @@ struct AboutView: View {
 		case .available, .downloading, .signing:
 			return "NullSign downloads the update, signs it with the certificate shown in your Library and installs it. iOS asks you to confirm, then NullSign closes while the new version replaces it. Open it again once it's done."
 		case .installing:
-			return "Tap Install when iOS asks. NullSign closes while it updates; open it again once it's done."
+			return "Tap Install when iOS asks. NullSign then steps out to the Home Screen while the new version replaces it; open it again once its icon finishes."
 		case .failed(let reason):
 			return reason
 		default:
