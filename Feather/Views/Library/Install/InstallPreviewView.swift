@@ -86,6 +86,9 @@ struct InstallPreviewView: View {
 							viewModel: viewModel
 						)
 					}
+					if app.identifier == Bundle.main.bundleIdentifier {
+						_stepAsideForSelfUpdate()
+					}
 				}
 				
 				switch newStatus {
@@ -247,6 +250,19 @@ struct InstallPreviewView: View {
 					)
 				}
 			}
+		}
+	}
+
+	/// iOS replaces an app only once it is off the screen. When NullSign is
+	/// installing its own update, the new version has been handed over by now,
+	/// so it stops keeping itself awake and goes to the Home Screen; iOS then
+	/// closes it and puts the new version in its place.
+	private func _stepAsideForSelfUpdate() {
+		#if !targetEnvironment(macCatalyst)
+		BackgroundAudioManager.shared.stop()
+		#endif
+		DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+			UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
 		}
 	}
 

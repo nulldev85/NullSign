@@ -66,7 +66,7 @@ struct NullSignSelfUpdateBanner: View {
 	private var _detail: String {
 		switch selfUpdate.state {
 		case .installing:
-			return "Tap Install when iOS asks. NullSign closes while it updates; open it again once it's done."
+			return "Tap Install when iOS asks. NullSign then steps out to the Home Screen while the new version replaces it; open it again once its icon finishes."
 		case .failed(let reason):
 			return reason
 		default:
