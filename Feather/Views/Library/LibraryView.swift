@@ -162,37 +162,13 @@ struct LibraryView: View {
 						}
 					}
 				}
-
-				ToolbarItemGroup(placement: .topBarTrailing) {
-					if _hasApps && !_isSelecting {
-						Button {
-							Task {
-								await _checkForUpdates()
-							}
-						} label: {
-							HStack(spacing: 6) {
-								if updateManager.isChecking {
-									ProgressView()
-										.controlSize(.small)
-								}
-								Text(_updateCheckTitle)
-									.font(.roundedUI(size: 15, weight: .bold))
-									.lineLimit(1)
-							}
-						}
-						.disabled(updateManager.isChecking)
-					}
-
-					if !_isSelecting {
-						Button {
-							_isImportMenuPresenting = true
-						} label: {
-							Image(systemName: "plus")
-						}
-						.accessibilityLabel(.localized("Import"))
-					}
-				}
 			}
+			.modifier(LibraryTrailingButtons(
+				showsUpdateCheck: _hasApps && !_isSelecting,
+				showsImport: !_isSelecting,
+				updateCheck: _updateCheckButton,
+				importButton: _importButton
+			))
 			.safeAreaInset(edge: .bottom, spacing: 0) {
 				if _isSelecting {
 					_selectionBar
@@ -521,11 +497,52 @@ extension LibraryView {
 		await _checkForUpdates()
 	}
 
+	/// Checks the library's apps and NullSign itself.
+	private var _updateCheckButton: some View {
+		Button {
+			Task {
+				async let ownUpdate: Void = _selfUpdate.check()
+				await _checkForUpdates()
+				await ownUpdate
+			}
+		} label: {
+			HStack(spacing: 6) {
+				if updateManager.isChecking {
+					ProgressView()
+						.controlSize(.small)
+				}
+				Text(_updateCheckTitle)
+					.font(.roundedUI(size: 15, weight: .bold))
+					.lineLimit(1)
+			}
+		}
+		.disabled(updateManager.isChecking)
+	}
+
+	private var _importButton: some View {
+		Button {
+			_isImportMenuPresenting = true
+		} label: {
+			Image(systemName: "plus")
+		}
+		.accessibilityLabel(.localized("Import"))
+	}
+
+	/// Library apps with an update, and NullSign when it has one, as the
+	/// Signer tab's badge counts them.
+	private var _availableUpdateCount: Int {
+		var identifiers = updateManager.updatedBundleIdentifiers
+		if _selfUpdate.availableVersion != nil {
+			identifiers.insert(SelfUpdateManager.sourceBundleIdentifier)
+		}
+		return identifiers.count
+	}
+
 	/// The update button says what it does, then for a moment what the check found.
 	private var _updateCheckTitle: String {
 		if updateManager.isChecking { return .localized("Checking…") }
 		guard _isUpdateCheckCompleteVisible else { return .localized("Check for Updates") }
-		switch updateManager.availableUpdateCount {
+		switch _availableUpdateCount {
 		case 0: return .localized("Up to Date")
 		case 1: return .localized("1 Update Found")
 		case let count: return .localized("%lld Updates Found", arguments: count)
@@ -559,6 +576,42 @@ extension LibraryView {
 			case .all: return .localized("All")
 			case .signed: return .localized("Signed")
 			case .imported: return .localized("Imported")
+			}
+		}
+	}
+}
+
+// MARK: - Toolbar
+/// Check for Updates and Import as two buttons. iOS 26 joins neighbouring
+/// toolbar buttons into one piece of glass, so a fixed spacer parts them.
+private struct LibraryTrailingButtons<UpdateCheck: View, ImportButton: View>: ViewModifier {
+	let showsUpdateCheck: Bool
+	let showsImport: Bool
+	let updateCheck: UpdateCheck
+	let importButton: ImportButton
+
+	@ViewBuilder
+	func body(content: Content) -> some View {
+		if #available(iOS 26.0, *) {
+			content.toolbar {
+				if showsUpdateCheck {
+					ToolbarItem(placement: .topBarTrailing) { updateCheck }
+				}
+				if showsUpdateCheck && showsImport {
+					ToolbarSpacer(.fixed, placement: .topBarTrailing)
+				}
+				if showsImport {
+					ToolbarItem(placement: .topBarTrailing) { importButton }
+				}
+			}
+		} else {
+			content.toolbar {
+				if showsUpdateCheck {
+					ToolbarItem(placement: .topBarTrailing) { updateCheck }
+				}
+				if showsImport {
+					ToolbarItem(placement: .topBarTrailing) { importButton }
+				}
 			}
 		}
 	}
