@@ -13,6 +13,7 @@ import NimbleViews
 struct LibraryView: View {
 	@StateObject var downloadManager = DownloadManager.shared
 	@StateObject var updateManager = UpdateManager.shared
+	@StateObject private var _selfUpdate = SelfUpdateManager.shared
 	@Environment(\.scenePhase) private var _scenePhase
 
 	@State private var _selectedInfoAppPresenting: AnyApp?
@@ -109,6 +110,11 @@ struct LibraryView: View {
 					_isCertificatesPresenting = true
 				}
 				.nullSignListRow(top: 4, bottom: 6)
+
+				if _selfUpdate.availableVersion != nil {
+					NullSignSelfUpdateBanner(selfUpdate: _selfUpdate)
+						.nullSignListRow(top: 6, bottom: 6)
+				}
 
 				if _hasApps {
 					_libraryTools
@@ -265,12 +271,16 @@ struct LibraryView: View {
 			}
 			.task {
 				await _autoCheckForUpdatesIfNeeded()
+				await _selfUpdate.checkIfNeeded()
 			}
 			// Coming back to NullSign checks again once the last check is old
 			// enough, so an app left open for days still hears about updates.
 			.onChange(of: _scenePhase) { phase in
 				guard phase == .active else { return }
-				Task { await _autoCheckForUpdatesIfNeeded() }
+				Task {
+					await _autoCheckForUpdatesIfNeeded()
+					await _selfUpdate.checkIfNeeded()
+				}
 			}
 		}
 		.tint(NullSignStyle.accent)

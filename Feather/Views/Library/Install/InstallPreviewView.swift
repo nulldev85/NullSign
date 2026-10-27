@@ -170,13 +170,9 @@ struct InstallPreviewView: View {
 				return
 			}
 		}
-		guard isSharing || app.identifier != Bundle.main.bundleIdentifier! || _installationMethod == 1 else {
-			UIAlertController.showAlertWithOk(
-				title: .localized("Install"),
-				message: .localized("You cannot update ‘%@‘ with itself, please use an alternative tool to update it.", arguments: Bundle.main.name)
-			)
-			return
-		}
+		// NullSign can install its own update. The package is served before iOS
+		// closes NullSign to replace it, and NullSign keeps running in the
+		// background until then; if anything fails, iOS keeps the old version.
 
 
 		Task.detached {

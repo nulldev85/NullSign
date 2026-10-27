@@ -55,7 +55,12 @@ final class UpdateManager: ObservableObject {
 	/// How many apps have an update, counting an app once however many copies
 	/// of it are in the library.
 	var availableUpdateCount: Int {
-		Set(updates.values.map(\.bundleIdentifier)).count
+		updatedBundleIdentifiers.count
+	}
+
+	/// The apps with an update, one entry per app.
+	var updatedBundleIdentifiers: Set<String> {
+		Set(updates.values.map(\.bundleIdentifier))
 	}
 
 	func update(for app: AppInfoPresentable) -> AppUpdate? {

@@ -17,6 +17,7 @@ struct VariedTabbarView: View {
 	// The first pass uses the dock's current compact height; its measured height
 	// replaces this value so larger accessibility text also gets a matching viewport.
 	@State private var dockHeight: CGFloat = 72
+	@StateObject private var selfUpdate = SelfUpdateManager.shared
 
 	init() {}
 
@@ -79,6 +80,12 @@ struct VariedTabbarView: View {
 		.onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
 			withAnimation(.easeOut(duration: 0.2)) { isKeyboardVisible = false }
 		}
+		// NullSign's own update installs from here, so it can be started from
+		// About or the Library and still show whichever tab is open.
+		.sheet(item: $selfUpdate.installingApp, onDismiss: { selfUpdate.installerDismissed() }) { app in
+			InstallPreviewView(app: app.base)
+				.presentationDetents([.height(230)])
+		}
 	}
 }
 
@@ -97,6 +104,7 @@ private struct NullSignDock: View {
 	let onReselect: (TabEnum) -> Void
 	@Environment(\.accessibilityReduceMotion) private var _reduceMotion
 	@ObservedObject private var _updateManager = UpdateManager.shared
+	@ObservedObject private var _selfUpdate = SelfUpdateManager.shared
 
 	var body: some View {
 		HStack(spacing: 2) {
@@ -131,8 +139,8 @@ private struct NullSignDock: View {
 					.font(.roundedUI(size: 22, weight: .semibold))
 					.accessibilityHidden(true)
 					.overlay(alignment: .topTrailing) {
-						if tab == .signer, _updateManager.availableUpdateCount > 0 {
-							_updateBadge(_updateManager.availableUpdateCount)
+						if tab == .signer, _pendingUpdates > 0 {
+							_updateBadge(_pendingUpdates)
 						}
 					}
 				Text(tab.title)
@@ -170,8 +178,17 @@ private struct NullSignDock: View {
 			.accessibilityHidden(true)
 	}
 
+	/// Apps with an update, NullSign's own among them, each counted once.
+	private var _pendingUpdates: Int {
+		var identifiers = _updateManager.updatedBundleIdentifiers
+		if _selfUpdate.availableVersion != nil {
+			identifiers.insert(SelfUpdateManager.sourceBundleIdentifier)
+		}
+		return identifiers.count
+	}
+
 	private func _updatesValue(for tab: TabEnum) -> String {
-		let count = _updateManager.availableUpdateCount
+		let count = _pendingUpdates
 		guard tab == .signer, count > 0 else { return "" }
 		return count == 1 ? .localized("1 update available") : .localized("%lld updates available", arguments: count)
 	}
