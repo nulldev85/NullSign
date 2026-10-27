@@ -19,13 +19,13 @@ struct SourceAppActionsView: View {
 		if let versions = route.app.versions, !versions.isEmpty {
 			return versions.enumerated().map { index, version in
 				VersionChoice(
-					id: index, title: version.version.isEmpty ? .localized("Unknown Version") : version.version,
+					id: index, title: version.version.isEmpty ? .localized("Unknown Version") : version.label,
 					url: version.downloadURL, version: version
 				)
 			}
 		}
 		return [VersionChoice(
-			id: 0, title: route.app.currentVersion.flatMap { $0.isEmpty ? nil : $0 } ?? .localized("Current Version"),
+			id: 0, title: route.app.currentVersionLabel.flatMap { $0.isEmpty ? nil : $0 } ?? .localized("Current Version"),
 			url: route.app.currentDownloadUrl, version: nil
 		)]
 	}

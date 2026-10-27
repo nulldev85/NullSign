@@ -447,6 +447,12 @@ extension ASRepository {
 		public var currentVersion: String? {
 			currentAppVersion?.version ?? version
 		}
+
+		/// The current version with its build, "0.19.0 (956)", so two builds
+		/// of the same version can be told apart.
+		public var currentVersionLabel: String? {
+			currentAppVersion?.label ?? version
+		}
 		
 		public var currentDownloadUrl: URL? {
 			currentAppVersion?.downloadURL ?? downloadURL
@@ -474,6 +480,12 @@ extension ASRepository {
 			public var downloadURL: URL?
 			public var size: UInt?
 			public var minOSVersion: OSVersion?
+
+			/// "0.19.0 (956)", or the version alone when it has no separate build.
+			public var label: String {
+				guard let build, !build.isEmpty, build != version, !version.isEmpty else { return version }
+				return "\(version) (\(build))"
+			}
 
 			public init(from decoder: any Decoder) throws {
 				let container = try decoder.container(keyedBy: CodingKeys.self)

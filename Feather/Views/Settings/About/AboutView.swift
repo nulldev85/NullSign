@@ -4,7 +4,8 @@ import NimbleJSON
 import AltSourceKit
 
 struct AboutView: View {
-	private static let _selfUpdateSourceURL = URL(string: "https://raw.githubusercontent.com/nulldev85/NullSign/main/app-repo.json")!
+	// The app source testers install from, which lists every NullSign release.
+	private static let _selfUpdateSourceURL = URL(string: "https://raw.githubusercontent.com/nulldev85/AppSource/main/apps.json")!
 
 	private enum SelfUpdateState: Equatable {
 		case idle
@@ -167,10 +168,11 @@ struct AboutView: View {
 
 		guard
 			let remoteVersion = remoteApp.currentVersion, !remoteVersion.isEmpty,
-			remoteVersion.compare(
-				Bundle.main.version,
-				options: [.numeric, .caseInsensitive]
-			) == .orderedDescending,
+			ReleaseOrder.isNewer(
+				remoteVersion, build: remoteApp.currentAppVersion?.build,
+				than: Bundle.main.version,
+				installedBuild: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+			),
 			let downloadURL = remoteApp.currentDownloadUrl,
 			let provenance = SourceAppProvenance(
 				sourceURL: Self._selfUpdateSourceURL,
@@ -184,7 +186,7 @@ struct AboutView: View {
 
 		_pendingUpdateDownloadURL = downloadURL
 		_pendingUpdateProvenance = provenance
-		_selfUpdateState = .available(version: remoteVersion)
+		_selfUpdateState = .available(version: remoteApp.currentVersionLabel ?? remoteVersion)
 	}
 
 	private func _startSelfUpdateDownload() {

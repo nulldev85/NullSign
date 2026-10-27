@@ -62,7 +62,7 @@ struct LibraryCellView: View {
 						.font(.roundedUI(.headline))
 						.foregroundStyle(.white)
 						.lineLimit(1)
-					if let version = app.version, !version.isEmpty {
+					if let version = app.versionLabel, !version.isEmpty {
 						Text(version)
 							.font(.roundedUI(.subheadline))
 							.foregroundStyle(NullSignStyle.faint)
