@@ -107,11 +107,14 @@ extension Imported: AppInfoPresentable {
 }
 
 extension AppInfoPresentable {
+	/// The build in the app's own Info.plist.
+	var bundleBuild: String? { AppBuildNumbers.shared.build(of: self) }
+
 	/// The version with the build from the app's own Info.plist, "0.19.0 (956)",
 	/// so two builds of the same version can be told apart.
 	var versionLabel: String? {
 		guard let version, !version.isEmpty else { return version }
-		guard let build = AppBuildNumbers.shared.build(of: self), !build.isEmpty, build != version else {
+		guard let build = bundleBuild, !build.isEmpty, build != version else {
 			return version
 		}
 		return "\(version) (\(build))"

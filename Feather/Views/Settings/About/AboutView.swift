@@ -167,10 +167,11 @@ struct AboutView: View {
 
 		guard
 			let remoteVersion = remoteApp.currentVersion, !remoteVersion.isEmpty,
-			remoteVersion.compare(
-				Bundle.main.version,
-				options: [.numeric, .caseInsensitive]
-			) == .orderedDescending,
+			ReleaseOrder.isNewer(
+				remoteVersion, build: remoteApp.currentAppVersion?.build,
+				than: Bundle.main.version,
+				installedBuild: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+			),
 			let downloadURL = remoteApp.currentDownloadUrl,
 			let provenance = SourceAppProvenance(
 				sourceURL: Self._selfUpdateSourceURL,
@@ -184,7 +185,7 @@ struct AboutView: View {
 
 		_pendingUpdateDownloadURL = downloadURL
 		_pendingUpdateProvenance = provenance
-		_selfUpdateState = .available(version: remoteVersion)
+		_selfUpdateState = .available(version: remoteApp.currentVersionLabel ?? remoteVersion)
 	}
 
 	private func _startSelfUpdateDownload() {

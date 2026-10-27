@@ -22,6 +22,22 @@ struct AppUpdate: Identifiable, Equatable {
 	let sourceProvenance: SourceAppProvenance
 }
 
+/// Which of two releases is newer. The version decides, and when the versions
+/// match the build does: every build of an app can share a version, and each
+/// still counts as an update. With either build unknown, matching versions are
+/// the same release.
+enum ReleaseOrder {
+	static func isNewer(_ version: String, build: String?, than installed: String, installedBuild: String?) -> Bool {
+		switch version.compare(installed, options: [.numeric, .caseInsensitive]) {
+		case .orderedDescending: return true
+		case .orderedAscending: return false
+		case .orderedSame:
+			guard let build, !build.isEmpty, let installedBuild, !installedBuild.isEmpty else { return false }
+			return build.compare(installedBuild, options: [.numeric, .caseInsensitive]) == .orderedDescending
+		}
+	}
+}
+
 @MainActor
 final class UpdateManager: ObservableObject {
 	static let shared = UpdateManager()
@@ -185,7 +201,13 @@ final class UpdateManager: ObservableObject {
 
 				guard
 					let installedVersion = sourceAppVersion ?? localApp.version,
-					_isVersion(remoteVersion, newerThan: installedVersion)
+					ReleaseOrder.isNewer(
+						remoteVersion, build: remoteApp.currentAppVersion?.build,
+						than: installedVersion,
+						// A version typed in when signing replaces the build as well, so the
+						// bundle's build only counts while its version is the source's.
+						installedBuild: localApp.version == installedVersion ? localApp.build : nil
+					)
 				else {
 					continue
 				}
@@ -206,7 +228,7 @@ final class UpdateManager: ObservableObject {
 					id: localUUID,
 					localUUID: localUUID,
 					localVersion: sourceAppVersion ?? localApp.version,
-					remoteVersion: remoteVersion,
+					remoteVersion: remoteApp.currentVersionLabel ?? remoteVersion,
 					appName: remoteApp.currentName,
 					bundleIdentifier: sourceAppIdentifier,
 					downloadURL: downloadURL,
@@ -240,10 +262,6 @@ final class UpdateManager: ObservableObject {
 		return absoluteString.hasSuffix("/") ? String(absoluteString.dropLast()) : absoluteString
 	}
 
-	private func _isVersion(_ candidate: String, newerThan installed: String) -> Bool {
-		candidate.compare(installed, options: [.numeric, .caseInsensitive]) == .orderedDescending
-	}
-
 	private func _fallbackMetadataCandidate(
 		for localApp: LocalAppSnapshot,
 		candidates: [SourceMetadataCandidate]
@@ -270,6 +288,7 @@ private struct LocalAppSnapshot {
 	let uuid: String
 	let identifier: String?
 	let version: String?
+	let build: String?
 	let source: URL?
 	let isSigned: Bool
 
@@ -278,6 +297,7 @@ private struct LocalAppSnapshot {
 		self.uuid = uuid
 		self.identifier = app.identifier
 		self.version = app.version
+		self.build = app.bundleBuild
 		self.source = app.source
 		self.isSigned = app.isSigned
 	}
