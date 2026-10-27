@@ -55,13 +55,13 @@ private struct VersionHistoryRow: View {
 	var body: some View {
 		HStack(alignment: .top, spacing: 12) {
 			AppVersionInfo(
-				version: version.version,
+				version: version.label,
 				date: version.date?.date,
 				description: version.localizedDescription ?? .localized("No release notes available")
 			)
 			if let url = version.downloadURL {
 				VersionHistoryActions(
-					url: url, versionName: version.version,
+					url: url, versionName: version.label,
 					copiedURL: $copiedURL, onDownload: { onDownload(url) }
 				)
 			}

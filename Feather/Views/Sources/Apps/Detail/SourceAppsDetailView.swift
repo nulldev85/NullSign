@@ -22,7 +22,7 @@ struct SourceAppsDetailView: View {
 					}
 				}
 
-				if let version = app.currentVersion,
+				if let version = app.currentVersionLabel,
 				   let notes = app.currentAppVersion?.localizedDescription,
 				   !notes.isEmpty {
 					_detailSection(.localized("What's New")) {
@@ -151,7 +151,7 @@ struct SourceAppsDetailView: View {
 		if let developer = app.developer { items.append((.localized("Developer"), developer)) }
 		if let size = app.size { items.append((.localized("Size"), size.formattedByteCount)) }
 		if let category = app.category { items.append((.localized("Category"), category.capitalized)) }
-		if let version = app.currentVersion { items.append((.localized("Version"), version)) }
+		if let version = app.currentVersionLabel { items.append((.localized("Version"), version)) }
 		if let date = app.currentDate?.date {
 			items.append((.localized("Updated"), DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: .none)))
 		}
@@ -253,7 +253,7 @@ struct SourceAppsDetailView: View {
 
 	private func _share() {
 		let text = """
-		\(app.currentName) — \(app.currentVersion ?? "")
+		\(app.currentName) — \(app.currentVersionLabel ?? "")
 		\(app.currentDescription ?? "")
 		\(source.website?.absoluteString ?? source.name ?? "")
 		"""

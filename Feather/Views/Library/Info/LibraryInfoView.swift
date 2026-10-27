@@ -85,7 +85,7 @@ extension LibraryInfoView {
 			}
 			HStack(spacing: 6) {
 				PlatformBadge(platform: app.platform)
-				if let version = app.version, !version.isEmpty {
+				if let version = app.versionLabel, !version.isEmpty {
 					NullSignChip(text: version)
 				}
 				NullSignChip(text: app.isSigned ? "Signed" : "Not signed")
@@ -103,7 +103,7 @@ extension LibraryInfoView {
 				_infoCell(.localized("Name"), desc: name, systemImage: "textformat")
 			}
 
-			if let ver = app.version {
+			if let ver = app.versionLabel {
 				_infoCell(.localized("Version"), desc: ver, systemImage: "number")
 			}
 

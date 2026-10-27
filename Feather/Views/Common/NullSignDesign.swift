@@ -679,7 +679,7 @@ struct NullSignSigningHeader<IconMenu: View>: View {
 
 			HStack(spacing: 6) {
 				PlatformBadge(platform: app.platform)
-				if let version = app.version, !version.isEmpty {
+				if let version = app.versionLabel, !version.isEmpty {
 					NullSignChip(text: version)
 				}
 			}

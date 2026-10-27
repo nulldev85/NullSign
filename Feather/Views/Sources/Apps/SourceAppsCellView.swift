@@ -47,7 +47,7 @@ struct SourceAppsCellView: View {
 	}
 
 	private var _footnote: String {
-		[app.currentVersion.flatMap { $0.isEmpty ? nil : $0 }, source.name]
+		[app.currentVersionLabel.flatMap { $0.isEmpty ? nil : $0 }, source.name]
 			.compactMap { $0 }
 			.joined(separator: " · ")
 	}
