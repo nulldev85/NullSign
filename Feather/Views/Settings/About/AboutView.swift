@@ -4,7 +4,8 @@ import NimbleJSON
 import AltSourceKit
 
 struct AboutView: View {
-	private static let _selfUpdateSourceURL = URL(string: "https://raw.githubusercontent.com/nulldev85/NullSign/main/app-repo.json")!
+	// The app source testers install from, which lists every NullSign release.
+	private static let _selfUpdateSourceURL = URL(string: "https://raw.githubusercontent.com/nulldev85/AppSource/main/apps.json")!
 
 	private enum SelfUpdateState: Equatable {
 		case idle
