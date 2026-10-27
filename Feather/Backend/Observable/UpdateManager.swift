@@ -55,7 +55,12 @@ final class UpdateManager: ObservableObject {
 	/// How many apps have an update, counting an app once however many copies
 	/// of it are in the library.
 	var availableUpdateCount: Int {
-		Set(updates.values.map(\.bundleIdentifier)).count
+		updatedBundleIdentifiers.count
+	}
+
+	/// The apps with an update, one entry per app.
+	var updatedBundleIdentifiers: Set<String> {
+		Set(updates.values.map(\.bundleIdentifier))
 	}
 
 	func update(for app: AppInfoPresentable) -> AppUpdate? {
@@ -150,7 +155,8 @@ final class UpdateManager: ObservableObject {
 
 			let sourceAppIdentifier: String
 			let sourceAppVersion: String?
-			let storedSourceURL: URL
+			// The source the app came from; nil when it came from a file.
+			let storedSourceURL: URL?
 			if let directMetadata = metadataByUUID[localUUID] {
 				guard
 					let metadataSourceAppIdentifier = directMetadata.sourceAppIdentifier,
@@ -188,12 +194,22 @@ final class UpdateManager: ObservableObject {
 				sourceAppIdentifier = localIdentifier
 				sourceAppVersion = localApp.version
 				storedSourceURL = localSourceURL
+			} else if let localIdentifier = localApp.identifier {
+				// Imported from a file, so it belongs to no source: any source
+				// that lists the same app can update it.
+				sourceAppIdentifier = localIdentifier
+				sourceAppVersion = localApp.version
+				storedSourceURL = nil
 			} else {
 				continue
 			}
 
+			// The newest release among the sources that can update the app.
+			var newest: (update: AppUpdate, version: String, build: String?)?
+
 			for (sourceURL, repository) in repositories {
-				guard _matchesStoredRepository(storedSourceURL: storedSourceURL, sourceURL: sourceURL) else {
+				if let storedSourceURL,
+				   !_matchesStoredRepository(storedSourceURL: storedSourceURL, sourceURL: sourceURL) {
 					continue
 				}
 
@@ -230,19 +246,32 @@ final class UpdateManager: ObservableObject {
 					continue
 				}
 
-				foundUpdates[localUUID] = AppUpdate(
-					id: localUUID,
-					localUUID: localUUID,
-					localVersion: sourceAppVersion ?? localApp.version,
-					remoteVersion: remoteApp.currentVersionLabel ?? remoteVersion,
-					appName: remoteApp.currentName,
-					bundleIdentifier: sourceAppIdentifier,
-					downloadURL: downloadURL,
-					sourceURL: sourceURL,
-					sourceProvenance: provenance
+				let remoteBuild = remoteApp.currentAppVersion?.build
+				if let newest, !ReleaseOrder.isNewer(
+					remoteVersion, build: remoteBuild,
+					than: newest.version, installedBuild: newest.build
+				) {
+					continue
+				}
+
+				newest = (
+					AppUpdate(
+						id: localUUID,
+						localUUID: localUUID,
+						localVersion: sourceAppVersion ?? localApp.version,
+						remoteVersion: remoteApp.currentVersionLabel ?? remoteVersion,
+						appName: remoteApp.currentName,
+						bundleIdentifier: sourceAppIdentifier,
+						downloadURL: downloadURL,
+						sourceURL: sourceURL,
+						sourceProvenance: provenance
+					),
+					remoteVersion,
+					remoteBuild
 				)
-				break
 			}
+
+			foundUpdates[localUUID] = newest?.update
 		}
 
 		return foundUpdates
