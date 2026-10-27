@@ -52,6 +52,12 @@ final class UpdateManager: ObservableObject {
 
 	private init() {}
 
+	/// How many apps have an update, counting an app once however many copies
+	/// of it are in the library.
+	var availableUpdateCount: Int {
+		Set(updates.values.map(\.bundleIdentifier)).count
+	}
+
 	func update(for app: AppInfoPresentable) -> AppUpdate? {
 		guard let uuid = app.uuid else { return nil }
 		return updates[uuid]

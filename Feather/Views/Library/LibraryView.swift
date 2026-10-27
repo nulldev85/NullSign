@@ -13,6 +13,7 @@ import NimbleViews
 struct LibraryView: View {
 	@StateObject var downloadManager = DownloadManager.shared
 	@StateObject var updateManager = UpdateManager.shared
+	@Environment(\.scenePhase) private var _scenePhase
 
 	@State private var _selectedInfoAppPresenting: AnyApp?
 	@State private var _selectedSigningAppPresenting: AnyApp?
@@ -163,14 +164,17 @@ struct LibraryView: View {
 								await _checkForUpdates()
 							}
 						} label: {
-							if updateManager.isChecking {
-								ProgressView()
-							} else {
-								Image(systemName: _isUpdateCheckCompleteVisible ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath")
+							HStack(spacing: 6) {
+								if updateManager.isChecking {
+									ProgressView()
+										.controlSize(.small)
+								}
+								Text(_updateCheckTitle)
+									.font(.roundedUI(size: 15, weight: .bold))
+									.lineLimit(1)
 							}
 						}
 						.disabled(updateManager.isChecking)
-						.accessibilityLabel(.localized("Check for Updates"))
 					}
 
 					if !_isSelecting {
@@ -261,6 +265,12 @@ struct LibraryView: View {
 			}
 			.task {
 				await _autoCheckForUpdatesIfNeeded()
+			}
+			// Coming back to NullSign checks again once the last check is old
+			// enough, so an app left open for days still hears about updates.
+			.onChange(of: _scenePhase) { phase in
+				guard phase == .active else { return }
+				Task { await _autoCheckForUpdatesIfNeeded() }
 			}
 		}
 		.tint(NullSignStyle.accent)
@@ -501,13 +511,24 @@ extension LibraryView {
 		await _checkForUpdates()
 	}
 
+	/// The update button says what it does, then for a moment what the check found.
+	private var _updateCheckTitle: String {
+		if updateManager.isChecking { return .localized("Checking…") }
+		guard _isUpdateCheckCompleteVisible else { return .localized("Check for Updates") }
+		switch updateManager.availableUpdateCount {
+		case 0: return .localized("Up to Date")
+		case 1: return .localized("1 Update Found")
+		case let count: return .localized("%lld Updates Found", arguments: count)
+		}
+	}
+
 	private func _handleUpdateCheckStateChange(_ isChecking: Bool) {
 		if isChecking {
 			_isUpdateCheckCompleteVisible = false
 		} else {
 			_isUpdateCheckCompleteVisible = true
 			Task { @MainActor in
-				try? await Task.sleep(nanoseconds: 900_000_000)
+				try? await Task.sleep(nanoseconds: 2_500_000_000)
 				if !updateManager.isChecking {
 					_isUpdateCheckCompleteVisible = false
 				}
