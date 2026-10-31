@@ -7,9 +7,10 @@
 
 import Foundation
 import Zip
-import SwiftUI
 
 final class AppFileHandler: NSObject, @unchecked Sendable {
+	// Bound decompression work and keep the ZIP library on one worker.
+	private static let _extractionQueue = DispatchQueue(label: "com.elmat.NullSign.extract", qos: .utility)
 	private let _fileManager = FileManager.default
 	private let _uuid = UUID().uuidString
 	private let _uniqueWorkDir: URL
@@ -19,6 +20,7 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 	private let _install: Bool
 	private let _download: Download?
 	private let _sourceProvenance: SourceAppProvenance?
+	private var _savedImport = false
 	
 	init(
 		file ipa: URL,
@@ -37,9 +39,14 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 	}
 	
 	func copy() async throws {
+		let access = _ipa.startAccessingSecurityScopedResource()
+		let source = _ipa
+		defer { if access { source.stopAccessingSecurityScopedResource() } }
 		try _fileManager.createDirectoryIfNeeded(at: _uniqueWorkDir)
 		
-		let destinationURL = _uniqueWorkDir.appendingPathComponent(_ipa.lastPathComponent)
+		// IPA/TIPA files are ZIP archives. A private .zip copy avoids mutating
+		// Zip's process-wide custom-extension Set from concurrent imports.
+		let destinationURL = _uniqueWorkDir.appendingPathComponent("Archive.zip")
 
 		try _fileManager.removeFileIfNeeded(at: destinationURL)
 		
@@ -48,24 +55,23 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 	}
 	
 	func extract() async throws {
-		if _ipa.pathExtension == "ipa" {
-			Zip.addCustomFileExtension("ipa")
-		}
-		if _ipa.pathExtension == "tipa" {
-			Zip.addCustomFileExtension("tipa")
-		}
-		
 		let download = self._download
 		
 		try await withCheckedThrowingContinuation { continuation in
-			DispatchQueue.global(qos: .utility).async {
+			Self._extractionQueue.async {
 				do {
+					var lastPercent = -1
 					try Zip.unzipFile(
 						self._ipa,
 						destination: self._uniqueWorkDir,
 						overwrite: true,
 						password: nil,
 						progress: { progress in
+							guard progress.isFinite else { return }
+							let progress = min(max(progress, 0), 1)
+							let percent = Int(progress * 100)
+							guard percent > lastPercent else { return }
+							lastPercent = percent
 							if let download = download {
 								DispatchQueue.main.async {
 									download.unpackageProgress = progress
@@ -109,19 +115,25 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 		let app = try await _directory()
 		
 		guard let appUrl = _fileManager.getPath(in: app, for: "app") else {
-			return
+			throw ImportedFileHandlerError.payloadNotFound
 		}
 		
 		let bundle = Bundle(url: appUrl)
 		
-		Storage.shared.addImported(
-			uuid: _uuid,
-			source: _sourceProvenance?.sourceRepositoryURL,
-			appName: bundle?.name,
-			appIdentifier: bundle?.bundleIdentifier,
-			appVersion: bundle?.version,
-			appIcon: bundle?.iconFileName
-		) { _ in }
+		try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+			Storage.shared.addImported(
+				uuid: _uuid,
+				source: _sourceProvenance?.sourceRepositoryURL,
+				appName: bundle?.name,
+				appIdentifier: bundle?.bundleIdentifier,
+				appVersion: bundle?.version,
+				appIcon: bundle?.iconFileName
+			) { error in
+				if let error { continuation.resume(throwing: error) }
+				else { continuation.resume() }
+			}
+		}
+		_savedImport = true
 		
 		if let sourceProvenance = _sourceProvenance {
 			Storage.shared.addSourceMetadata(
@@ -139,9 +151,16 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 	
 	func clean() async throws {
 		try _fileManager.removeFileIfNeeded(at: _uniqueWorkDir)
+		if !_savedImport {
+			try _fileManager.removeFileIfNeeded(at: _fileManager.unsigned(_uuid))
+		}
 	}
 }
 
-private enum ImportedFileHandlerError: Error {
+private enum ImportedFileHandlerError: LocalizedError {
 	case payloadNotFound
+
+	var errorDescription: String? {
+		"This archive does not contain an app in its Payload folder. Choose the original IPA or TIPA file."
+	}
 }

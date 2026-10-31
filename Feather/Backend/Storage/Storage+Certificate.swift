@@ -69,7 +69,12 @@ extension Storage {
 			new.expiration = expiration
 			new.nickname = nickname
 			new.isDefault = isDefault
-			self.saveContextNow()
+			guard self.saveContextNow() else {
+				completion(NSError(domain: "NullSign.CertificateImport", code: 2, userInfo: [
+					NSLocalizedDescriptionKey: "The certificate could not be saved. Try importing it again."
+				]))
+				return
+			}
 			generator.impactOccurred()
 			completion(nil)
 		}

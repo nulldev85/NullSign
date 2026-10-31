@@ -82,8 +82,7 @@ struct NullSignApp: App {
 				
 				guard
 					let p12URL = FileManager.default.decodeAndWrite(base64: p12Base64, pathComponent: ".p12"),
-					let provisionURL = FileManager.default.decodeAndWrite(base64: provisionBase64, pathComponent: ".mobileprovision"),
-					FR.checkPasswordForCertificate(for: p12URL, with: password, using: provisionURL)
+					let provisionURL = FileManager.default.decodeAndWrite(base64: provisionBase64, pathComponent: ".mobileprovision")
 				else {
 					generator.notificationOccurred(.error)
 					return
@@ -95,6 +94,7 @@ struct NullSignApp: App {
 					p12Password: password
 				) { error in
 					if let error = error {
+						generator.notificationOccurred(.error)
 						UIAlertController.showAlertWithOk(title: .localized("Error"), message: error.localizedDescription)
 					} else {
 						generator.notificationOccurred(.success)

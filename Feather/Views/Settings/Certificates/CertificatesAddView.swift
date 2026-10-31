@@ -149,21 +149,12 @@ extension CertificatesAddView {
 	}
 
 	private func _saveCertificate() {
-		guard !_isSaving else { return }
-		_isSaving = true
-
 		guard
+			!_isSaving,
 			let p12URL = _p12URL,
-			let provisionURL = _provisionURL,
-			FR.checkPasswordForCertificate(for: p12URL, with: _p12Password, using: provisionURL)
-		else {
-			_isSaving = false
-			UIAlertController.showAlertWithOk(
-				title: "Unable to Open Certificate",
-				message: "Check that the files match and that the certificate password is correct."
-			)
-			return
-		}
+			let provisionURL = _provisionURL
+		else { return }
+		_isSaving = true
 
 		let certificatesBeforeImport = Storage.shared.getAllCertificates()
 		let selectedIndex = UserDefaults.standard.integer(forKey: "feather.selectedCert")

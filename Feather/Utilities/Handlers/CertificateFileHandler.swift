@@ -33,37 +33,52 @@ final class CertificateFileHandler: NSObject {
 		self._certNickname = nickname
 		self._isDefault = isDefault
 		
-		_certPair = CertificateReader(provision).decoded
-		
 		super.init()
 	}
 	
 	func copy() async throws {
-		guard
-			(_certPair != nil)
-		else {
+		let keyAccess = _key.startAccessingSecurityScopedResource()
+		let profileAccess = _provision.startAccessingSecurityScopedResource()
+		defer {
+			if keyAccess { _key.stopAccessingSecurityScopedResource() }
+			if profileAccess { _provision.stopAccessingSecurityScopedResource() }
+		}
+		try FR.validateCertificate(for: _key, with: _keyPassword ?? "", using: _provision)
+		guard let profile = CertificateReader(_provision).decoded else {
 			throw CertificateFileHandlerError.certNotValid
 		}
+		_certPair = profile
 		
 		let destinationURL = try await _directory()
 
-		try _fileManager.createDirectory(at: destinationURL, withIntermediateDirectories: true)
-		try _fileManager.copyItem(at: _key, to: destinationURL.appendingPathComponent(_key.lastPathComponent))
-		try _fileManager.copyItem(at: _provision, to: destinationURL.appendingPathComponent(_provision.lastPathComponent))
+		do {
+			try _fileManager.createDirectory(at: destinationURL, withIntermediateDirectories: true)
+			try _fileManager.copyItem(at: _key, to: destinationURL.appendingPathComponent(_key.lastPathComponent))
+			try _fileManager.copyItem(at: _provision, to: destinationURL.appendingPathComponent(_provision.lastPathComponent))
+		} catch {
+			try? _fileManager.removeItem(at: destinationURL)
+			throw error
+		}
 	}
 	
 	func addToDatabase() async throws {
-		
-		Storage.shared.addCertificate(
-			uuid: _uuid,
-			password: _keyPassword,
-			nickname: _certNickname,
-			ppq: _certPair?.PPQCheck ?? false,
-			expiration: _certPair?.ExpirationDate ?? Date(),
-			isDefault: _isDefault
-		) { _ in
-			Logger.misc.info("[\(self._uuid)] Added to database")
+		try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+			Storage.shared.addCertificate(
+				uuid: _uuid,
+				password: _keyPassword,
+				nickname: _certNickname,
+				ppq: _certPair?.PPQCheck ?? false,
+				expiration: _certPair?.ExpirationDate ?? Date(),
+				isDefault: _isDefault
+			) { error in
+				if let error { continuation.resume(throwing: error) }
+				else { continuation.resume() }
+			}
 		}
+	}
+
+	func clean() async throws {
+		try _fileManager.removeFileIfNeeded(at: _fileManager.certificates(_uuid))
 	}
 	
 	private func _directory() async throws -> URL {
@@ -72,6 +87,10 @@ final class CertificateFileHandler: NSObject {
 	}
 }
 
-private enum CertificateFileHandlerError: Error {
+private enum CertificateFileHandlerError: LocalizedError {
 	case certNotValid
+
+	var errorDescription: String? {
+		"The provisioning profile is missing required signing details. Download the original .mobileprovision file and try again."
+	}
 }

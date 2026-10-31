@@ -181,8 +181,11 @@ class DownloadManager: NSObject, ObservableObject {
 
 extension DownloadManager: URLSessionDownloadDelegate {
 	
-	func handlePachageFile(url: URL, dl: Download) throws {
+	func handlePachageFile(url: URL, dl: Download, cleanupDirectory: URL? = nil) throws {
 		FR.handlePackageFile(url, download: dl) { err in
+			if let cleanupDirectory {
+				FileManager.default.removeItemsInBackground([cleanupDirectory])
+			}
 			if err != nil {
 				let generator = UINotificationFeedbackGenerator()
 				generator.notificationOccurred(.error)
@@ -208,7 +211,10 @@ extension DownloadManager: URLSessionDownloadDelegate {
 		guard let download = getDownloadTask(by: downloadTask) else { return }
 		
 		let tempDirectory = FileManager.default.temporaryDirectory
+		// Two downloads can have the same suggested filename. Each owns its
+		// staging directory until the importer finishes copying the archive.
 		let customTempDir = tempDirectory.appendingPathComponent("FeatherDownloads", isDirectory: true)
+			.appendingPathComponent(UUID().uuidString, isDirectory: true)
 		
 		do {
 			try FileManager.default.createDirectoryIfNeeded(at: customTempDir)
@@ -220,8 +226,9 @@ extension DownloadManager: URLSessionDownloadDelegate {
 			try FileManager.default.removeFileIfNeeded(at: destinationURL)
 			try FileManager.default.moveItem(at: location, to: destinationURL)
 			
-			try handlePachageFile(url: destinationURL, dl: download)
+			try handlePachageFile(url: destinationURL, dl: download, cleanupDirectory: customTempDir)
 		} catch {
+			FileManager.default.removeItemsInBackground([customTempDir])
 			print("Error handling downloaded file: \(error.localizedDescription)")
 		}
 	}

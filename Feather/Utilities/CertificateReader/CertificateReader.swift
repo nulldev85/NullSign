@@ -5,8 +5,9 @@
 //  Created by samara on 16.04.2025.
 //
 
-import UIKit
+import Foundation
 import OSLog
+import Zsign
 
 class CertificateReader: NSObject {
 	let file: URL?
@@ -22,17 +23,13 @@ class CertificateReader: NSObject {
 		guard let file = file else { return nil }
 		
 		do {
-			let fileData = try Data(contentsOf: file)
-			
-			guard let xmlRange = fileData.range(of: Data("<?xml".utf8)) else {
-				Logger.misc.error("XML start not found")
+			guard let profileData = provisioning_profile_content(file.path) else {
+				Logger.misc.error("Provisioning profile content could not be decoded")
 				return nil
 			}
 			
-			let xmlData = fileData.subdata(in: xmlRange.lowerBound..<fileData.endIndex)
-			
 			let decoder = PropertyListDecoder()
-			let data = try decoder.decode(Certificate.self, from: xmlData)
+			let data = try decoder.decode(Certificate.self, from: profileData)
 			return data
 		} catch {
 			Logger.misc.error("Error extracting certificate: \(error.localizedDescription)")

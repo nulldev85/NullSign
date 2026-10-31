@@ -1,0 +1,283 @@
+diff --git a/src/certificate_validation.h b/src/certificate_validation.h
+new file mode 100644
+--- /dev/null
++++ b/src/certificate_validation.h
+@@ -0,0 +1,103 @@
++#pragma once
++
++#include "common/json.h"
++#include <memory>
++#include <openssl/cms.h>
++#include <openssl/err.h>
++#include <openssl/pkcs12.h>
++#include <openssl/provider.h>
++
++// Loading any provider disables automatic loading of the default provider.
++// Retain both handles for the process lifetime; initialize once across threads.
++inline bool ZInitializeCertificateProviders()
++{
++	static const bool ready = [] {
++		OSSL_PROVIDER* standard = OSSL_PROVIDER_load(nullptr, "default");
++		OSSL_PROVIDER_load(nullptr, "legacy");
++		// Legacy is optional: modern identities work even if it is unavailable.
++		ERR_clear_error();
++		return standard != nullptr;
++	}();
++	return ready;
++}
++
++enum class ZCertificateValidation {
++	valid,
++	unavailableAlgorithms,
++	unreadableCertificate,
++	invalidCertificate,
++	incorrectPassword,
++	decryptionFailed,
++	missingPrivateKey,
++	unreadableProfile,
++	invalidProfile,
++	profileMismatch
++};
++
++template <typename T, auto Free>
++using ZCertificatePointer = std::unique_ptr<T, decltype(Free)>;
++
++inline ZCertificateValidation ZReadProvisioningContent(const char* path, std::string& content)
++{
++	content.clear();
++	ZCertificatePointer<BIO, BIO_free> input(BIO_new_file(path, "rb"), BIO_free);
++	if (!input) return ZCertificateValidation::unreadableProfile;
++	ZCertificatePointer<CMS_ContentInfo, CMS_ContentInfo_free> cms(
++		d2i_CMS_bio(input.get(), nullptr), CMS_ContentInfo_free);
++	if (!cms || OBJ_obj2nid(CMS_get0_type(cms.get())) != NID_pkcs7_signed)
++		return ZCertificateValidation::invalidProfile;
++	ASN1_OCTET_STRING** payload = CMS_get0_content(cms.get());
++	if (!payload || !*payload || ASN1_STRING_length(*payload) <= 0)
++		return ZCertificateValidation::invalidProfile;
++	content.assign(reinterpret_cast<const char*>(ASN1_STRING_get0_data(*payload)),
++		ASN1_STRING_length(*payload));
++	return ZCertificateValidation::valid;
++}
++
++inline ZCertificateValidation ZValidateCertificate(
++	const char* path, const char* password, const char* profilePath = nullptr)
++{
++	ERR_clear_error();
++	if (!ZInitializeCertificateProviders()) return ZCertificateValidation::unavailableAlgorithms;
++	ZCertificatePointer<BIO, BIO_free> input(BIO_new_file(path, "rb"), BIO_free);
++	if (!input) return ZCertificateValidation::unreadableCertificate;
++	ZCertificatePointer<PKCS12, PKCS12_free> p12(d2i_PKCS12_bio(input.get(), nullptr), PKCS12_free);
++	if (!p12) return ZCertificateValidation::invalidCertificate;
++	// MAC verification alone does not prove the private key can be decrypted.
++	// Only try a null password when the supplied password is actually empty.
++	if (PKCS12_mac_present(p12.get()) &&
++		!PKCS12_verify_mac(p12.get(), password, -1) &&
++		!(password[0] == '\0' && PKCS12_verify_mac(p12.get(), nullptr, 0)))
++		return ZCertificateValidation::incorrectPassword;
++	ERR_clear_error();
++	EVP_PKEY* rawKey = nullptr;
++	X509* rawCertificate = nullptr;
++	const int parsed = PKCS12_parse(p12.get(), password, &rawKey, &rawCertificate, nullptr);
++	ZCertificatePointer<EVP_PKEY, EVP_PKEY_free> key(rawKey, EVP_PKEY_free);
++	ZCertificatePointer<X509, X509_free> certificate(rawCertificate, X509_free);
++	if (!parsed) return ZCertificateValidation::decryptionFailed;
++	if (!key || (certificate && !X509_check_private_key(certificate.get(), key.get())))
++		return ZCertificateValidation::missingPrivateKey;
++	if (!profilePath) return ZCertificateValidation::valid;
++
++	std::string content;
++	const auto profileResult = ZReadProvisioningContent(profilePath, content);
++	if (profileResult != ZCertificateValidation::valid) return profileResult;
++	jvalue profile;
++	if (!profile.read_plist(content) || !profile["DeveloperCertificates"].is_array() ||
++		profile["DeveloperCertificates"].size() == 0)
++		return ZCertificateValidation::invalidProfile;
++	for (size_t index = 0; index < profile["DeveloperCertificates"].size(); ++index) {
++		const std::string der = profile["DeveloperCertificates"][index].as_data();
++		const auto* bytes = reinterpret_cast<const unsigned char*>(der.data());
++		ZCertificatePointer<X509, X509_free> candidate(
++			d2i_X509(nullptr, &bytes, static_cast<long>(der.size())), X509_free);
++		if (candidate && X509_check_private_key(candidate.get(), key.get()) &&
++			(!certificate || X509_cmp(certificate.get(), candidate.get()) == 0)) {
++			ERR_clear_error();
++			return ZCertificateValidation::valid;
++		}
++	}
++	ERR_clear_error();
++	return ZCertificateValidation::profileMismatch;
++}
+diff --git a/src/openssl_tools.hpp b/src/openssl_tools.hpp
+--- a/src/openssl_tools.hpp
++++ b/src/openssl_tools.hpp
+@@ -10,9 +10,9 @@
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+-bool p12_password_check(NSString *file, NSString *pass);
+-void password_check_fix_WHAT_THE_FUCK(NSString *path);
+-void password_check_fix_WHAT_THE_FUCK_free(NSString *path);
++bool p12_password_check(NSString * _Nonnull file, NSString * _Nonnull pass);
++NSString * _Nullable certificate_import_error(NSString * _Nonnull file, NSString * _Nonnull pass, NSString * _Nonnull profile);
++NSData * _Nullable provisioning_profile_content(NSString * _Nonnull path);
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/src/openssl_tools.mm b/src/openssl_tools.mm
+--- a/src/openssl_tools.mm
++++ b/src/openssl_tools.mm
+@@ -1,91 +1,42 @@
+-//
+-//  p12_password_check.cpp
+-//  feather
+-//
+-//  Created by HAHALOSAH on 8/6/24.
+-//
+-
++// Certificate import uses the same PKCS#12 parser as the signing engine.
+ #include "openssl_tools.hpp"
+-#include "common.h"
+-
+-#include <openssl/pem.h>
+-#include <openssl/cms.h>
+-#include <openssl/err.h>
+-#include <openssl/provider.h>
+-#include <openssl/pkcs12.h>
+-#include <openssl/conf.h>
+-#include <openssl/evp.h>
+-#include <openssl/x509.h>
+-
+-#include <string>
+-
+-using namespace std;
++#include "certificate_validation.h"
+ 
+ bool p12_password_check(NSString *file, NSString *pass) {
+-	const std::string strFile = [file cStringUsingEncoding:NSUTF8StringEncoding];
+-	const std::string strPass = [pass cStringUsingEncoding:NSUTF8StringEncoding];
+-	
+-	BIO *bio = BIO_new_file(strFile.c_str(), "rb");
+-	if (!bio) {
+-		NSLog(@"Failed to open .p12 file");
+-		return false;
+-	}
+-	
+-	OSSL_PROVIDER_load(NULL, "legacy");
+-	
+-	PKCS12 *p12 = d2i_PKCS12_bio(bio, NULL);
+-	BIO_free(bio);
+-	
+-	if (!p12) {
+-		NSLog(@"Failed to parse PKCS12");
+-		return false;
+-	}
+-	
+-	if( PKCS12_verify_mac(p12, NULL, 0) ) {
+-		return true;
+-	} else if( PKCS12_verify_mac(p12, strPass.c_str(), -1) ) {
+-		return true;
+-	} else {
+-		return false;
+-	}
+-	
+-	PKCS12_free(p12);
+-	return false;
++    return ZValidateCertificate(file.fileSystemRepresentation, pass.UTF8String) == ZCertificateValidation::valid;
+ }
+ 
+-// This is fucking bullshit IMO.
+-//
+-// In total, I probably wasted a total of 1.5 hours on this
+-// Feel free to increment the counter until someone finds a proper fix
+-//
+-// hours_wasted = 1.5
+-//
+-// TODO: FIX
+-void password_check_fix_WHAT_THE_FUCK(NSString *path) {
+-	string strProvisionFile = [path cStringUsingEncoding:NSUTF8StringEncoding];
+-	string strProvisionData;
+-	ZFile::ReadFile(strProvisionFile.c_str(), strProvisionData);
+-	
+-	BIO *in = BIO_new(BIO_s_mem());
+-	OPENSSL_assert((size_t)BIO_write(in, strProvisionData.data(), (int)strProvisionData.size()) == strProvisionData.size());
+-	d2i_CMS_bio(in, NULL);
++NSString *certificate_import_error(NSString *file, NSString *pass, NSString *profile) {
++    switch (ZValidateCertificate(file.fileSystemRepresentation, pass.UTF8String, profile.fileSystemRepresentation)) {
++        case ZCertificateValidation::valid:
++            return nil;
++        case ZCertificateValidation::unavailableAlgorithms:
++            return @"Certificate support could not be initialized. Restart NullSign and try again.";
++        case ZCertificateValidation::unreadableCertificate:
++            return @"The .p12 file could not be read. Download it to this device in Files, then select it again.";
++        case ZCertificateValidation::invalidCertificate:
++            return @"This file is not a readable PKCS#12 certificate. Select the original .p12 file or export it again.";
++        case ZCertificateValidation::incorrectPassword:
++            return pass.length == 0
++                ? @"This .p12 could not be opened with an empty password. Enter the password supplied with the certificate. If it has no password, export the file again."
++                : @"The .p12 password is incorrect, or the file is damaged. Check the exact password supplied with it or export the file again.";
++        case ZCertificateValidation::decryptionFailed:
++            return @"The .p12 private key could not be decrypted. Check its password or ask its provider to export it again with standard PKCS#12 encryption.";
++        case ZCertificateValidation::missingPrivateKey:
++            return @"The .p12 does not contain a usable signing private key. Export the certificate together with its private key.";
++        case ZCertificateValidation::unreadableProfile:
++            return @"The provisioning profile could not be read. Download it to this device in Files, then select it again.";
++        case ZCertificateValidation::invalidProfile:
++            return @"This file is not a valid provisioning profile with signing certificates. Select the original .mobileprovision file.";
++        case ZCertificateValidation::profileMismatch:
++            return @"This provisioning profile does not include the signing certificate in the .p12. Choose the matching .mobileprovision file.";
++    }
++    return @"The signing identity could not be opened.";
+ }
+ 
+-void password_check_fix_WHAT_THE_FUCK_free(NSString *path) {
+-	string strProvisionFile = [path cStringUsingEncoding:NSUTF8StringEncoding];
+-	string strProvisionData;
+-	ZFile::ReadFile(strProvisionFile.c_str(), strProvisionData);
+-	
+-	BIO *in = BIO_new(BIO_s_mem());
+-	if (!in) return;
+-	
+-	if ((size_t)BIO_write(in, strProvisionData.data(), (int)strProvisionData.size()) != strProvisionData.size()) {
+-		BIO_free(in);
+-		return;
+-	}
+-	
+-	CMS_ContentInfo *cms = d2i_CMS_bio(in, NULL);
+-	if (cms) CMS_ContentInfo_free(cms);
+-	// free my boy
+-	BIO_free(in);
++NSData *provisioning_profile_content(NSString *path) {
++    std::string content;
++    if (ZReadProvisioningContent(path.fileSystemRepresentation, content) != ZCertificateValidation::valid)
++        return nil;
++    return [NSData dataWithBytes:content.data() length:content.size()];
+ }
+diff --git a/src/openssl.cpp b/src/openssl.cpp
+--- a/src/openssl.cpp
++++ b/src/openssl.cpp
+@@ -7,6 +7,7 @@
+ #include <openssl/provider.h>
+ #include <openssl/pkcs12.h>
+ #include <openssl/conf.h>
++#include "certificate_validation.h"
+ 
+ const char* ZSignAsset::s_szAppleDevCACert = ""
+ "-----BEGIN CERTIFICATE-----\n"
+@@ -576,6 +577,10 @@
+ 	m_bAdhoc = bAdhoc;
+ 	m_bSHA256Only = bSHA256Only;
+ 	m_bSingleBinary = bSingleBinary;
++	if (!ZInitializeCertificateProviders()) {
++		ZLog::Error(">>> Can't initialize certificate algorithms!\n");
++		return false;
++	}
+ 
+ 	if (m_bAdhoc) {
+ 		if (!strEntitleFile.empty()) {
+@@ -620,7 +625,6 @@
+ 			evpPKey = d2i_PrivateKey_bio(bioPKey, NULL);
+ 			if (NULL == evpPKey) {
+ 				BIO_reset(bioPKey);
+-				OSSL_PROVIDER_load(NULL, "legacy");
+ 				PKCS12* p12 = d2i_PKCS12_bio(bioPKey, NULL);
+ 				if (NULL != p12) {
+ 					if (0 == PKCS12_parse(p12, strPassword.c_str(), &evpPKey, &x509Cert, NULL)) {
