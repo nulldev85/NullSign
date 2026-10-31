@@ -41,7 +41,7 @@ with tempfile.TemporaryDirectory(prefix="nullsign-import-tests-") as directory:
     objects = []
     for name in ("ioapi", "unzip", "zip"):
         output = work / f"{name}.o"
-        run(*cc, "-c", "-fPIC", f"-I{includes}", *cflags, source / f"minizip/{name}.c", "-o", output)
+        run(*cc, *target, "-c", "-fPIC", f"-I{includes}", *cflags, source / f"minizip/{name}.c", "-o", output)
         objects.append(output)
     (work / "module.modulemap").write_text(
         f'module Minizip [system] {{ header "{includes / "Minizip.h"}" link "z" export * }}\n')
@@ -62,14 +62,12 @@ with tempfile.TemporaryDirectory(prefix="nullsign-import-tests-") as directory:
         "-I", work, *swift_cflags, *ldflags, *swift_sources, *objects,
         "-emit-module-path", work / "Zip.swiftmodule", "-o", work / f"libZip.{suffix}")
     helpers = []
-    for relative in ("NimbleKit/Sources/NimbleExtensions/FileManager/FileManager+shortcuts.swift",
-                     "NimbleKit/Sources/NimbleExtensions/Bundle/Bundle+keys.swift"):
+    for relative in ("NimbleKit/Sources/NimbleExtensions/FileManager/FileManager+shortcuts.swift",):
         original = ROOT / relative
         if sys.platform == "linux":
             # Linux Foundation has no Objective-C submodules; the helpers are unchanged.
             copied = work / original.name
-            copied.write_text(original.read_text().replace("import Foundation.NSFileManager", "import Foundation")
-                              .replace("import Foundation.NSBundle", "import Foundation"))
+            copied.write_text(original.read_text().replace("import Foundation.NSFileManager", "import Foundation"))
             helpers.append(copied)
         else:
             helpers.append(original)
@@ -79,7 +77,7 @@ with tempfile.TemporaryDirectory(prefix="nullsign-import-tests-") as directory:
         ROOT / "Feather/Utilities/Handlers/AppFileHandler.swift",
         ROOT / "Tools/Fixtures/AppImportTests.swift", "-o", work / "test-import")
     (work / "Unsigned").mkdir()
-    for index in range(36):
+    for index in range(37):
         folder = work / "Inputs" / str(index)
         folder.mkdir(parents=True)
         archive = folder / ("App.tipa" if index % 2 else "App.ipa")
@@ -91,15 +89,31 @@ with tempfile.TemporaryDirectory(prefix="nullsign-import-tests-") as directory:
                 ipa.writestr("Payload/readme.txt", "No app bundle")
                 continue
             identifier = f"com.nullsign.fixture.{index}" if index != 35 else "com.nullsign.fixture.reject"
-            info = plistlib.dumps({
+            info = {
                 "CFBundleIdentifier": identifier, "CFBundleName": f"Fixture {index}",
                 "CFBundleVersion": "1", "CFBundleShortVersionString": "1.0",
                 "CFBundleExecutable": "Fixture",
-            })
-            ipa.writestr("Payload/Fixture.app/Info.plist", info)
-            if sys.platform == "linux":
-                # Linux Bundle treats a Resources directory as the metadata root.
-                ipa.writestr("Payload/Fixture.app/Resources/Info.plist", info)
+            }
+            if index % 3 == 0:
+                info["CFBundleDisplayName"] = f"Displayed {index}"
+            elif index % 3 == 2:
+                info["CFBundleDisplayName"] = ""
+                info["CFBundleName"] = ""
+            if index % 2:
+                del info["CFBundleShortVersionString"]
+            icon = f"Icon{index}"
+            if index % 6 in (0, 1):
+                key = "CFBundleIcons" if index % 6 == 0 else "CFBundleIcons~ipad"
+                info[key] = {"CFBundlePrimaryIcon": {"CFBundleIconFiles": ["SmallIcon", icon]}}
+            elif index % 6 == 5:
+                info["CFBundleIconFile"] = icon
+            else:
+                key = ["CFBundleIconFiles", "CFBundleIconFiles~iphone", "CFBundleIconFiles~ipad"][index % 6 - 2]
+                info[key] = ["SmallIcon", icon]
+            if index == 36:
+                del info["CFBundleIdentifier"]
+            payload = plistlib.dumps(info, fmt=plistlib.FMT_XML if index % 2 else plistlib.FMT_BINARY)
+            ipa.writestr("Payload/Fixture.app/Info.plist", payload)
             ipa.writestr("Payload/Fixture.app/Fixture", b"fixture executable")
             for resource in range(1500 if index == 32 else 10):
                 ipa.writestr(f"Payload/Fixture.app/Resources/{resource}.txt", str(resource) * 30)

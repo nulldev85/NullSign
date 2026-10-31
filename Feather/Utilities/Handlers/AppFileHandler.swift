@@ -118,16 +118,18 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 			throw ImportedFileHandlerError.payloadNotFound
 		}
 		
-		let bundle = Bundle(url: appUrl)
+		// Read the IPA's flat bundle metadata directly. Host Bundle layout
+		// detection can interpret a Resources folder as a different bundle type.
+		let metadata = try ImportedBundleMetadata(at: appUrl)
 		
 		try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
 			Storage.shared.addImported(
 				uuid: _uuid,
 				source: _sourceProvenance?.sourceRepositoryURL,
-				appName: bundle?.name,
-				appIdentifier: bundle?.bundleIdentifier,
-				appVersion: bundle?.version,
-				appIcon: bundle?.iconFileName
+				appName: metadata.name,
+				appIdentifier: metadata.identifier,
+				appVersion: metadata.version,
+				appIcon: metadata.iconFileName
 			) { error in
 				if let error { continuation.resume(throwing: error) }
 				else { continuation.resume() }
@@ -157,10 +159,54 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 	}
 }
 
+private struct ImportedBundleMetadata {
+	private let info: [String: Any]
+	let identifier: String
+
+	init(at appURL: URL) throws {
+		guard let data = try? Data(contentsOf: appURL.appendingPathComponent("Info.plist")),
+			  let info = (try? PropertyListSerialization.propertyList(from: data, options: [], format: nil)) as? [String: Any],
+			  let identifier = info["CFBundleIdentifier"] as? String, !identifier.isEmpty else {
+			throw ImportedFileHandlerError.invalidMetadata
+		}
+		self.info = info
+		self.identifier = identifier
+	}
+
+	var name: String {
+		["CFBundleDisplayName", "CFBundleName", "CFBundleExecutable"]
+			.compactMap { info[$0] as? String }.first { !$0.isEmpty } ?? identifier
+	}
+
+	var version: String {
+		info["CFBundleShortVersionString"] as? String ?? info["CFBundleVersion"] as? String ?? ""
+	}
+
+	var iconFileName: String? {
+		for key in ["CFBundleIcons", "CFBundleIcons~ipad"] {
+			if let icons = info[key] as? [String: Any],
+			   let primary = icons["CFBundlePrimaryIcon"] as? [String: Any],
+			   let files = primary["CFBundleIconFiles"] as? [String], let name = files.last {
+				return name
+			}
+		}
+		for key in ["CFBundleIconFiles", "CFBundleIconFiles~iphone", "CFBundleIconFiles~ipad"] {
+			if let files = info[key] as? [String], let name = files.last { return name }
+		}
+		return info["CFBundleIconFile"] as? String
+	}
+}
+
 private enum ImportedFileHandlerError: LocalizedError {
 	case payloadNotFound
+	case invalidMetadata
 
 	var errorDescription: String? {
-		"This archive does not contain an app in its Payload folder. Choose the original IPA or TIPA file."
+		switch self {
+		case .payloadNotFound:
+			"This archive does not contain an app in its Payload folder. Choose the original IPA or TIPA file."
+		case .invalidMetadata:
+			"The app's Info.plist is missing or invalid. Choose an IPA with a valid bundle identifier."
+		}
 	}
 }

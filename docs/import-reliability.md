@@ -44,6 +44,11 @@ Library inserts are awaited. A failed database save propagates an error; corrupt
 archives, archives without an app, and failed saves remove partial library files.
 Other files in the batch continue importing.
 
+Metadata comes directly from the app's root Info.plist, independent of the host's
+Bundle layout detection. XML and binary plists preserve display-name/version
+fallbacks and all existing icon filename formats. Missing or invalid bundle
+identifiers fail the import and remove partial files.
+
 ## Verification
 
 Passed locally on the Linux host:
@@ -54,10 +59,11 @@ Passed locally on the Linux host:
 - Four actual Swift certificate-model cases covering XML/binary profiles with
   and without DER-Encoded-Profile.
 - The actual AppFileHandler with the pinned Zip 2.1.2 implementation: 33 concurrent
-  valid IPA/TIPA imports sharing filenames, three deliberate failures (corruption,
-  missing app, rejected save), unique saved identities, bounded progress, and
-  cleanup. UI/background-task/database services are controlled test boundaries.
-  Linux-only fixture adaptations cover Foundation imports, bundle layout, security
+  valid IPA/TIPA imports sharing filenames, four deliberate failures (corruption,
+  missing app, rejected save, invalid metadata), exact identifiers/names/versions/
+  icon filenames from XML/binary plists, bounded progress, and cleanup.
+  UI/background-task/database services are controlled test boundaries.
+  Linux-only fixture adaptations cover Foundation imports, security
   scopes, and the pinned ZIP source's libc pointer annotation. macOS tests use the
   unmodified pinned ZIP source and platform APIs.
 - Seven existing native signing/resource regressions.
@@ -71,3 +77,15 @@ existing unreadable-resource patch are preserved.
 
 An Apple SDK build and physical-device tester confirmation remain pending. No
 new IPA or release has been published by this change.
+
+## Build 34 follow-up
+
+The completed build-33 run at `f29315b` passed dependency patch protection, all
+seven native signing/resource regressions, and all 15 certificate checks on the
+Apple host. It stopped in the batch-import regression before the app build:
+the save-rejection fixture was accepted because host Bundle metadata detection
+did not provide its expected identifier. Direct root Info.plist reads replace
+that assumption in the importer. The replacement test retains 33 valid imports,
+asserts the exact failing fixtures, adds invalid-metadata coverage, and checks
+all imported metadata. The stronger suite passes locally. C and Swift fixture
+compilation also use the same macOS deployment target. No test is skipped.
