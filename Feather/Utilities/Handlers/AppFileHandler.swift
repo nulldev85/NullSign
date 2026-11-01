@@ -7,9 +7,10 @@
 
 import Foundation
 import Zip
-import SwiftUI
 
 final class AppFileHandler: NSObject, @unchecked Sendable {
+	// Bound decompression work and keep the ZIP library on one worker.
+	private static let _extractionQueue = DispatchQueue(label: "com.elmat.NullSign.extract", qos: .utility)
 	private let _fileManager = FileManager.default
 	private let _uuid = UUID().uuidString
 	private let _uniqueWorkDir: URL
@@ -19,6 +20,7 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 	private let _install: Bool
 	private let _download: Download?
 	private let _sourceProvenance: SourceAppProvenance?
+	private var _savedImport = false
 	
 	init(
 		file ipa: URL,
@@ -37,9 +39,14 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 	}
 	
 	func copy() async throws {
+		let access = _ipa.startAccessingSecurityScopedResource()
+		let source = _ipa
+		defer { if access { source.stopAccessingSecurityScopedResource() } }
 		try _fileManager.createDirectoryIfNeeded(at: _uniqueWorkDir)
 		
-		let destinationURL = _uniqueWorkDir.appendingPathComponent(_ipa.lastPathComponent)
+		// IPA/TIPA files are ZIP archives. A private .zip copy avoids mutating
+		// Zip's process-wide custom-extension Set from concurrent imports.
+		let destinationURL = _uniqueWorkDir.appendingPathComponent("Archive.zip")
 
 		try _fileManager.removeFileIfNeeded(at: destinationURL)
 		
@@ -48,24 +55,23 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 	}
 	
 	func extract() async throws {
-		if _ipa.pathExtension == "ipa" {
-			Zip.addCustomFileExtension("ipa")
-		}
-		if _ipa.pathExtension == "tipa" {
-			Zip.addCustomFileExtension("tipa")
-		}
-		
 		let download = self._download
 		
 		try await withCheckedThrowingContinuation { continuation in
-			DispatchQueue.global(qos: .utility).async {
+			Self._extractionQueue.async {
 				do {
+					var lastPercent = -1
 					try Zip.unzipFile(
 						self._ipa,
 						destination: self._uniqueWorkDir,
 						overwrite: true,
 						password: nil,
 						progress: { progress in
+							guard progress.isFinite else { return }
+							let progress = min(max(progress, 0), 1)
+							let percent = Int(progress * 100)
+							guard percent > lastPercent else { return }
+							lastPercent = percent
 							if let download = download {
 								DispatchQueue.main.async {
 									download.unpackageProgress = progress
@@ -109,19 +115,27 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 		let app = try await _directory()
 		
 		guard let appUrl = _fileManager.getPath(in: app, for: "app") else {
-			return
+			throw ImportedFileHandlerError.payloadNotFound
 		}
 		
-		let bundle = Bundle(url: appUrl)
+		// Read the IPA's flat bundle metadata directly. Host Bundle layout
+		// detection can interpret a Resources folder as a different bundle type.
+		let metadata = try ImportedBundleMetadata(at: appUrl)
 		
-		Storage.shared.addImported(
-			uuid: _uuid,
-			source: _sourceProvenance?.sourceRepositoryURL,
-			appName: bundle?.name,
-			appIdentifier: bundle?.bundleIdentifier,
-			appVersion: bundle?.version,
-			appIcon: bundle?.iconFileName
-		) { _ in }
+		try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+			Storage.shared.addImported(
+				uuid: _uuid,
+				source: _sourceProvenance?.sourceRepositoryURL,
+				appName: metadata.name,
+				appIdentifier: metadata.identifier,
+				appVersion: metadata.version,
+				appIcon: metadata.iconFileName
+			) { error in
+				if let error { continuation.resume(throwing: error) }
+				else { continuation.resume() }
+			}
+		}
+		_savedImport = true
 		
 		if let sourceProvenance = _sourceProvenance {
 			Storage.shared.addSourceMetadata(
@@ -139,9 +153,60 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 	
 	func clean() async throws {
 		try _fileManager.removeFileIfNeeded(at: _uniqueWorkDir)
+		if !_savedImport {
+			try _fileManager.removeFileIfNeeded(at: _fileManager.unsigned(_uuid))
+		}
 	}
 }
 
-private enum ImportedFileHandlerError: Error {
+private struct ImportedBundleMetadata {
+	private let info: [String: Any]
+	let identifier: String
+
+	init(at appURL: URL) throws {
+		guard let data = try? Data(contentsOf: appURL.appendingPathComponent("Info.plist")),
+			  let info = (try? PropertyListSerialization.propertyList(from: data, options: [], format: nil)) as? [String: Any],
+			  let identifier = info["CFBundleIdentifier"] as? String, !identifier.isEmpty else {
+			throw ImportedFileHandlerError.invalidMetadata
+		}
+		self.info = info
+		self.identifier = identifier
+	}
+
+	var name: String {
+		["CFBundleDisplayName", "CFBundleName", "CFBundleExecutable"]
+			.compactMap { info[$0] as? String }.first { !$0.isEmpty } ?? identifier
+	}
+
+	var version: String {
+		info["CFBundleShortVersionString"] as? String ?? info["CFBundleVersion"] as? String ?? ""
+	}
+
+	var iconFileName: String? {
+		for key in ["CFBundleIcons", "CFBundleIcons~ipad"] {
+			if let icons = info[key] as? [String: Any],
+			   let primary = icons["CFBundlePrimaryIcon"] as? [String: Any],
+			   let files = primary["CFBundleIconFiles"] as? [String], let name = files.last {
+				return name
+			}
+		}
+		for key in ["CFBundleIconFiles", "CFBundleIconFiles~iphone", "CFBundleIconFiles~ipad"] {
+			if let files = info[key] as? [String], let name = files.last { return name }
+		}
+		return info["CFBundleIconFile"] as? String
+	}
+}
+
+private enum ImportedFileHandlerError: LocalizedError {
 	case payloadNotFound
+	case invalidMetadata
+
+	var errorDescription: String? {
+		switch self {
+		case .payloadNotFound:
+			"This archive does not contain an app in its Payload folder. Choose the original IPA or TIPA file."
+		case .invalidMetadata:
+			"The app's Info.plist is missing or invalid. Choose an IPA with a valid bundle identifier."
+		}
+	}
 }

@@ -24,7 +24,7 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - name: Apply pinned Zsign resource fix
+      - name: Apply pinned Zsign fixes
         run: python3 Tools/prepare-zsign.py
 
       - name: Select OpenSSL 3 for native regression tests
@@ -34,8 +34,13 @@ jobs:
 
       - name: Test native resource sealing and signing failure handling
         run: |
+          python3 Tools/test-zsign-patches.py
           python3 Tools/test-zsign-resources.py
+          python3 Tools/test-certificate-import.py
+          python3 Tools/test-app-import.py
           python3 Tools/test-zsign-handler.py
+          xcrun swiftc Feather/Utilities/AnyCodable.swift Feather/Utilities/CertificateReader/Models/CertificateModel.swift Tools/test-certificate-profile.swift -o "$RUNNER_TEMP/test-certificate-profile"
+          "$RUNNER_TEMP/test-certificate-profile"
 
       - name: Set up typography check runtime
         uses: actions/setup-node@v4

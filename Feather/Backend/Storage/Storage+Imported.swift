@@ -38,7 +38,12 @@ extension Storage {
 			new.icon = appIcon
 			new.version = appVersion ?? ""
 
-			self.saveContextNow()
+			guard self.saveContextNow() else {
+				completion(NSError(domain: "NullSign.Import", code: 1, userInfo: [
+					NSLocalizedDescriptionKey: "The imported app could not be saved. Try importing it again."
+				]))
+				return
+			}
 			generator.impactOccurred()
 			completion(nil)
 		}

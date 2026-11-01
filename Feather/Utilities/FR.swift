@@ -101,6 +101,7 @@ enum FR {
 					completion(nil)
 				}
 			} catch {
+				try? await handler.clean()
 				await MainActor.run {
 					completion(error)
 				}
@@ -108,22 +109,14 @@ enum FR {
 		}
 	}
 	
-	static func checkPasswordForCertificate(
+	static func validateCertificate(
 		for key: URL,
 		with password: String,
 		using provision: URL
-	) -> Bool {
-		defer {
-			password_check_fix_WHAT_THE_FUCK_free(provision.path)
+	) throws {
+		if let message = certificate_import_error(key.path, password, provision.path) {
+			throw NSError(domain: "NullSign.CertificateImport", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
 		}
-		
-		password_check_fix_WHAT_THE_FUCK(provision.path)
-		
-		if (!p12_password_check(key.path, password)) {
-			return false
-		}
-		
-		return true
 	}
 	
 	static func movePairing(_ url: URL) {
