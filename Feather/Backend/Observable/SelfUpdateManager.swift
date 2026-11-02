@@ -120,21 +120,21 @@ final class SelfUpdateManager: ObservableObject {
 
 		do {
 			state = .downloading
-			let package = try await Self._download(offer.downloadURL)
+			let package = try await AppUpdatePipeline.download(offer.downloadURL)
 			defer { try? FileManager.default.removeItem(at: package) }
 
 			let importStarted = Date()
-			try await Self._import(package, provenance: offer.provenance)
-			guard let imported: Imported = Self._newest(identifier: offer.bundleIdentifier, since: importStarted) else {
-				throw SelfUpdateError.notImported
+			try await AppUpdatePipeline.importPackage(package, provenance: offer.provenance)
+			guard let imported: Imported = AppUpdatePipeline.newest(identifier: offer.bundleIdentifier, since: importStarted) else {
+				throw AppUpdateError.notImported
 			}
 
 			state = .signing
 			let signStarted = Date()
 			try await Self._sign(imported, with: certificate)
 			let signedIdentifier = Bundle.main.bundleIdentifier ?? offer.bundleIdentifier
-			guard let signed: Signed = Self._newest(identifier: signedIdentifier, since: signStarted) else {
-				throw SelfUpdateError.notSigned
+			guard let signed: Signed = AppUpdatePipeline.newest(identifier: signedIdentifier, since: signStarted) else {
+				throw AppUpdateError.notSigned
 			}
 			// The signed copy is what installs; the download stays only where the
 			// signing settings keep originals.
@@ -171,30 +171,6 @@ final class SelfUpdateManager: ObservableObject {
 		}
 	}
 
-	private static func _download(_ url: URL) async throws -> URL {
-		let (temporary, response) = try await URLSession.shared.download(from: url)
-		if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-			try? FileManager.default.removeItem(at: temporary)
-			throw URLError(.badServerResponse)
-		}
-		let package = FileManager.default.temporaryDirectory
-			.appendingPathComponent("NullSignUpdate-\(UUID().uuidString).ipa")
-		try FileManager.default.moveItem(at: temporary, to: package)
-		return package
-	}
-
-	private static func _import(_ package: URL, provenance: SourceAppProvenance) async throws {
-		try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-			FR.handlePackageFile(package, sourceProvenance: provenance) { error in
-				if let error {
-					continuation.resume(throwing: error)
-				} else {
-					continuation.resume()
-				}
-			}
-		}
-	}
-
 	private static func _sign(_ app: AppInfoPresentable, with certificate: CertificatePair) async throws {
 		var options = OptionsManager.shared.options
 		// Replace this NullSign in place: its own identifier, name and version,
@@ -209,36 +185,6 @@ final class SelfUpdateManager: ObservableObject {
 		options.post_installAppAfterSigned = false
 		options.post_deleteAppAfterSigned = false
 
-		try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-			FR.signPackageFile(app, using: options, icon: nil, certificate: certificate) { error in
-				if let error {
-					continuation.resume(throwing: error)
-				} else {
-					continuation.resume()
-				}
-			}
-		}
-	}
-
-	/// The library row a step just added: the newest with the identifier,
-	/// made since the step began.
-	private static func _newest<T: NSManagedObject>(identifier: String, since start: Date) -> T? {
-		let request = NSFetchRequest<T>(entityName: String(describing: T.self))
-		request.predicate = NSPredicate(format: "identifier == %@ AND date >= %@", identifier, start as NSDate)
-		request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
-		request.fetchLimit = 1
-		return try? Storage.shared.context.fetch(request).first
-	}
-
-	private enum SelfUpdateError: LocalizedError {
-		case notImported
-		case notSigned
-
-		var errorDescription: String? {
-			switch self {
-			case .notImported: return .localized("The update downloaded but couldn't be added to your Library.")
-			case .notSigned: return .localized("The update was signed but couldn't be found in your Library.")
-			}
-		}
+		try await AppUpdatePipeline.sign(app, using: options, certificate: certificate)
 	}
 }

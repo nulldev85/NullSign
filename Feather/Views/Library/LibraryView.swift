@@ -13,6 +13,7 @@ import NimbleViews
 struct LibraryView: View {
 	@StateObject var downloadManager = DownloadManager.shared
 	@StateObject var updateManager = UpdateManager.shared
+	@StateObject private var _libraryUpdater = LibraryUpdateManager.shared
 	@StateObject private var _selfUpdate = SelfUpdateManager.shared
 	@Environment(\.scenePhase) private var _scenePhase
 
@@ -244,6 +245,25 @@ struct LibraryView: View {
 			}
 			.onChange(of: updateManager.isChecking) { isChecking in
 				_handleUpdateCheckStateChange(isChecking)
+			}
+			// A signed update goes straight to the installer, so iOS replaces the
+			// installed copy with it.
+			.onReceive(_libraryUpdater.$installingApp) { app in
+				guard let app else { return }
+				_libraryUpdater.installingApp = nil
+				_selectedInstallAppPresenting = app
+			}
+			.alert(
+				"Couldn't Update \(_libraryUpdater.failure?.appName ?? "App")",
+				isPresented: Binding(
+					get: { _libraryUpdater.failure != nil },
+					set: { if !$0 { _libraryUpdater.failure = nil } }
+				),
+				presenting: _libraryUpdater.failure
+			) { _ in
+				Button("OK", role: .cancel) {}
+			} message: { failure in
+				Text(failure.reason)
 			}
 			// An update downloaded, signed or deleted changes what is out of date.
 			.onChange(of: _libraryFingerprint) { _ in
