@@ -49,6 +49,9 @@ final class UpdateManager: ObservableObject {
 	@Published private(set) var lastCheckedDate: Date?
 
 	private let _dataService = NBFetchService()
+	/// The sources as the last check fetched them, so changes to the library
+	/// can be checked again without going back to the network.
+	private var _lastRepositories: [(URL, ASRepository)]?
 
 	private init() {}
 
@@ -86,7 +89,20 @@ final class UpdateManager: ObservableObject {
 		let snapshots = localApps.compactMap(LocalAppSnapshot.init)
 
 		let repositories = await _fetchRepositories(from: sourceURLs)
+		_lastRepositories = repositories
 		updates = _findUpdates(repositories: repositories, localApps: snapshots)
+	}
+
+	/// Matches the library against the sources the last check fetched. Run when
+	/// apps are added, removed or re-signed, so an update that was just taken,
+	/// or an app that was deleted, stops showing without waiting for a check.
+	func refresh(localApps: [AppInfoPresentable]) {
+		guard !isChecking, let repositories = _lastRepositories else { return }
+		let snapshots = localApps.compactMap(LocalAppSnapshot.init)
+		let refreshed = _findUpdates(repositories: repositories, localApps: snapshots)
+		if refreshed != updates {
+			updates = refreshed
+		}
 	}
 
 	private func _fetchRepositories(from urls: [URL]) async -> [(URL, ASRepository)] {
@@ -150,6 +166,9 @@ final class UpdateManager: ObservableObject {
 			return SourceMetadataCandidate(app: app, metadata: metadata)
 		}
 
+		// Each app's source identity, worked out once so its copies can be compared.
+		var resolvedApps: [ResolvedLocalApp] = []
+
 		for localApp in localApps {
 			let localUUID = localApp.uuid
 
@@ -203,6 +222,21 @@ final class UpdateManager: ObservableObject {
 			} else {
 				continue
 			}
+
+			resolvedApps.append(ResolvedLocalApp(
+				app: localApp,
+				sourceAppIdentifier: sourceAppIdentifier,
+				sourceAppVersion: sourceAppVersion,
+				storedSourceURL: storedSourceURL
+			))
+		}
+
+		for resolved in resolvedApps {
+			let localApp = resolved.app
+			let localUUID = localApp.uuid
+			let sourceAppIdentifier = resolved.sourceAppIdentifier
+			let sourceAppVersion = resolved.sourceAppVersion
+			let storedSourceURL = resolved.storedSourceURL
 
 			// The newest release among the sources that can update the app.
 			var newest: (update: AppUpdate, version: String, build: String?)?
@@ -271,7 +305,28 @@ final class UpdateManager: ObservableObject {
 				)
 			}
 
-			foundUpdates[localUUID] = newest?.update
+			guard let found = newest else { continue }
+
+			// Updating downloads the new release as its own copy and leaves this
+			// one where it was. Once any copy of the app is at the new release
+			// the update has been taken, so this older copy stops offering it.
+			let isAlreadyInLibrary = resolvedApps.contains { other in
+				guard
+					other.app.uuid != localUUID,
+					other.sourceAppIdentifier == sourceAppIdentifier
+						|| (other.app.identifier != nil && other.app.identifier == localApp.identifier),
+					let otherVersion = other.installedVersion
+				else {
+					return false
+				}
+				return !ReleaseOrder.isNewer(
+					found.version, build: found.build,
+					than: otherVersion, installedBuild: other.installedBuild
+				)
+			}
+			if isAlreadyInLibrary { continue }
+
+			foundUpdates[localUUID] = found.update
 		}
 
 		return foundUpdates
@@ -336,6 +391,22 @@ private struct LocalAppSnapshot {
 		self.source = app.source
 		self.isSigned = app.isSigned
 	}
+}
+
+/// A library app with the source release it was matched to.
+private struct ResolvedLocalApp {
+	let app: LocalAppSnapshot
+	let sourceAppIdentifier: String
+	let sourceAppVersion: String?
+	/// The source the app came from; nil when it came from a file.
+	let storedSourceURL: URL?
+
+	/// The release this copy is at, as the update check compares it.
+	var installedVersion: String? { sourceAppVersion ?? app.version }
+
+	/// A version typed in when signing replaces the build as well, so the
+	/// bundle's build only counts while its version is the source's.
+	var installedBuild: String? { app.version == installedVersion ? app.build : nil }
 }
 
 private struct SourceMetadataCandidate {
