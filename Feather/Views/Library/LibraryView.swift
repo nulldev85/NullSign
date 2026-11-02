@@ -245,6 +245,10 @@ struct LibraryView: View {
 			.onChange(of: updateManager.isChecking) { isChecking in
 				_handleUpdateCheckStateChange(isChecking)
 			}
+			// An update downloaded, signed or deleted changes what is out of date.
+			.onChange(of: _libraryFingerprint) { _ in
+				updateManager.refresh(localApps: _allLocalApps)
+			}
 			.task {
 				await _autoCheckForUpdatesIfNeeded()
 				await _selfUpdate.checkIfNeeded()
@@ -476,11 +480,19 @@ extension LibraryView {
 
 // MARK: - Extension: Updates
 extension LibraryView {
+	private var _allLocalApps: [AppInfoPresentable] {
+		_signedApps.map { $0 as AppInfoPresentable } + _importedApps.map { $0 as AppInfoPresentable }
+	}
+
+	/// Every app in the library and the release it is at.
+	private var _libraryFingerprint: [String] {
+		_allLocalApps.map { "\($0.uuid ?? "")|\($0.identifier ?? "")|\($0.version ?? "")" }
+	}
+
 	private func _checkForUpdates() async {
-		let localApps = _signedApps.map { $0 as AppInfoPresentable } + _importedApps.map { $0 as AppInfoPresentable }
 		await updateManager.checkForUpdates(
 			sources: Array(_sources),
-			localApps: localApps
+			localApps: _allLocalApps
 		)
 	}
 
