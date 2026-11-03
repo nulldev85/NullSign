@@ -16,6 +16,7 @@ struct LibraryView: View {
 	@StateObject private var _libraryUpdater = LibraryUpdateManager.shared
 	@StateObject private var _selfUpdate = SelfUpdateManager.shared
 	@Environment(\.scenePhase) private var _scenePhase
+	@AppStorage(LibraryPruner.settingKey) private var _keepNewestVersionOnly = false
 
 	@State private var _selectedInfoAppPresenting: AnyApp?
 	@State private var _selectedSigningAppPresenting: AnyApp?
@@ -265,11 +266,17 @@ struct LibraryView: View {
 			} message: { failure in
 				Text(failure.reason)
 			}
-			// An update downloaded, signed or deleted changes what is out of date.
+			// An update downloaded, signed or deleted changes what is out of date,
+			// and can leave an older copy to clear away.
 			.onChange(of: _libraryFingerprint) { _ in
+				_pruneReplacedCopies()
 				updateManager.refresh(localApps: _allLocalApps)
 			}
+			.onChange(of: _keepNewestVersionOnly) { _ in
+				_pruneReplacedCopies()
+			}
 			.task {
+				_pruneReplacedCopies()
 				await _autoCheckForUpdatesIfNeeded()
 				await _selfUpdate.checkIfNeeded()
 			}
@@ -507,6 +514,15 @@ extension LibraryView {
 	/// Every app in the library and the release it is at.
 	private var _libraryFingerprint: [String] {
 		_allLocalApps.map { "\($0.uuid ?? "")|\($0.identifier ?? "")|\($0.version ?? "")" }
+	}
+
+	/// With "Keep Only the Newest Version" on, older copies an update or a
+	/// fresh import has replaced are deleted.
+	private func _pruneReplacedCopies() {
+		let removed = LibraryPruner.pruneIfEnabled(_allLocalApps)
+		if !removed.isEmpty {
+			_selectedAppUUIDs.subtract(removed)
+		}
 	}
 
 	private func _checkForUpdates() async {

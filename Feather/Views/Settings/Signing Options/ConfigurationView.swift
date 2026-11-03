@@ -3,6 +3,7 @@ import NimbleViews
 
 struct ConfigurationView: View {
 	@StateObject private var _optionsManager = OptionsManager.shared
+	@AppStorage(LibraryPruner.settingKey) private var _keepNewestVersionOnly = false
 	@State private var _isRandomAlertPresenting = false
 	@State private var _randomString = ""
 	@State private var _isPPQMenuPresenting = false
@@ -154,6 +155,18 @@ struct ConfigurationView: View {
 					_toggle("Install Automatically", systemImage: "arrow.down.app", isOn: $_optionsManager.options.post_installAppAfterSigned)
 					NullSignSettingsDivider()
 					_toggle("Delete Imported Copy", systemImage: "trash", isOn: $_optionsManager.options.post_deleteAppAfterSigned)
+				}
+
+				NullSignSettingsSection(
+					"Library",
+					detail: "When a newer version of an app arrives, by updating or importing it again, older copies of that app are deleted from Imported and from Signed. Apps already installed on this device stay installed."
+				) {
+					_toggle(
+						"Keep Only the Newest Version",
+						detail: "Delete older copies of the same app",
+						systemImage: "square.stack.3d.up.slash",
+						isOn: $_keepNewestVersionOnly
+					)
 				}
 
 				NullSignSettingsSection(
