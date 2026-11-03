@@ -15,9 +15,9 @@ struct LibraryCellView: View {
 	// which would re-render every visible row on every check start/finish even
 	// though only the per-app update entry below is ever read from it.
 	private let updateManager = UpdateManager.shared
+	private let libraryUpdater = LibraryUpdateManager.shared
 	@State private var _update: AppUpdate?
-	@State private var _signedUpdateConfirmation: AppUpdate?
-	@State private var _isSignedUpdateConfirmationPresented = false
+	@State private var _updatePhase: LibraryUpdateManager.Phase?
 	@State private var _isActionsPresenting = false
 	@State private var _pendingAction: MenuAction?
 
@@ -133,11 +133,11 @@ struct LibraryCellView: View {
 				}
 			}
 		}
-		.sheet(isPresented: $_isSignedUpdateConfirmationPresented, onDismiss: _performPendingAction) {
-			_signedUpdateMenu
-		}
 		.onReceive(updateManager.$updates) { updates in
 			_update = app.uuid.flatMap { updates[$0] }
+		}
+		.onReceive(libraryUpdater.$phases) { phases in
+			_updatePhase = app.uuid.flatMap { phases[$0] }
 		}
 		.accessibilityAddTraits(isSelecting && _isSelected ? .isSelected : [])
 	}
@@ -169,7 +169,11 @@ extension LibraryCellView {
 
 	@ViewBuilder
 	private var _status: some View {
-		if _update != nil {
+		if let phase = _updatePhase {
+			Text(phase == .downloading ? "Downloading update…" : "Signing update…")
+				.font(.roundedUI(.caption, weight: .regular))
+				.foregroundStyle(NullSignStyle.accent)
+		} else if _update != nil {
 			Text("Update available")
 				.font(.roundedUI(.caption, weight: .regular))
 				.foregroundStyle(NullSignStyle.accent)
@@ -195,14 +199,17 @@ extension LibraryCellView {
 
 	@ViewBuilder
 	private var _primaryAction: some View {
-		if let update = _update {
+		if _updatePhase != nil {
+			Button {} label: {
+				ProgressView()
+					.tint(.white)
+			}
+			.buttonStyle(NullSignPrimaryButtonStyle(height: 32, dimsWhenDisabled: false))
+			.disabled(true)
+			.accessibilityLabel(.localized("Updating"))
+		} else if let update = _update {
 			Button {
-				if app.isSigned {
-					_signedUpdateConfirmation = update
-					_isSignedUpdateConfirmationPresented = true
-				} else {
-					_startUpdateDownload(update)
-				}
+				_startUpdate(update)
 			} label: {
 				Text(.localized("Update"))
 			}
@@ -236,35 +243,13 @@ extension LibraryCellView {
 	private enum MenuAction {
 		case info, open, install, sign, export, delete
 		case update(AppUpdate)
-		case downloadUpdate(AppUpdate)
-	}
-
-	private var _signedUpdateMenu: some View {
-		NullSignMenuSheet(
-			title: "Update Available", systemImage: "arrow.down.circle",
-			detail: _signedUpdateConfirmation.map { "\($0.appName) \($0.remoteVersion)" }
-		) {
-			NullSignSettingsCard {
-				NullSignMenuAction(title: "Install Current Version", systemImage: "square.and.arrow.down") {
-					_pendingAction = .install
-					_isSignedUpdateConfirmationPresented = false
-				}
-				if let update = _signedUpdateConfirmation {
-					NullSignSettingsDivider()
-					NullSignMenuAction(title: "Download Update", systemImage: "arrow.down.circle", tint: NullSignStyle.success) {
-						_pendingAction = .downloadUpdate(update)
-						_isSignedUpdateConfirmationPresented = false
-					}
-				}
-			}
-		}
 	}
 
 	@ViewBuilder
 	private var _menuActions: some View {
 		NullSignMenuAction(title: .localized("Get Info"), systemImage: "info.circle") { _chooseAction(.info) }
 		NullSignSettingsDivider()
-		if let update = _update {
+		if let update = _update, _updatePhase == nil {
 			NullSignMenuAction(title: .localized("Update"), systemImage: "arrow.down.circle", tint: NullSignStyle.success) {
 				_chooseAction(.update(update))
 			}
@@ -304,22 +289,14 @@ extension LibraryCellView {
 		case .sign: selectedSigningAppPresenting = AnyApp(base: app)
 		case .export: selectedInstallAppPresenting = AnyApp(base: app, archive: true)
 		case .delete: _delete()
-		case .downloadUpdate(let update): _startUpdateDownload(update)
-		case .update(let update):
-			if app.isSigned {
-				_signedUpdateConfirmation = update
-				_isSignedUpdateConfirmationPresented = true
-			} else {
-				_startUpdateDownload(update)
-			}
+		case .update(let update): _startUpdate(update)
 		}
 	}
 
-	private func _startUpdateDownload(_ update: AppUpdate) {
-		_ = DownloadManager.shared.startDownload(
-			from: update.downloadURL,
-			id: "FeatherManualDownload_Update_\(update.localUUID)",
-			sourceProvenance: update.sourceProvenance
-		)
+	/// A signed app is downloaded, signed and handed to the installer; one
+	/// that was never signed gets its new version added to the library.
+	private func _startUpdate(_ update: AppUpdate) {
+		UIImpactFeedbackGenerator(style: .light).impactOccurred()
+		Task { await libraryUpdater.update(app, to: update) }
 	}
 }
