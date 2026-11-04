@@ -115,35 +115,41 @@ extension ServerInstaller {
 		return nil
 	}
 	
+	/// The phone's own Wi-Fi address, which the install page and the download
+	/// it starts are served from. Only Wi-Fi counts: the cellular interface's
+	/// address (often a carrier's shared 100.64.x.x) and a VPN's tunnel are not
+	/// reachable from this same phone, and Safari hangs on them until it gives
+	/// up with "the server stopped responding". Without a Wi-Fi address the
+	/// caller falls back to 127.0.0.1.
 	static func getLocalAddress() -> String? {
-		var address: String?
 		var ifaddr: UnsafeMutablePointer<ifaddrs>?
-		
-		if getifaddrs(&ifaddr) == 0 {
-			var ptr = ifaddr
-			while ptr != nil {
-				let interface = ptr!.pointee
-				let addrFamily = interface.ifa_addr.pointee.sa_family
-				
-				if addrFamily == UInt8(AF_INET) {
-					
-					let name = String(cString: interface.ifa_name)
-					if name == "en0" || name == "pdp_ip0" {
-						
-						var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-						if getnameinfo(interface.ifa_addr, socklen_t(interface.ifa_addr.pointee.sa_len),
-						               &hostname, socklen_t(hostname.count),
-						               nil, socklen_t(0), NI_NUMERICHOST) == 0 {
-							address = String(cString: hostname)
-						}
-						
-					}
-				}
-				ptr = ptr!.pointee.ifa_next
+		guard getifaddrs(&ifaddr) == 0 else { return nil }
+		defer { freeifaddrs(ifaddr) }
+
+		var ptr = ifaddr
+		while let interface = ptr?.pointee {
+			ptr = interface.ifa_next
+			guard
+				let address = interface.ifa_addr,
+				address.pointee.sa_family == UInt8(AF_INET),
+				String(cString: interface.ifa_name) == "en0"
+			else {
+				continue
 			}
-			freeifaddrs(ifaddr)
+
+			var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+			guard getnameinfo(address, socklen_t(address.pointee.sa_len),
+			                  &hostname, socklen_t(hostname.count),
+			                  nil, socklen_t(0), NI_NUMERICHOST) == 0 else {
+				continue
+			}
+
+			let ip = String(cString: hostname)
+			// A self-assigned address means Wi-Fi never really connected.
+			if ip.hasPrefix("169.254.") { continue }
+			return ip
 		}
-		
-		return address
+
+		return nil
 	}
 }
