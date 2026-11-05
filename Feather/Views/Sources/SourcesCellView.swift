@@ -14,7 +14,7 @@ struct SourcesCellView: View {
 	var body: some View {
 		HStack(spacing: 12) {
 			SourceRemoteIcon(
-				url: source.iconURL ?? repository?.currentIconURL,
+				url: repository?.currentIconURL ?? source.iconURL,
 				relativeTo: source.sourceURL,
 				size: 46,
 				fallbackAssetName: SourceBundledIcon.assetName(for: repository)

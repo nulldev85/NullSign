@@ -127,7 +127,7 @@ struct SourcesView: View {
 	private var _allAppsRow: some View {
 		let iconURLs = _sources.compactMap { source in
 			SourceAssetURL.resolve(
-				source.iconURL ?? viewModel.sources[source]?.currentIconURL,
+				viewModel.sources[source]?.currentIconURL ?? source.iconURL,
 				relativeTo: source.sourceURL
 			)
 		}
