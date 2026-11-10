@@ -14,29 +14,30 @@ struct InstallProgressView: View {
 
 	var app: AppInfoPresentable
 	@ObservedObject var viewModel: InstallerStatusViewModel
+	private var _isActive: Bool { !viewModel.isCompleted && viewModel.installFailure == nil }
 
 	var body: some View {
 		VStack(spacing: 12) { _appIcon() }
 			.onAppear {
-				guard !viewModel.isCompleted else { return }
+				guard _isActive else { return }
 				_isPulsing = true
 			}
-			.onChange(of: viewModel.isCompleted) { _ in _updateAnimation() }
+			.onChange(of: _isActive) { _ in _updateAnimation() }
 	}
 
 	@ViewBuilder
 	private func _appIcon() -> some View {
 		ZStack {
 			FRAppIconView(app: app, size: 58)
-				.opacity(viewModel.isCompleted || _reduceMotion ? 1 : (_isPulsing ? 0.6 : 1))
+				.opacity(!_isActive || _reduceMotion ? 1 : (_isPulsing ? 0.6 : 1))
 				.animation(
-					viewModel.isCompleted || _reduceMotion
+					!_isActive || _reduceMotion
 						? .easeOut(duration: 0.2)
 						: .easeInOut(duration: 1.1).repeatForever(autoreverses: true),
 					value: _isPulsing
 				)
 
-			if viewModel.isCompleted {
+			if viewModel.installSucceeded {
 				Image(systemName: "checkmark.circle.fill")
 					.font(.roundedUI(size: 20, weight: .bold))
 					.symbolRenderingMode(.palette)
@@ -51,7 +52,7 @@ struct InstallProgressView: View {
 	}
 
 	private func _updateAnimation() {
-		if viewModel.isCompleted {
+		if !_isActive {
 			_isPulsing = false
 		} else {
 			_isPulsing = true

@@ -214,20 +214,13 @@ extension LibraryCellView {
 				Text(.localized("Update"))
 			}
 			.buttonStyle(NullSignPrimaryButtonStyle(height: 32))
-		} else if app.isSigned {
+		} else {
 			Button {
 				selectedInstallAppPresenting = AnyApp(base: app)
 			} label: {
 				Text(.localized("Install"))
 			}
 			.buttonStyle(NullSignPrimaryButtonStyle(height: 32))
-		} else {
-			Button {
-				selectedSigningAppPresenting = AnyApp(base: app)
-			} label: {
-				Text(.localized("Sign"))
-			}
-			.buttonStyle(NullSignSecondaryButtonStyle(height: 32))
 		}
 	}
 

@@ -39,11 +39,10 @@ extension ServerInstaller {
 	}
 	
 	var externalServerLink: String {
-		let baseUrl = "https://api.palera.in/genPlist?bundleid=\(app.identifier!)&name=\(app.name!)&version=\(app.version!)&fetchurl=\(self.payloadEndpoint.absoluteString)"
-		let encodedBaseUrl = baseUrl.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!
-		let finalEncodedUrl = encodedBaseUrl.addingPercentEncoding(withAllowedCharacters: .alphanumerics)!
-		
-		return finalEncodedUrl
+		InstallHandoff.externalManifestURL(
+			identifier: app.identifier ?? "", name: app.name ?? "App",
+			version: app.version ?? "1.0", payload: payloadEndpoint
+		).absoluteString
 	}
 
 	var iTunesLink: String {
@@ -55,7 +54,11 @@ extension ServerInstaller {
 	}
 	
 	private func _iTunesLink(with url: String) -> String {
-		return "itms-services://?action=download-manifest&url=\(url)"
+		InstallHandoff.installURL(manifest: URL(string: url)!).absoluteString
+	}
+
+	var installEndpoint: URL {
+		URL(string: getServerMethod() == 0 ? iTunesLink : iTunesLinkExternal)!
 	}
 
 	var displayImageSmallEndpoint: URL {
@@ -97,7 +100,7 @@ extension ServerInstaller {
 		let installLink = getServerMethod() == 0 ? iTunesLink : iTunesLinkExternal
 		return """
 		<html style="background-color: black;">
-		<script type="text/javascript">window.location="\(installLink)"</script>
+		<script type="text/javascript">window.location="\(installLink.replacingOccurrences(of: "&", with: "\\u0026"))"</script>
 		</html>
 		"""
 	}

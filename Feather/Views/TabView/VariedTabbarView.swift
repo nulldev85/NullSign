@@ -84,7 +84,7 @@ struct VariedTabbarView: View {
 		// About or the Library and still show whichever tab is open.
 		.sheet(item: $selfUpdate.installingApp, onDismiss: { selfUpdate.installerDismissed() }) { app in
 			InstallPreviewView(app: app.base)
-				.presentationDetents([.height(230)])
+				.presentationDetents([.height(300)])
 		}
 	}
 }

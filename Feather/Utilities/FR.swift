@@ -11,6 +11,7 @@ import Zsign
 import NimbleJSON
 import AltSourceKit
 import IDeviceSwift
+import CoreData
 
 enum FR {
 	static let serverPackURL = "https://backloop.dev/public/pack.json"
@@ -75,6 +76,43 @@ enum FR {
 				}
 			}
 		}
+	}
+
+	/// Unlike the legacy completion-only API, this returns the row created by
+	/// this operation, even when another app finishes signing at the same time.
+	@MainActor
+	static func signedPackageFile(
+		_ app: AppInfoPresentable,
+		using options: Options,
+		icon: UIImage?,
+		certificate: CertificatePair?,
+		onStageChange: @escaping @MainActor (AppSigningStage) -> Void
+	) async throws -> Signed {
+		let uuid = try await Task.detached {
+			let handler = SigningHandler(app: app, options: options)
+			handler.appCertificate = certificate
+			handler.appIcon = icon
+			handler.onStageChange = { stage in
+				Task { @MainActor in onStageChange(stage) }
+			}
+			do {
+				try await handler.copy()
+				try await handler.modify()
+				try? await handler.clean()
+				return handler.signedAppUUID
+			} catch {
+				ReliabilityCenter.shared.record(.verifying, "Signing stopped: \(error.localizedDescription)")
+				try? await handler.clean()
+				throw error
+			}
+		}.value
+		let request = NSFetchRequest<Signed>(entityName: "Signed")
+		request.predicate = NSPredicate(format: "uuid == %@", uuid)
+		request.fetchLimit = 1
+		guard let signed = try Storage.shared.context.fetch(request).first else {
+			throw SigningFileHandlerError.appNotFound
+		}
+		return signed
 	}
 	
 	static func handleCertificateFiles(
