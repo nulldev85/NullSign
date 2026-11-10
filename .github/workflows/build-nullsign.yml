@@ -98,13 +98,51 @@ jobs:
           node Tools/check-packaged-icon.mjs "$workdir/Payload/NullSign.app"
           echo "Verified NullSign $actual_version ($actual_build)"
 
-      - name: Upload NullSign IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: NullSign-unsigned-IPA
-          path: packages/NullSign-unsigned.ipa
-          if-no-files-found: error
-          retention-days: 14
+      - name: Store manual IPA in draft test release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TEST_TAG: test-${{ github.run_id }}-${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ipa="packages/NullSign-unsigned.ipa"
+          test -s "$ipa"
+          (
+            cd packages
+            shasum -a 256 NullSign-unsigned.ipa > NullSign-unsigned.ipa.sha256
+          )
+          version="$(sed -nE 's/^NULLSIGN_MARKETING_VERSION[[:space:]]*=[[:space:]]*([^[:space:]]+).*$/\1/p' NullSign.xcconfig)"
+          build="$(sed -nE 's/^NULLSIGN_BUILD_NUMBER[[:space:]]*=[[:space:]]*([^[:space:]]+).*$/\1/p' NullSign.xcconfig)"
+          test -n "$version"
+          test -n "$build"
+          {
+            echo "Unpublished manual test IPA. Merge remains a separate decision."
+            echo
+            echo "Version: $version ($build)"
+            echo "Branch: $GITHUB_REF_NAME"
+            echo "Commit: $GITHUB_SHA"
+            echo "Build: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/test-release-notes.md"
+          gh release create "$TEST_TAG" "$ipa" packages/NullSign-unsigned.ipa.sha256 \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "NullSign $version ($build) — manual test $GITHUB_RUN_ID" \
+            --notes-file "$RUNNER_TEMP/test-release-notes.md" \
+            --target "$GITHUB_SHA" \
+            --draft \
+            --latest=false
+          test "$(gh release view "$TEST_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft')" = true
+          release_url="$(gh release view "$TEST_TAG" --repo "$GITHUB_REPOSITORY" --json url --jq '.url')"
+          test -n "$release_url"
+          {
+            echo "### NullSign $version ($build) test IPA"
+            echo
+            printf '[Download the test IPA](%s)\n' "$release_url"
+            echo
+            echo 'Open the draft release above and download `NullSign-unsigned.ipa`.'
+            echo 'The draft is visible to repository maintainers and is not a public release.'
+            echo 'A SHA-256 checksum is attached alongside the IPA.'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish public source release from main
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

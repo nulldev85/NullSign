@@ -43,6 +43,23 @@ Release IPA build remain mandatory. Windows source/configuration checks are not
 an iOS execution test; actual system confirmation and device behavior need the
 manual IPA test.
 
+## Manual IPA delivery
+
+Run `42725061779` at `de6769a` compiled the physical Release app, passed IPA
+verification and all 12 new regression groups, then failed solely because
+GitHub's Actions artifact storage quota rejected the final upload. Captured log:
+`nullsign-42725061779-build.log` in the parent workspace.
+
+Manual builds now attach the verified IPA and its SHA-256 checksum to an
+**unpublished draft release**, with the download link in the run summary.
+Drafts are for repository maintainers; the workflow verifies that the release
+stays a draft. A unique run/attempt tag avoids replacing earlier test builds.
+Main-branch pushes already attach the same verified IPA to the existing public
+source release, so the redundant Actions artifact copy is removed. The existing
+main-push-only publication condition and every test/build/IPA verification step
+remain mandatory. No existing artifacts are deleted, and no test build is
+published publicly. This changes delivery, not the app source tested in that run.
+
 Primary API references:
 
 - [UIApplication.open(_:options:completionHandler:)](https://developer.apple.com/documentation/uikit/uiapplication/open(_:options:completionhandler:))
