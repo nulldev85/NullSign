@@ -10,8 +10,21 @@ import Combine
 import IDeviceSwift
 
 extension InstallerStatusViewModel {
-	var statusImage: String {
+	var installSucceeded: Bool {
+		if case .completed(.success) = status { return true }
+		return false
+	}
+
+	var installFailure: Error? {
 		switch status {
+		case .broken(let error), .completed(.failure(let error)): return error
+		default: return nil
+		}
+	}
+
+	var statusImage: String {
+		if installFailure != nil { return "exclamationmark.triangle.fill" }
+		return switch status {
 		case .none: "archivebox.fill"
 		case .ready: "app.gift"
 		case .sendingManifest, .sendingPayload: "paperplane.fill"
@@ -22,9 +35,10 @@ extension InstallerStatusViewModel {
 	}
 	
 	var statusLabel: String {
-		switch status {
+		if installFailure != nil { return .localized("Error") }
+		return switch status {
 		case .none: .localized("Packaging")
-		case .ready: .localized("Package Ready — Opening Installer")
+		case .ready: .localized("Waiting for iOS Confirmation")
 		case .sendingManifest: .localized("Sending Manifest")
 		case .sendingPayload: .localized("Sending Payload")
 		case .installing: .localized("Installing")

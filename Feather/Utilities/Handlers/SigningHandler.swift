@@ -28,6 +28,8 @@ final class SigningHandler: NSObject {
 	// throw an error
 	var appIcon: UIImage?
 	var appCertificate: CertificatePair?
+	var onStageChange: ((AppSigningStage) -> Void)?
+	var signedAppUUID: String { _uuid }
 	
 	init(app: AppInfoPresentable, options: Options = OptionsManager.shared.options) {
 		self._app = app
@@ -38,6 +40,7 @@ final class SigningHandler: NSObject {
 	}
 	
 	func copy() async throws {
+		onStageChange?(.preparing)
 		ReliabilityCenter.shared.record(.preparing, "Starting \(_app.name ?? "app")")
 		guard let appUrl = Storage.shared.getAppDirectory(for: _app) else {
 			throw SigningFileHandlerError.appNotFound
@@ -59,6 +62,7 @@ final class SigningHandler: NSObject {
 			throw SigningFileHandlerError.appNotFound
 		}
 		
+		onStageChange?(.modifying)
 		ReliabilityCenter.shared.record(.modifying, "Applying selected signing options")
 		guard
 			let infoDictionary = NSDictionary(
@@ -114,6 +118,7 @@ final class SigningHandler: NSObject {
 			_options.signingOption == .default,
 			appCertificate != nil
 		{
+			onStageChange?(.signing)
 			ReliabilityCenter.shared.record(.signing, "Signing main app and nested content")
 			try await handler.sign()
 //		} else if _options.signingOption == .adhoc {
@@ -125,6 +130,7 @@ final class SigningHandler: NSObject {
 		}
 		
 		if let error = handler.hadError { throw error }
+		onStageChange?(.verifying)
 		ReliabilityCenter.shared.record(.verifying, "Checking the signed app before saving")
 		try AppValidator.verifySignedApp(
 			at: movedAppPath,

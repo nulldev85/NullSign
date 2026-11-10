@@ -18,20 +18,29 @@ struct InstallPreviewView: View {
 	@AppStorage("Feather.installationMethod") private var _installationMethod: Int = 0
 	@State private var _isWebviewPresenting = false
 	@State private var progressTask: Task<Void, Never>?
+	@State private var operationTask: Task<Void, Never>?
+	@State private var handoffTask: Task<Void, Never>?
+	@State private var _hasStarted = false
+	@State private var _didRequestInstall = false
+	@State private var _needsBrowserFallback = false
+	@State private var _isPreparing: Bool
+	@State private var _signingStage: AppSigningStage? = .preparing
+	@State private var _preparedApp: AppInfoPresentable?
 	@State private var installAttempt = 0
 	
-	var app: AppInfoPresentable
+	private let originalApp: AppInfoPresentable
+	private var app: AppInfoPresentable { _preparedApp ?? originalApp }
 	@StateObject var viewModel: InstallerStatusViewModel
-	@StateObject var installer: ServerInstaller
+	@State private var installer: ServerInstaller?
 	
 	@State var isSharing: Bool
 	
 	init(app: AppInfoPresentable, isSharing: Bool = false) {
-		self.app = app
+		self.originalApp = app
 		self.isSharing = isSharing
+		self.__isPreparing = State(initialValue: !app.isSigned && !isSharing)
 		let viewModel = InstallerStatusViewModel(isIdevice: app.platform == .tvOS)
 		self._viewModel = StateObject(wrappedValue: viewModel)
-		self._installer = StateObject(wrappedValue: try! ServerInstaller(app: app, viewModel: viewModel))
 	}
 	
 	// MARK: Body
@@ -54,28 +63,48 @@ struct InstallPreviewView: View {
 				_button()
 			}
 
-			NullSignInstallProgressBar(
-				progress: viewModel.isCompleted ? 1 : (viewModel.overallProgress > 0 ? viewModel.overallProgress : nil)
-			)
+			NullSignInstallProgressBar(progress: _displayedProgress)
 			.id(installAttempt)
+
+			if let error = viewModel.installFailure {
+				Text(error.localizedDescription)
+					.font(.roundedUI(.caption))
+					.foregroundStyle(NullSignStyle.danger)
+			} else if _needsBrowserFallback {
+				Text("No iOS prompt? Continue in the browser to finish this installation.")
+					.font(.roundedUI(.caption))
+					.foregroundStyle(NullSignStyle.muted)
+				Button("Continue in Browser") { _isWebviewPresenting = true }
+					.buttonStyle(NullSignSecondaryButtonStyle(height: 34))
+			} else if !_isPreparing, case .ready = viewModel.status, !isSharing {
+				Text("Confirm Install in the iOS prompt.")
+					.font(.roundedUI(.caption))
+					.foregroundStyle(NullSignStyle.muted)
+			}
 		}
 		.padding(20)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
 		.background(NullSignStyle.groupedSurface, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
 		.padding()
 		.sheet(isPresented: $_isWebviewPresenting) {
-			SafariRepresentableView(url: installer.pageEndpoint).ignoresSafeArea()
+			if let installer {
+				SafariRepresentableView(url: installer.pageEndpoint).ignoresSafeArea()
+			}
 		}
 		.onReceive(viewModel.$status) { newStatus in
 			if _installationMethod == 0 || app.platform == .iOS {
 				if case .ready = newStatus {
-					// iOS can silently reject a direct itms-services open. Entering
-					// through the local page gives WebKit a user-visible navigation
-					// context while keeping Fully Local's manifest on this device.
-					_isWebviewPresenting = true
+					_openSystemInstaller()
+				}
+
+				if case .sendingManifest = newStatus {
+					handoffTask?.cancel()
+					_needsBrowserFallback = false
 				}
 				
 				if case .sendingPayload = newStatus {
+					handoffTask?.cancel()
+					_needsBrowserFallback = false
 					_isWebviewPresenting = false
 				}
 				
@@ -93,6 +122,7 @@ struct InstallPreviewView: View {
 				
 				switch newStatus {
 				case .completed, .broken(_):
+					handoffTask?.cancel()
 					progressTask?.cancel()
 					progressTask = nil
 					#if !targetEnvironment(macCatalyst)
@@ -113,6 +143,10 @@ struct InstallPreviewView: View {
 		#endif
 		
 		.onDisappear {
+			operationTask?.cancel()
+			operationTask = nil
+			handoffTask?.cancel()
+			installer = nil
 			progressTask?.cancel()
 			progressTask = nil
 			
@@ -124,16 +158,19 @@ struct InstallPreviewView: View {
 	
 	@ViewBuilder
 	private func _status() -> some View {
-		Label(viewModel.statusLabel, systemImage: viewModel.statusImage)
+		Label(
+			_isPreparing ? .localized((_signingStage ?? .preparing).rawValue) : viewModel.statusLabel,
+			systemImage: _isPreparing ? "signature" : viewModel.statusImage
+		)
 			.font(.roundedUI(.footnote, weight: .bold))
-			.foregroundStyle(viewModel.isCompleted ? NullSignStyle.success : NullSignStyle.muted)
+			.foregroundStyle(viewModel.installSucceeded ? NullSignStyle.success : NullSignStyle.muted)
 			.animation(.smooth, value: viewModel.statusImage)
 	}
 	
 	@ViewBuilder
 	private func _button() -> some View {
 		Group {
-			if viewModel.isCompleted {
+			if viewModel.installSucceeded {
 				if app.platform == .tvOS {
 					_actionButton("Done", icon: "checkmark") { dismiss() }
 				} else {
@@ -141,8 +178,16 @@ struct InstallPreviewView: View {
 						UIApplication.openApp(with: app.identifier ?? "")
 					}
 				}
-			} else if case .broken = viewModel.status {
+			} else if viewModel.installFailure != nil {
 				_actionButton("Retry", icon: "arrow.clockwise") {
+					operationTask?.cancel()
+					handoffTask?.cancel()
+					installer = nil
+					_hasStarted = false
+					_didRequestInstall = false
+					_needsBrowserFallback = false
+					_isPreparing = !app.isSigned && !isSharing
+					_signingStage = .preparing
 					viewModel.resetProgress()
 					installAttempt += 1
 				}
@@ -159,38 +204,36 @@ struct InstallPreviewView: View {
 	}
 	
 	private func _install() {
+		guard !_hasStarted else { return }
+		_hasStarted = true
 		// backloop.dev retired the certificate Fully Local depended on. Migrate
-		// existing selections before starting the server so Safari is never sent
+		// existing selections before starting the server so iOS is never sent
 		// to an HTTPS endpoint with a revoked or mismatched certificate.
-		if installer.getServerMethod() == 0 {
+		if UserDefaults.standard.integer(forKey: "Feather.serverMethod") == 0 {
 			UserDefaults.standard.set(1, forKey: "Feather.serverMethod")
-			do { try installer.restart() }
-			catch {
-				UIAlertController.showAlertWithOk(
-					title: .localized("Install"),
-					message: "Unable to switch to the safe Semi Local installer. Please try again."
-				)
-				return
-			}
 		}
 		// NullSign can install its own update. The package is served before iOS
 		// closes NullSign to replace it, and NullSign keeps running in the
 		// background until then; if anything fails, iOS keeps the old version.
 
 
-		Task.detached {
+		operationTask = Task.detached {
 			do {
+				try Task.checkCancellation()
+				if await !isSharing {
+					let prepared = try await AppInstallPreparation.prepare(app) { stage in
+						guard _isPreparing,
+						      stage.progress >= (_signingStage?.progress ?? 0) else { return }
+						_signingStage = stage
+					}
+					try Task.checkCancellation()
+					await MainActor.run {
+						_preparedApp = prepared
+						_isPreparing = false
+					}
+				}
 				let targetPlatform = await app.platform
 				let sharing = await isSharing
-				let serverMethod = await MainActor.run { installer.getServerMethod() }
-				if targetPlatform == .iOS && !sharing && serverMethod == 0 {
-					guard await FR.refreshSSLCertificates() else {
-						throw CocoaError(.fileReadUnknown, userInfo: [
-							NSLocalizedDescriptionKey: "Unable to refresh the local HTTPS certificate. Check your connection and try again."
-						])
-					}
-					try await MainActor.run { try installer.restart() }
-				}
 				if targetPlatform == .tvOS && !sharing {
 					try await AppleTVManager.shared.prepareForInstall()
 				}
@@ -198,23 +241,16 @@ struct InstallPreviewView: View {
 				try await handler.move()
 				
 				let packageUrl = try await handler.archive()
+				try Task.checkCancellation()
 				
 				if !sharing {
 					if targetPlatform == .iOS {
-						await MainActor.run {
-							installer.packageUrl = packageUrl
+						try await MainActor.run {
+							try Task.checkCancellation()
+							let server = try ServerInstaller(app: app, viewModel: viewModel)
+							server.packageUrl = packageUrl
+							installer = server
 							viewModel.updateStatus(.ready)
-						}
-						
-						if case .installing = await viewModel.status {
-							let task = await startInstallProgressPolling(
-								bundleID: app.identifier!,
-								viewModel: viewModel
-							)
-
-							await MainActor.run {
-								progressTask = task
-							}
 						}
 					} else {
 						let handler = await InstallationProxy(viewModel: viewModel)
@@ -236,20 +272,49 @@ struct InstallPreviewView: View {
 						}
 					}
 				}
+			} catch is CancellationError {
+				// Signing may finish its current native call, but dismissing the
+				// card must never open a new installation prompt afterwards.
+				return
 			} catch {
 				await progressTask?.cancel()
 				
 				await MainActor.run {
-					UIAlertController.showAlertWithOk(
-						title: .localized("Install"),
-						message: String(describing: error),
-						action: {
-							HeartbeatManager.shared.start(true)
-							dismiss()
-						}
-					)
+					_isPreparing = false
+					viewModel.updateStatus(.broken(error))
 				}
 			}
+		}
+	}
+
+	private var _displayedProgress: Double? {
+		if _isPreparing { return (_signingStage ?? .preparing).progress }
+		if viewModel.installFailure != nil, !originalApp.isSigned, _preparedApp == nil {
+			return (_signingStage ?? .preparing).progress
+		}
+		let value = InstallHandoff.progress(
+			afterSigning: !originalApp.isSigned && _preparedApp != nil,
+			installerProgress: viewModel.overallProgress,
+			succeeded: viewModel.installSucceeded
+		)
+		return value > 0 || viewModel.installFailure != nil ? value : nil
+	}
+
+	private func _openSystemInstaller() {
+		guard !_didRequestInstall, !isSharing, let installer else { return }
+		_didRequestInstall = true
+		// Keep the progress card on screen. Opening itms-services directly
+		// removes Safari's extra Open dialog; iOS still asks to confirm Install.
+		UIApplication.shared.open(installer.installEndpoint, options: [:]) { accepted in
+			if !accepted { _needsBrowserFallback = true }
+		}
+		// Some iOS versions accept the URL without requesting its manifest.
+		// Preserve the proven browser route as an explicit recovery action,
+		// rather than treating an accepted URL as a completed installation.
+		handoffTask = Task { @MainActor in
+			do { try await Task.sleep(nanoseconds: 15_000_000_000) }
+			catch { return }
+			if case .ready = viewModel.status { _needsBrowserFallback = true }
 		}
 	}
 
