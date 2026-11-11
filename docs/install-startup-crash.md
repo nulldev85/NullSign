@@ -1,4 +1,4 @@
-# Install crash: stripped bundled Debian archive — 1.5.1 (42)
+# Install crash: stripped bundled Debian archive — 1.5.1 (43)
 
 The supplied 1.5.0 (40) report captures `EXC_BREAKPOINT` / `SIGTRAP` on a
 cooperative worker, with Foundation `Data._Representation.subscript.getter`
@@ -66,8 +66,13 @@ files. Existing signing, import, certificate, one-tap progress and IPA checks
 remain mandatory, as do the 45-minute limit and draft/manual versus public/main
 publication conditions.
 
-Local workflow/style checks and package-gate validation passed, including
-rejection of both actual malformed 1.5.0 IPAs. Windows has no Swift/Apple SDK,
-so native parser execution, the physical
-Release build and affected-iPhone testing remain pending. A successful build
-will provide a new test IPA; it alone cannot establish device confirmation.
+Manual test build 43065067736 at 4341fc8 passed all native checks, the physical
+Release build and final-IPA verification. Both optimized and unoptimized reader
+regressions passed against the source and actual packaged ElleKit. The user
+tested with ElleKit enabled, reported everything working and approved merging
+and distribution. This confirms their tested route, not every device or input.
+
+At the user's request, 1.5.1 (43) enables ElleKit in the default signing options
+for fresh settings and Reset to Defaults. Existing saved options still decode
+and retain the user's choice. The release build must pass the same mandatory
+checks before its IPA is distributed.
