@@ -153,7 +153,7 @@ struct Options: Codable, Equatable {
 		
 		experiment_supportLiquidGlass: false,
 		experiment_disableLiquidGlass: false,
-		experiment_replaceSubstrateWithEllekit: false,
+		experiment_replaceSubstrateWithEllekit: true,
 		
 		// MARK: Post Modifications
 		

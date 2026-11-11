@@ -8,65 +8,94 @@
 import Foundation
 
 class AR: NSObject {
-	private var _data: Data
+	private let _data: Data
 	
-	init(with url: URL) {
-		self._data = try! Data(contentsOf: url)
+	init(with url: URL) throws {
+		self._data = try Data(contentsOf: url)
 		super.init()
 	}
 	
 	func extract() async throws -> [ARFileModel] {
-		if [UInt8](_data.subdata(in: Range(0...7))) != [0x21, 0x3c, 0x61, 0x72, 0x63, 0x68, 0x3e, 0x0a] {
+		guard _data.count >= 8, _data.prefix(8) == Data("!<arch>\n".utf8) else {
 			throw ARError.badArchive("Invalid magic")
 		}
-		
-		let data = _data.subdata(in: 8..<_data.endIndex)
-		
-		var offset = 0
+
+		var offset = 8
 		var files: [ARFileModel] = []
-		while offset < data.count {
-			let fileInfo = try _getFileInfo(data, offset)
-			files.append(fileInfo)
-			offset += fileInfo.size + 60
-			offset += offset % 2
+		while offset < _data.count {
+			// Validate lengths before constructing ranges: Data.subdata traps
+			// rather than throwing when an archive declares bytes past EOF.
+			guard _data.count - offset >= 60 else {
+				throw ARError.badArchive("Truncated member header")
+			}
+			let contentStart = offset + 60
+			let header = _data.subdata(in: offset..<contentStart)
+			guard header[58] == 0x60, header[59] == 0x0a else {
+				throw ARError.badArchive("Invalid member header")
+			}
+			let size = try _number(header, 48..<58, field: "size")
+			guard size <= _data.count - contentStart else {
+				throw ARError.badArchive("Truncated member content")
+			}
+
+			var name = try _text(header, 0..<16, field: "name")
+			// Debian uses common ar names, optionally ending in a slash.
+			if name.hasSuffix("/") { name.removeLast() }
+			guard !name.isEmpty, name != ".", name != "..",
+				!name.contains("/"), !name.contains("\\"), !name.contains("\0") else {
+				throw ARError.badArchive("Invalid or unsupported member name")
+			}
+			let modified = try _number(header, 16..<28, field: "modification date")
+			let owner = try _number(header, 28..<34, field: "owner")
+			let group = try _number(header, 34..<40, field: "group")
+			let mode = try _number(header, 40..<48, field: "mode", radix: 8)
+			let contentEnd = contentStart + size
+			files.append(ARFileModel(
+				name: name,
+				modificationDate: Date(timeIntervalSince1970: Double(modified)),
+				ownerId: owner,
+				groupId: group,
+				mode: mode,
+				size: size,
+				content: _data.subdata(in: contentStart..<contentEnd)
+			))
+			offset = contentEnd
+			if size % 2 != 0 {
+				guard offset < _data.count, _data[offset] == 0x0a else {
+					throw ARError.badArchive("Missing member padding")
+				}
+				offset += 1
+			}
 		}
 		return files
 	}
-	
-	private func _getFileInfo(_ data: Data, _ offset: Int) throws -> ARFileModel {
-		let size = Int(_removePadding(String(data: data.subdata(in: offset+48..<offset+48+10), encoding: .ascii) ?? "0"))!
-		if size < 1 {
-			throw ARError.badArchive("Invalid size")
+
+	private func _text(_ header: Data, _ range: Range<Int>, field: String) throws -> String {
+		guard let value = String(data: header.subdata(in: range), encoding: .ascii) else {
+			throw ARError.badArchive("Invalid \(field)")
 		}
-		
-		let name = _removePadding(String(data: data.subdata(in: offset..<offset+16), encoding: .ascii) ?? "")
-		guard name != "" else {
-			throw ARError.badArchive("Invalid name")
-		}
-		
-		return ARFileModel(
-			name: name,
-			modificationDate: NSDate(timeIntervalSince1970: Double(_removePadding(String(data: data.subdata(in: offset+16..<offset+16+12), encoding: .ascii) ?? "0"))!) as Date,
-			ownerId: Int(_removePadding(String(data: data.subdata(in: offset+28..<offset+28+6), encoding: .ascii) ?? "0"))!,
-			groupId: Int(_removePadding(String(data: data.subdata(in: offset+34..<offset+34+6), encoding: .ascii) ?? "0"))!,
-			mode: Int(_removePadding(String(data: data.subdata(in: offset+40..<offset+40+8), encoding: .ascii) ?? "0"))!,
-			size: size,
-			content: data.subdata(in: offset+60..<offset+60+size)
-		)
+		return value.trimmingCharacters(in: CharacterSet(charactersIn: " "))
 	}
-	
-	private func _removePadding(_ paddedString: String) -> String {
-		let data = paddedString.data(using: .utf8)!
-		
-		guard let firstNonSpaceIndex = data.firstIndex(of: UInt8(ascii: " ")) else {
-			return paddedString
+
+	private func _number(_ header: Data, _ range: Range<Int>, field: String, radix: Int = 10) throws -> Int {
+		let text = try _text(header, range, field: field)
+		let digitLimit = UInt8(0x30 + radix)
+		guard !text.isEmpty,
+			text.utf8.allSatisfy({ $0 >= 0x30 && $0 < digitLimit }),
+			let number = Int(text, radix: radix) else {
+			throw ARError.badArchive("Invalid \(field)")
 		}
-		
-		let actualData = data[..<firstNonSpaceIndex]
-		return String(data: actualData, encoding: .utf8)!
+		return number
 	}
 }
 
-enum ARError: Error {
+enum ARError: LocalizedError {
 	case badArchive(String)
+
+	var errorDescription: String? {
+		switch self {
+		case .badArchive(let reason):
+			return "Invalid Debian package: \(reason). Import a complete, unmodified .deb file and try again."
+		}
+	}
 }
