@@ -40,7 +40,7 @@ jobs:
           python3 Tools/test-app-import.py
           python3 Tools/test-zsign-handler.py
           python3 Tools/test-one-tap-install.py
-          python3 Tools/test-background-audio.py
+          python3 Tools/test-ar-decompression.py
           xcrun swiftc Feather/Utilities/AnyCodable.swift Feather/Utilities/CertificateReader/Models/CertificateModel.swift Tools/test-certificate-profile.swift -o "$RUNNER_TEMP/test-certificate-profile"
           "$RUNNER_TEMP/test-certificate-profile"
 
@@ -97,6 +97,7 @@ jobs:
           icon_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName' "$plist_path")"
           test "$icon_name" = "NullSignBlue"
           node Tools/check-packaged-icon.mjs "$workdir/Payload/NullSign.app"
+          python3 Tools/test-ar-decompression.py --ipa packages/NullSign-unsigned.ipa
           echo "Verified NullSign $actual_version ($actual_build)"
 
       - name: Store manual IPA in draft test release

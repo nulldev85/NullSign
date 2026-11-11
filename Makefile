@@ -47,6 +47,7 @@ $(PLATFORMS): prepare-zsign deps
 
 	mkdir -p _build/Payload
 	cp -R _build/Applications/*.app _build/Payload/NullSign.app
+	cmp Feather/Resources/ellekit.deb _build/Payload/NullSign.app/ellekit.deb
 	chmod -R 0755 _build/Payload/NullSign.app
 	codesign --force --sign - --timestamp=none _build/Payload/NullSign.app
 	cp deps/* _build/Payload/NullSign.app/ || true

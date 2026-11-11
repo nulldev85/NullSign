@@ -8,55 +8,47 @@
 #if !targetEnvironment(macCatalyst)
 
 import AVFoundation
-import OSLog
 
-final class BackgroundAudioManager {
+class BackgroundAudioManager {
 	static let shared = BackgroundAudioManager()
-	private var _player: AVAudioPlayer?
-	private let _logger = Logger(subsystem: "com.elmat.NullSign", category: "BackgroundAudio")
+	private let _engine = AVAudioEngine()
+	/// Attached once. Attaching a new node on every start used to stack up
+	/// silent sources (and their render work) for the life of the process.
+	private var _silence: AVAudioSourceNode?
 
 	private init() {}
 
 	func start() {
-		guard Thread.isMainThread else {
-			DispatchQueue.main.async { self.start() }
-			return
-		}
-		guard _player?.isPlaying != true else { return }
-
 		do {
-			#if os(iOS)
 			let session = AVAudioSession.sharedInstance()
+
 			try session.setCategory(.playback, options: [.mixWithOthers])
 			try session.setActive(true)
-			#endif
 
-			let player = try SilentAudio.makePlayer()
-			guard player.prepareToPlay(), player.play() else {
-				// Background keep-alive is optional. An unavailable audio route
-				// must never prevent the signing/install screen from opening.
-				player.stop()
-				_logger.error("Background audio is unavailable; continuing without it")
-				stop()
-				return
+			if _silence == nil {
+				let silence = AVAudioSourceNode { _, _, frameCount, audioBufferList -> OSStatus in
+					let ablPointer = UnsafeMutableAudioBufferListPointer(audioBufferList)
+					for buffer in ablPointer {
+						memset(buffer.mData, 0, Int(buffer.mDataByteSize))
+					}
+					return noErr
+				}
+				_engine.attach(silence)
+				_engine.connect(silence, to: _engine.mainMixerNode, format: nil)
+				_silence = silence
 			}
-			_player = player
+
+			if !_engine.isRunning {
+				try _engine.start()
+			}
 		} catch {
-			_logger.error("Background audio could not start: \(error.localizedDescription, privacy: .public)")
-			stop()
+			print("failed to start engine:", error)
 		}
 	}
 
 	func stop() {
-		guard Thread.isMainThread else {
-			DispatchQueue.main.async { self.stop() }
-			return
-		}
-		_player?.stop()
-		_player = nil
-		#if os(iOS)
+		_engine.stop()
 		try? AVAudioSession.sharedInstance().setActive(false)
-		#endif
 	}
 }
 
