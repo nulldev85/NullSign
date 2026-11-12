@@ -24,24 +24,13 @@ enum FR {
 		completion: @escaping (Error?) -> Void
 	) {
 		Task.detached {
-			let handler = AppFileHandler(
-				file: ipa,
-				download: download,
-				sourceProvenance: sourceProvenance
-			)
-			
 			do {
-				try await handler.copy()
-				try await handler.extract()
-				try await handler.move()
-				try await handler.addToDatabase()
-				try? await handler.clean()
+				try await AppImportOperation.run(file: ipa, download: download, sourceProvenance: sourceProvenance)
 				await MainActor.run {
 					completion(nil)
 				}
 			} catch {
 				ReliabilityCenter.shared.record(.preflight, "Import failed: \(error.localizedDescription)")
-				try? await handler.clean()
 				await MainActor.run {
 					completion(error)
 				}

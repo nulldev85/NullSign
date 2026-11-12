@@ -39,9 +39,6 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 	}
 	
 	func copy() async throws {
-		let access = _ipa.startAccessingSecurityScopedResource()
-		let source = _ipa
-		defer { if access { source.stopAccessingSecurityScopedResource() } }
 		try _fileManager.createDirectoryIfNeeded(at: _uniqueWorkDir)
 		
 		// IPA/TIPA files are ZIP archives. A private .zip copy avoids mutating
@@ -50,7 +47,7 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 
 		try _fileManager.removeFileIfNeeded(at: destinationURL)
 		
-		try _fileManager.copyItem(at: _ipa, to: destinationURL)
+		try ArchiveFileAccess.copy(from: _ipa, to: destinationURL)
 		_ipa = destinationURL
 	}
 	

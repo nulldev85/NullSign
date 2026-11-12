@@ -7,6 +7,7 @@
 
 import SwiftUI
 import NimbleViews
+import NimbleExtensions
 import IDeviceSwift
 import OSLog
 
@@ -23,6 +24,7 @@ struct InstallPreviewView: View {
 	@State private var _hasStarted = false
 	@State private var _didRequestInstall = false
 	@State private var _needsBrowserFallback = false
+	@State private var _installationIndeterminate = false
 	@State private var _isPreparing: Bool
 	@State private var _signingStage: AppSigningStage? = .preparing
 	@State private var _preparedApp: AppInfoPresentable?
@@ -76,6 +78,10 @@ struct InstallPreviewView: View {
 					.foregroundStyle(NullSignStyle.muted)
 				Button("Continue in Browser") { _isWebviewPresenting = true }
 					.buttonStyle(NullSignSecondaryButtonStyle(height: 34))
+			} else if _awaitingUnconfirmedInstall {
+				Text("iOS is not reporting a percentage. Keep NullSign open until the app is ready on your Home Screen.")
+					.font(.roundedUI(.caption))
+					.foregroundStyle(NullSignStyle.muted)
 			} else if !_isPreparing, case .ready = viewModel.status, !isSharing {
 				Text("Confirm Install in the iOS prompt.")
 					.font(.roundedUI(.caption))
@@ -109,12 +115,6 @@ struct InstallPreviewView: View {
 				}
 				
 				if case .installing = newStatus {
-					if progressTask == nil {
-						progressTask = startInstallProgressPolling(
-							bundleID: app.identifier!,
-							viewModel: viewModel
-						)
-					}
 					if app.identifier == Bundle.main.bundleIdentifier {
 						_stepAsideForSelfUpdate()
 					}
@@ -159,7 +159,8 @@ struct InstallPreviewView: View {
 	@ViewBuilder
 	private func _status() -> some View {
 		Label(
-			_isPreparing ? .localized((_signingStage ?? .preparing).rawValue) : viewModel.statusLabel,
+			_isPreparing ? .localized((_signingStage ?? .preparing).rawValue)
+				: (_awaitingUnconfirmedInstall ? .localized("Waiting for iOS") : viewModel.statusLabel),
 			systemImage: _isPreparing ? "signature" : viewModel.statusImage
 		)
 			.font(.roundedUI(.footnote, weight: .bold))
@@ -186,6 +187,7 @@ struct InstallPreviewView: View {
 					_hasStarted = false
 					_didRequestInstall = false
 					_needsBrowserFallback = false
+					_installationIndeterminate = false
 					_isPreparing = !app.isSigned && !isSharing
 					_signingStage = .preparing
 					viewModel.resetProgress()
@@ -289,6 +291,7 @@ struct InstallPreviewView: View {
 
 	private var _displayedProgress: Double? {
 		if _isPreparing { return (_signingStage ?? .preparing).progress }
+		if _usesIndeterminateSystemProgress { return nil }
 		if viewModel.installFailure != nil, !originalApp.isSigned, _preparedApp == nil {
 			return (_signingStage ?? .preparing).progress
 		}
@@ -303,6 +306,11 @@ struct InstallPreviewView: View {
 	private func _openSystemInstaller() {
 		guard !_didRequestInstall, !isSharing, let installer else { return }
 		_didRequestInstall = true
+		if let identifier = app.identifier {
+			// Observe BEFORE opening iOS: a fast or cached install may finish
+			// before the final payload stream callback arrives.
+			progressTask = startInstallProgressPolling(bundleID: identifier, viewModel: viewModel)
+		}
 		// Keep the progress card on screen. Opening itms-services directly
 		// removes Safari's extra Open dialog; iOS still asks to confirm Install.
 		UIApplication.shared.open(installer.installEndpoint, options: [:]) { accepted in
@@ -331,49 +339,55 @@ struct InstallPreviewView: View {
 		}
 	}
 
+	private var _awaitingUnconfirmedInstall: Bool {
+		if case .installing = viewModel.status { return _usesIndeterminateSystemProgress }
+		return false
+	}
+
+	private var _usesIndeterminateSystemProgress: Bool {
+		guard _installationIndeterminate, !viewModel.installSucceeded, viewModel.installFailure == nil else { return false }
+		switch viewModel.status {
+		case .sendingPayload, .installing: return true
+		default: return false
+		}
+	}
+
 	private func startInstallProgressPolling(
 		bundleID: String,
 		viewModel: InstallerStatusViewModel
 	) -> Task<Void, Never> {
 
-		Task.detached(priority: .background) {
-			var hasStarted = false
-
-			while !Task.isCancelled {
-				let snapshot = await UIApplication.installProgressSnapshot(for: bundleID)
-				let rawProgress = snapshot?.fractionCompleted ?? 0.0
-
-				if rawProgress > 0 {
-					hasStarted = true
+		func identity(_ value: SystemInstallRuntime.AppSnapshot?) -> InstalledAppIdentity? {
+			value.map { InstalledAppIdentity(bundlePath: $0.bundlePath, version: $0.version,
+				build: $0.build, registeredAt: $0.registeredAt) }
+		}
+		let initialState = SystemInstallRuntime.appState(for: bundleID)
+		let baseline = identity(initialState.app)
+		let expectedVersion = app.version.flatMap { $0.isEmpty ? nil : $0 }
+		return Task { @MainActor in
+			var tracker = InstallCompletionTracker(baseline: baseline, expectedVersion: expectedVersion, baselineKnown: initialState.isAvailable)
+			let started = ProcessInfo.processInfo.systemUptime
+			while !Task.isCancelled, !viewModel.isCompleted, viewModel.installFailure == nil {
+				let deliveryStarted: Bool
+				switch viewModel.status {
+				case .sendingPayload, .installing: deliveryStarted = true
+				default: deliveryStarted = false
 				}
-
-				let progress = await hasStarted
-					? _normalizeInstallProgress(rawProgress)
-					: 0.0
-
-				Logger.misc.info("Install progress for \(bundleID): \(progress)")
-
-				await MainActor.run {
-					viewModel.updateInstallProgress(progress)
+				let snapshot = SystemInstallRuntime.progress(for: bundleID, makeSynchronous: false)
+				let update = tracker.observe(at: ProcessInfo.processInfo.systemUptime - started,
+					fraction: snapshot?.fractionCompleted, finished: snapshot?.isFinished ?? false,
+					cancelled: snapshot?.isCancelled ?? false, totalUnits: snapshot?.totalUnitCount ?? 0,
+					installed: identity(SystemInstallRuntime.appState(for: bundleID).app), deliveryStarted: deliveryStarted)
+				if update.completed {
+					viewModel.updateInstallProgress(1)
+					viewModel.updateStatus(.completed(.success(())))
+					return
 				}
-
-				// iOS may report a terminal Progress object whose fraction stops below
-				// 1.0. Treat the system's finished flag as authoritative; disappearance
-				// after progress began remains the fallback used on older releases.
-				if hasStarted && (snapshot?.isFinished == true || snapshot == nil) {
-					await MainActor.run {
-						viewModel.updateInstallProgress(1.0)
-						viewModel.updateStatus(.completed(.success(())))
-					}
-					break
-				}
-
-				try? await Task.sleep(nanoseconds: 500_000_000)
+				_installationIndeterminate = update.progress == nil
+				if let progress = update.progress { viewModel.updateInstallProgress(progress) }
+				do { try await Task.sleep(nanoseconds: 500_000_000) }
+				catch { return }
 			}
 		}
-	}
-
-	private func _normalizeInstallProgress(_ rawProgress: Double) -> Double {
-		min(1.0, max(0.0, rawProgress))
 	}
 }

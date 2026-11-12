@@ -197,6 +197,7 @@ struct LibraryView: View {
 					allowedContentTypes:  [.ipa, .tipa],
 					allowsMultipleSelection: true,
 					onDocumentsPicked: { urls in
+						_isImportingPresenting = false
 						guard !urls.isEmpty else { return }
 
 						for url in urls {

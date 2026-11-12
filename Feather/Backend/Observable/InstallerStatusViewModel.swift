@@ -10,6 +10,24 @@ import Combine
 import IDeviceSwift
 
 extension InstallerStatusViewModel {
+	/// iOS may re-request manifests or byte ranges after installation starts.
+	/// Those HTTP callbacks must not move the card back to a transfer phase.
+	@MainActor func updateServerStatus(_ newStatus: InstallerStatus) {
+		guard !isCompleted, installFailure == nil else { return }
+		func phase(_ status: InstallerStatus) -> Int {
+			switch status {
+			case .none: return 0
+			case .ready: return 1
+			case .sendingManifest: return 2
+			case .sendingPayload: return 3
+			case .installing: return 4
+			case .completed, .broken: return 5
+			}
+		}
+		guard phase(newStatus) >= phase(status) else { return }
+		updateStatus(newStatus)
+	}
+
 	var installSucceeded: Bool {
 		if case .completed(.success) = status { return true }
 		return false

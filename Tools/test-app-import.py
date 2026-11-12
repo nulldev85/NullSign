@@ -74,6 +74,8 @@ with tempfile.TemporaryDirectory(prefix="nullsign-import-tests-") as directory:
     run(*swiftc, "-swift-version", "5", *target, "-I", work, "-L", work, "-lZip", *ldflags,
         "-Xlinker", "-rpath", "-Xlinker", work,
         *helpers,
+        ROOT / "Feather/Utilities/ArchiveFileAccess.swift",
+        ROOT / "Feather/Utilities/AppImportOperation.swift",
         ROOT / "Feather/Utilities/Handlers/AppFileHandler.swift",
         ROOT / "Tools/Fixtures/AppImportTests.swift", "-o", work / "test-import")
     (work / "Unsigned").mkdir()

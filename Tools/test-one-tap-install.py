@@ -18,8 +18,8 @@ with tempfile.TemporaryDirectory(prefix="nullsign-one-tap-tests-") as directory:
     subprocess.run([str(executable)], check=True)
     work = Path(directory)
     subprocess.run([
-        "xcrun", "swiftc", "-emit-module", "-emit-library", "-module-name", "IDeviceSwift",
-        str(ROOT / "Tools/Fixtures/InstallerStatusStub.swift"),
+        "xcrun", "swiftc", "-swift-version", "5", "-emit-module", "-emit-library", "-module-name", "IDeviceSwift",
+        str(ROOT / "IDeviceKitten/Sources/IDeviceSwift/InstallationProxy/InstallerStatusViewModel.swift"),
         "-emit-module-path", str(work / "IDeviceSwift.swiftmodule"),
         "-o", str(work / "libIDeviceSwift.dylib"),
     ], check=True)

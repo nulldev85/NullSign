@@ -132,13 +132,11 @@ struct NullSignApp: App {
 				_ = DownloadManager.shared.startDownload(from: downloadURL)
 			}
 		} else {
-			if url.pathExtension == "ipa" || url.pathExtension == "tipa" {
-				if FileManager.default.isFileFromFileProvider(at: url) {
-					guard url.startAccessingSecurityScopedResource() else { return }
-					FR.handlePackageFile(url) { _ in }
-				} else {
-					FR.handlePackageFile(url) { _ in }
-				}
+			if ["ipa", "tipa"].contains(url.pathExtension.lowercased()) {
+				// The importer owns and balances the scope while staging the file.
+				// Use the same visible import/error row as the in-app Files picker.
+				let download = downloadManager.startArchive(from: url, id: "FeatherManualDownload_\(UUID().uuidString)")
+				try? downloadManager.handlePachageFile(url: url, dl: download)
 				
 				return
 			}

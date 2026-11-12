@@ -6,6 +6,7 @@ enum SourceLinkedAppKind { case imported }
 final class Download: @unchecked Sendable {
     let id = UUID().uuidString
     var sourceProvenance: SourceAppProvenance?
+    var importCompleted = false
     var progressUpdates = 0
     var unpackageProgress: Double = 0 { didSet { progressUpdates += 1 } }
     var overallProgress: Double { unpackageProgress }
@@ -65,6 +66,20 @@ extension URL {
 struct AppImportTests {
     static func main() async throws {
         let root = URL(fileURLWithPath: CommandLine.arguments[1])
+		let copySource = root.appendingPathComponent("Coordinated-✓.ipa")
+		let copyDestination = root.appendingPathComponent("Coordinated-copy.zip")
+		let copyBytes = Data([0x50, 0x4b, 0, 255, 1, 2, 3])
+		try copyBytes.write(to: copySource)
+		try ArchiveFileAccess.copy(from: copySource, to: copyDestination)
+		let copiedBytes = try Data(contentsOf: copyDestination)
+		precondition(copiedBytes == copyBytes)
+		do {
+			try ArchiveFileAccess.copy(from: root.appendingPathComponent("missing.ipa"), to: root.appendingPathComponent("missing-copy.zip"))
+			preconditionFailure("A failed coordinated file read must throw to the import UI")
+		} catch {
+			precondition(!error.localizedDescription.isEmpty)
+		}
+		print("PASS real coordinated file copy preserves bytes/Unicode paths and propagates unreadable-file errors")
         let inputs = try FileManager.default.contentsOfDirectory(at: root.appendingPathComponent("Inputs"), includingPropertiesForKeys: nil)
         precondition(!Zip.isValidFileExtension("ipa") && !Zip.isValidFileExtension("tipa"))
         let results = await withTaskGroup(of: (String, Bool).self, returning: [String: Bool].self) { group in
@@ -72,24 +87,15 @@ struct AppImportTests {
                 group.addTask {
                     let input = try! FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil).first!
                     let download = Download()
-                    let handler = AppFileHandler(file: input, download: download)
-                    var stage = "copy"
                     do {
-                        try await handler.copy()
-                        stage = "extract"
-                        try await handler.extract()
-                        stage = "move"
-                        try await handler.move()
-                        stage = "save"
-                        try await handler.addToDatabase()
-                        try await handler.clean()
+                        try await AppImportOperation.run(file: input, download: download)
                         precondition(download.progressUpdates > 0 && download.progressUpdates <= 101,
                                      "Extraction flooded the UI with progress callbacks")
                         precondition(download.unpackageProgress == 1)
+                        precondition(download.importCompleted, "Import completed before the saved-library result")
                         return (folder.lastPathComponent, true)
                     } catch {
-                        FileHandle.standardError.write(Data("Fixture \(folder.lastPathComponent) failed during \(stage): \(error)\n".utf8))
-                        try! await handler.clean()
+                        FileHandle.standardError.write(Data("Fixture \(folder.lastPathComponent) failed: \(error.localizedDescription)\n".utf8))
                         return (folder.lastPathComponent, false)
                     }
                 }
@@ -101,6 +107,26 @@ struct AppImportTests {
         precondition(results.values.filter { $0 }.count == 33, "Lost an app during simultaneous imports: \(results.values.filter { $0 }.count) saved")
         precondition(Set(results.filter { !$0.value }.keys) == ["33", "34", "35", "36"],
                      "Corrupt archive, missing app, failed save, or invalid metadata was accepted")
+		for (index, expectedStage) in [(33, AppImportFailure.Stage.unpacking), (34, .addingToLibrary), (35, .addingToLibrary), (36, .addingToLibrary)] {
+			let folder = root.appendingPathComponent("Inputs/\(index)")
+			let file = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil).first!
+			let original = try Data(contentsOf: file)
+			do {
+				try await AppImportOperation.run(file: file)
+				preconditionFailure("Failed import was reported as success")
+			} catch let error as AppImportFailure {
+				precondition(error.stage == expectedStage && !error.localizedDescription.isEmpty)
+			}
+			let retained = try Data(contentsOf: file)
+			precondition(retained == original, "Import failure changed the user's original IPA")
+		}
+		do {
+			try await AppImportOperation.run(file: root.appendingPathComponent("missing.ipa"))
+			preconditionFailure("Unreadable file was reported as success")
+		} catch let error as AppImportFailure {
+			precondition(error.stage == .reading)
+		}
+		print("PASS production import operation reports file-read/archive/metadata/database errors, preserves inputs and cleans failed imports")
         let saved = Storage.shared.savedRecords
         precondition(saved.count == 33 && Set(saved.map(\.identifier)) == Set((0..<33).map { "com.nullsign.fixture.\($0)" }),
                      "Import completed before its database callback or lost an app's identifier")
