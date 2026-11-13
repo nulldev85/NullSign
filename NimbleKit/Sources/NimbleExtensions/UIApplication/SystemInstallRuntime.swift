@@ -33,6 +33,12 @@ public enum SystemInstallRuntime {
 		private var active = true
 		private var armed = false
 		private var installed = false
+		private var callbacks = 0
+		private var lastEvent = "none"
+		public var diagnosticState: String {
+			lock.lock(); defer { lock.unlock() }
+			return "active=\(active) armed=\(armed) installed=\(installed) callbacks=\(callbacks) event=\(lastEvent)"
+		}
 
 		fileprivate init(workspace: NSObject, identifier: String, version: String?) {
 			self.workspace = workspace
@@ -52,11 +58,18 @@ public enum SystemInstallRuntime {
 		}
 
 		@objc public func applicationsDidInstall(_ applications: NSArray) {
+			lock.lock(); callbacks += 1; lock.unlock()
 			for case let app as NSObject in applications {
 				let bundle = SystemInstallRuntime.object(app, "applicationIdentifier") as? String ?? SystemInstallRuntime.object(app, "bundleIdentifier") as? String
-				guard bundle == identifier, SystemInstallRuntime.boolean(app, "isPlaceholder") != true else { continue }
-				if let actual = SystemInstallRuntime.object(app, "shortVersionString") as? String, let version, actual != version { continue }
+				guard bundle == identifier else { continue }
+				if SystemInstallRuntime.boolean(app, "isPlaceholder") == true {
+					lock.lock(); lastEvent = "matching-placeholder"; lock.unlock(); continue
+				}
+				if let actual = SystemInstallRuntime.object(app, "shortVersionString") as? String, let version, actual != version {
+					lock.lock(); lastEvent = "version-mismatch:\(actual)"; lock.unlock(); continue
+				}
 				lock.lock()
+				lastEvent = "matching-install"
 				let notify = active && armed && !installed
 				if notify { installed = true }
 				lock.unlock()
@@ -85,6 +98,8 @@ public enum SystemInstallRuntime {
 		public let isFinished: Bool
 		public let isCancelled: Bool
 		public let totalUnitCount: Int64
+		public let completedUnitCount: Int64
+		public let isPaused: Bool
 	}
 
 	public struct AppSnapshot: Sendable {
@@ -97,6 +112,12 @@ public enum SystemInstallRuntime {
 	public struct AppState: Sendable {
 		public let isAvailable: Bool
 		public let app: AppSnapshot?
+		public let diagnosticState: String
+		init(isAvailable: Bool, app: AppSnapshot?, diagnosticState: String = "unknown") {
+			self.isAvailable = isAvailable
+			self.app = app
+			self.diagnosticState = diagnosticState
+		}
 	}
 
 	public static func progress(for identifier: String, makeSynchronous: Bool = false) -> ProgressSnapshot? {
@@ -121,7 +142,8 @@ public enum SystemInstallRuntime {
 		let query = unsafeBitCast(implementation, to: Query.self)
 		guard let value = query(workspace, selector, identifier as NSString, synchronous)?.takeUnretainedValue() as? Progress else { return nil }
 		return ProgressSnapshot(fractionCompleted: value.fractionCompleted,
-			isFinished: value.isFinished, isCancelled: value.isCancelled, totalUnitCount: value.totalUnitCount)
+			isFinished: value.isFinished, isCancelled: value.isCancelled, totalUnitCount: value.totalUnitCount,
+			completedUnitCount: value.completedUnitCount, isPaused: value.isPaused)
 	}
 
 	public static func appState(for identifier: String) -> AppState {
@@ -132,9 +154,9 @@ public enum SystemInstallRuntime {
 			// A fresh bundle may have no proxy yet. Only an explicit negative
 			// membership query can prove absence; missing APIs stay unknown.
 			if let workspace = workspace(), applicationIsInstalled(workspace: workspace, identifier: identifier) == false {
-				return AppState(isAvailable: true, app: nil)
+				return AppState(isAvailable: true, app: nil, diagnosticState: "workspace-confirms-absent")
 			}
-			return AppState(isAvailable: false, app: nil)
+			return AppState(isAvailable: false, app: nil, diagnosticState: "proxy-unavailable-or-membership-unknown")
 		}
 		return appState(proxy: proxy)
 	}
@@ -147,16 +169,16 @@ public enum SystemInstallRuntime {
 	}
 
 	static func appState(proxy: NSObject) -> AppState {
-		guard let installed = boolean(proxy, "isInstalled") else { return AppState(isAvailable: false, app: nil) }
-		if !installed { return AppState(isAvailable: true, app: nil) }
-		guard let placeholder = boolean(proxy, "isPlaceholder") else { return AppState(isAvailable: false, app: nil) }
-		if placeholder { return AppState(isAvailable: true, app: nil) }
-		guard let url = object(proxy, "bundleURL") as? URL, url.isFileURL else { return AppState(isAvailable: false, app: nil) }
+		guard let installed = boolean(proxy, "isInstalled") else { return AppState(isAvailable: false, app: nil, diagnosticState: "missing-installed-selector") }
+		if !installed { return AppState(isAvailable: true, app: nil, diagnosticState: "not-installed") }
+		guard let placeholder = boolean(proxy, "isPlaceholder") else { return AppState(isAvailable: false, app: nil, diagnosticState: "missing-placeholder-selector") }
+		if placeholder { return AppState(isAvailable: true, app: nil, diagnosticState: "placeholder") }
+		guard let url = object(proxy, "bundleURL") as? URL, url.isFileURL else { return AppState(isAvailable: false, app: nil, diagnosticState: "missing-bundle-url") }
 		let app = AppSnapshot(bundlePath: url.standardizedFileURL.path,
 			version: object(proxy, "shortVersionString") as? String,
 			build: object(proxy, "bundleVersion") as? String,
 			registeredAt: (object(proxy, "registeredDate") as? Date)?.timeIntervalSince1970)
-		return AppState(isAvailable: true, app: app)
+		return AppState(isAvailable: true, app: app, diagnosticState: "installed")
 	}
 
 	private static func object(_ instance: NSObject, _ name: String) -> AnyObject? {

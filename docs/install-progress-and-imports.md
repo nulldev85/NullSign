@@ -1,4 +1,24 @@
-# Install progress and visible import failures — 1.5.2 (46)
+# Install progress and visible import failures — 1.5.2 (47 diagnostic)
+
+## Build46 still stalls at97 percent
+
+The user reports that the simplified card still stops at97%. Completion is NOT
+fixed. Build47 is a diagnostic capture, not another claimed completion repair.
+It retains build46's exact completion decisions and simple presentation.
+
+The existing Settings → Diagnostics → Export Diagnostic Log now captures
+attempt identifiers, target/expected version, delivery phase, raw fraction,
+completed/total units, finished/cancelled/paused flags, app-lookup availability
+and reason, record-change/version/build information, observer availability,
+arming/callback/filter results and the signal that actually confirms completion.
+Records are emitted on changed state or every15seconds while unchanged, under
+the existing bounded log. No certificate secrets or bundle-container paths are
+added. Timestamp formatting is serialized with the log writer.
+
+Need one reproduction with this build and its exported log before choosing the
+next behavioral correction. No percentage threshold, delay or successful payload
+transfer substitutes for actual installation completion. Native build/execution
+and device diagnostic capture remain pending.
 
 ## Final presentation requested by the user
 

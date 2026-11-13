@@ -137,6 +137,7 @@ struct InstallPreviewView: View {
 				observer === _installationObserver, observer.didInstall,
 				!viewModel.isCompleted, viewModel.installFailure == nil else { return }
 			viewModel.updateInstallProgress(1)
+			ReliabilityCenter.shared.record(.installing, "Confirmed installation by matching workspace event")
 			viewModel.updateStatus(.completed(.success(())))
 		}
 		.onChange(of: installAttempt) { _ in _install() }
@@ -358,11 +359,16 @@ struct InstallPreviewView: View {
 		let expectedVersion = app.version.flatMap { $0.isEmpty ? nil : $0 }
 		let observer = SystemInstallRuntime.observeInstallation(for: bundleID, version: expectedVersion)
 		_installationObserver = observer
+		let diagnosticID = String(UUID().uuidString.prefix(8))
+		ReliabilityCenter.shared.record(.installing, "Attempt \(diagnosticID) bundle=\(bundleID) expected=\(expectedVersion ?? "unknown") baseline=\(initialState.diagnosticState) observer=\(observer != nil)")
 		return Task { @MainActor in
 			defer { observer?.stop() }
 			var tracker = InstallCompletionTracker(baseline: baseline, expectedVersion: expectedVersion, baselineKnown: initialState.isAvailable)
 			let started = ProcessInfo.processInfo.systemUptime
 			var samples = 0
+			var lastDiagnostic = ""
+			var lastDiagnosticAt: TimeInterval = -15
+			var appDiagnostic = initialState.diagnosticState
 			while !Task.isCancelled, !viewModel.isCompleted, viewModel.installFailure == nil {
 				let deliveryStarted: Bool
 				switch viewModel.status {
@@ -377,11 +383,24 @@ struct InstallPreviewView: View {
 				guard !Task.isCancelled, viewModel.installFailure == nil, !viewModel.isCompleted else { return }
 				samples += 1
 				let snapshot = reading.progress
+				if let state = reading.state {
+					let current = identity(state.app)
+					appDiagnostic = "\(state.diagnosticState) changed=\(current != baseline) version=\(current?.version ?? "unknown") build=\(current?.build ?? "unknown")"
+				}
+				let elapsed = ProcessInfo.processInfo.systemUptime - started
+				let raw = snapshot.map { "fraction=\($0.fractionCompleted) units=\($0.completedUnitCount)/\($0.totalUnitCount) finished=\($0.isFinished) cancelled=\($0.isCancelled) paused=\($0.isPaused)" } ?? "progress=unavailable"
+				let diagnostic = "phase=\(viewModel.statusLabel) delivery=\(deliveryStarted) \(raw) app=\(appDiagnostic) observer=[\(observer?.diagnosticState ?? "unavailable")]"
+				if diagnostic != lastDiagnostic || elapsed - lastDiagnosticAt >= 15 {
+					ReliabilityCenter.shared.record(.installing, "Attempt \(diagnosticID) t=\(Int(elapsed)) \(diagnostic)")
+					lastDiagnostic = diagnostic
+					lastDiagnosticAt = elapsed
+				}
 				let update = tracker.observe(at: ProcessInfo.processInfo.systemUptime - started,
 					fraction: snapshot?.fractionCompleted, finished: snapshot?.isFinished ?? false,
 					cancelled: snapshot?.isCancelled ?? false, totalUnits: snapshot?.totalUnitCount ?? 0,
 					installed: identity(reading.state?.app), deliveryStarted: deliveryStarted, installEvent: observer?.didInstall == true)
 				if update.completed {
+					ReliabilityCenter.shared.record(.installing, "Attempt \(diagnosticID) confirmed by completion tracker")
 					viewModel.updateInstallProgress(1)
 					viewModel.updateStatus(.completed(.success(())))
 					return
