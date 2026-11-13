@@ -1,4 +1,34 @@
-# Install progress and visible import failures — 1.5.2 (44)
+# Install progress and visible import failures — 1.5.2 (45)
+
+## Device feedback on build44
+
+The user supplied a screenshot showing Facebook installed while the new
+indeterminate "Waiting for iOS" card remained. Build44 did not resolve this on
+that phone. The user also reports the whole process still takes longer; its
+dominant duration has not yet been measured.
+
+Build45 registers a workspace installation observer before handoff, arms it when
+the payload is requested, and accepts only a matching installed callback (not
+placeholders or another bundle/version). This event can complete a same-version
+reinstall even with unavailable progress and an unchanged cached proxy. Observer
+removal is idempotent on retry, dismissal, error and success. Notification delivery
+reaches the UI independently of background status queries. Native fixture tests
+cover registration, callback filtering, arming and teardown; actual device callback
+delivery remains pending testing.
+
+Confirmed success shows completion briefly then dismisses the card. Combine's
+published status is handled from the received value, not the old property during
+willSet. If iOS supplies no confirmation, Close only dismisses an indeterminate
+post-transfer card; it does not manufacture success or100 percent.
+
+Repeated queries now run off the UI thread, with app-record checks every third
+one-second sample. Packaging uses user-initiated priority and coalesces callbacks
+to at most101 percentage milestones instead of queuing a UI task for every ZIP
+callback. Saved compression, signing, certificate, ElleKit and verification settings
+are retained. Staging and packaging durations are recorded for real-device timing.
+No measured whole-process speedup is claimed before testing.
+
+Primary callback declaration: [workspace install observer](https://github.com/mineek/MuffinStore/blob/main/CoreServices.h).
 
 Users report that installation succeeds while NullSign's bar remains near
 40/60 percent. They also report that selecting some IPAs using Import from Files

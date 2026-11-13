@@ -31,6 +31,7 @@ final class ArchiveHandler: NSObject {
 	}
 	
 	func move() async throws {
+		let started = ProcessInfo.processInfo.systemUptime
 		guard let appUrl = Storage.shared.getAppDirectory(for: _app) else {
 			throw SigningFileHandlerError.appNotFound
 		}
@@ -42,10 +43,11 @@ final class ArchiveHandler: NSObject {
 		
 		try _fileManager.copyItem(at: appUrl, to: movedAppURL)
 		_payloadUrl = payloadUrl
+		ReliabilityCenter.shared.record(.packaging, "IPA staging took \(ProcessInfo.processInfo.systemUptime - started) seconds")
 	}
 	
 	func archive() async throws -> URL {
-		return try await Task.detached(priority: .background) { [self] in
+		return try await Task.detached(priority: .userInitiated) { [self] in
 			guard let payloadUrl = await self._payloadUrl else {
 				throw SigningFileHandlerError.appNotFound
 			}
@@ -54,6 +56,8 @@ final class ArchiveHandler: NSObject {
 			ReliabilityCenter.shared.record(.packaging, "Payload structure passed; creating IPA")
 			let zipUrl = self._uniqueWorkDir.appendingPathComponent("Archive.zip")
 			let ipaUrl = self._uniqueWorkDir.appendingPathComponent("Archive.ipa")
+			let started = ProcessInfo.processInfo.systemUptime
+			var lastPercent = -1
 			
 			try await Zip.zipFiles(
 				paths: [payloadUrl],
@@ -61,6 +65,11 @@ final class ArchiveHandler: NSObject {
 				password: nil,
 				compression: ZipCompression.allCases[ArchiveHandler.getCompressionLevel()],
 				progress: { progress in
+					guard progress.isFinite else { return }
+					let progress = min(1, max(0, progress))
+					let percent = Int(progress * 100)
+					guard percent > lastPercent else { return }
+					lastPercent = percent
 					Task { @MainActor in
 						self.viewModel.updatePackageProgress(progress)
 					}
@@ -71,7 +80,8 @@ final class ArchiveHandler: NSObject {
 			      ((try? ipaUrl.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) > 0 else {
 				throw AppValidationError.malformedIPA("The archive is empty.")
 			}
-			ReliabilityCenter.shared.record(.complete, "IPA package created successfully")
+			await MainActor.run { self.viewModel.updatePackageProgress(1) }
+			ReliabilityCenter.shared.record(.complete, "IPA package created in \(ProcessInfo.processInfo.systemUptime - started) seconds")
 			return ipaUrl
 		}.value
 	}

@@ -4,6 +4,82 @@ import ObjectiveC
 /// Private Launch Services queries are optional. Missing selectors return no
 /// observation; they must never be interpreted as a completed installation.
 public enum SystemInstallRuntime {
+	public static let installationDidFinish = Notification.Name("NullSign.SystemInstallationDidFinish")
+	public struct Observation: Sendable {
+		public let progress: ProgressSnapshot?
+		public let state: AppState?
+	}
+
+	public static func observation(for identifier: String, includeAppState: Bool) -> Observation {
+		Observation(progress: progress(for: identifier), state: includeAppState ? appState(for: identifier) : nil)
+	}
+
+	public static func observeInstallation(for identifier: String, version: String?) -> InstallationObserver? {
+		guard let workspace = workspace() else { return nil }
+		return observeInstallation(workspace: workspace, identifier: identifier, version: version)
+	}
+
+	static func observeInstallation(workspace: NSObject, identifier: String, version: String?) -> InstallationObserver? {
+		guard workspace.responds(to: NSSelectorFromString("addObserver:")),
+			workspace.responds(to: NSSelectorFromString("removeObserver:")) else { return nil }
+		return InstallationObserver(workspace: workspace, identifier: identifier, version: version)
+	}
+
+	public final class InstallationObserver: NSObject, @unchecked Sendable {
+		private let workspace: NSObject
+		private let identifier: String
+		private let version: String?
+		private let lock = NSLock()
+		private var active = true
+		private var armed = false
+		private var installed = false
+
+		fileprivate init(workspace: NSObject, identifier: String, version: String?) {
+			self.workspace = workspace
+			self.identifier = identifier
+			self.version = version
+			super.init()
+			if let protocolType = objc_getProtocol("LSApplicationWorkspaceObserverProtocol") {
+				class_addProtocol(type(of: self), protocolType)
+			}
+			registration("addObserver:")
+		}
+
+		public func arm() { lock.lock(); armed = true; lock.unlock() }
+		public var didInstall: Bool {
+			lock.lock(); defer { lock.unlock() }
+			return installed
+		}
+
+		@objc public func applicationsDidInstall(_ applications: NSArray) {
+			for case let app as NSObject in applications {
+				let bundle = SystemInstallRuntime.object(app, "applicationIdentifier") as? String ?? SystemInstallRuntime.object(app, "bundleIdentifier") as? String
+				guard bundle == identifier, SystemInstallRuntime.boolean(app, "isPlaceholder") != true else { continue }
+				if let actual = SystemInstallRuntime.object(app, "shortVersionString") as? String, let version, actual != version { continue }
+				lock.lock()
+				let notify = active && armed && !installed
+				if notify { installed = true }
+				lock.unlock()
+				if notify { NotificationCenter.default.post(name: SystemInstallRuntime.installationDidFinish, object: self) }
+			}
+		}
+
+		public func stop() {
+			lock.lock()
+			let remove = active
+			active = false
+			lock.unlock()
+			if remove { registration("removeObserver:") }
+		}
+
+		private func registration(_ name: String) {
+			let selector = NSSelectorFromString(name)
+			guard let implementation = workspace.method(for: selector) else { return }
+			typealias Register = @convention(c) (AnyObject, Selector, AnyObject) -> Void
+			unsafeBitCast(implementation, to: Register.self)(workspace, selector, self)
+		}
+	}
+
 	public struct ProgressSnapshot: Sendable {
 		public let fractionCompleted: Double
 		public let isFinished: Bool

@@ -30,9 +30,10 @@ struct InstallCompletionTracker {
 
 	mutating func observe(
 		at elapsed: TimeInterval, fraction: Double?, finished: Bool,
-		cancelled: Bool, totalUnits: Int64, installed: InstalledAppIdentity?, deliveryStarted: Bool = true
+		cancelled: Bool, totalUnits: Int64, installed: InstalledAppIdentity?, deliveryStarted: Bool = true, installEvent: Bool = false
 	) -> Update {
 		guard deliveryStarted else { return Update(completed: false, progress: nil) }
+		if installEvent { return Update(completed: true, progress: 1) }
 		let versionMatches = expectedVersion == nil || installed?.version == nil
 			|| installed?.version == expectedVersion
 		if baselineKnown, let installed, installed != baseline, versionMatches {

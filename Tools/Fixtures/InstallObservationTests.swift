@@ -74,5 +74,9 @@ import Foundation
 		precondition(sample(&tracker, fraction: -2).progress == 0)
 		precondition(sample(&tracker, fraction: 5).progress == 0.99)
 		print("PASS nonfinite and out-of-range progress cannot show false completion")
+		tracker = InstallCompletionTracker(baseline: old, expectedVersion: "2.0", baselineKnown: false)
+		precondition(!tracker.observe(at: 1, fraction: nil, finished: false, cancelled: false, totalUnits: 0, installed: old, deliveryStarted: false, installEvent: true).completed)
+		precondition(tracker.observe(at: 2, fraction: nil, finished: false, cancelled: false, totalUnits: 0, installed: old, installEvent: true).completed)
+		print("PASS matching installed event confirms same-version reinstall with unavailable progress and unchanged cached proxy")
 	}
 }

@@ -3,6 +3,11 @@ import Foundation
 // Controlled Launch Services boundary, with real Objective-C dispatch and
 // Apple Foundation Progress objects. No UIKit or private iPhone APIs are faked.
 final class WorkspaceFixture: NSObject {
+	weak var observer: NSObject?
+	var added = 0
+	var removed = 0
+	@objc func addObserver(_ observer: NSObject) { self.observer = observer; added += 1 }
+	@objc func removeObserver(_ observer: NSObject) { self.observer = nil; removed += 1 }
 	var identifier: String?
 	var synchronous: Bool?
 	let progress = Progress(totalUnitCount: 100)
@@ -18,6 +23,8 @@ final class WorkspaceFixture: NSObject {
 }
 
 final class AppProxyFixture: NSObject {
+	var identifier = "fixture.app"
+	@objc func applicationIdentifier() -> NSString { identifier as NSString }
 	var installed = true
 	var placeholder = false
 	@objc func isInstalled() -> Bool { installed }
@@ -59,5 +66,27 @@ final class AppProxyFixture: NSObject {
 		proxy.installed = false
 		precondition(SystemInstallRuntime.appState(proxy: proxy).isAvailable && SystemInstallRuntime.appState(proxy: proxy).app == nil)
 		print("PASS missing selectors, placeholders and uninstalled records cannot become installation evidence")
+
+		guard let observer = SystemInstallRuntime.observeInstallation(workspace: workspace, identifier: "fixture.app", version: "2.0") else { preconditionFailure("Observer did not register") }
+		precondition(workspace.added == 1 && workspace.observer === observer)
+		proxy.installed = true
+		observer.applicationsDidInstall([proxy] as NSArray)
+		precondition(!observer.didInstall, "An event before this attempt's payload must not complete it")
+		observer.arm()
+		proxy.identifier = "other.app"
+		observer.applicationsDidInstall([proxy] as NSArray)
+		precondition(!observer.didInstall)
+		proxy.identifier = "fixture.app"
+		proxy.placeholder = true
+		observer.applicationsDidInstall([proxy] as NSArray)
+		precondition(!observer.didInstall)
+		proxy.placeholder = false
+		observer.applicationsDidInstall([proxy] as NSArray)
+		precondition(observer.didInstall)
+		observer.stop()
+		observer.stop()
+		precondition(workspace.removed == 1 && workspace.observer == nil)
+		precondition(SystemInstallRuntime.observeInstallation(workspace: NSObject(), identifier: "fixture.app", version: nil) == nil)
+		print("PASS real Objective-C observer registration, armed matching install callback, filtering and idempotent teardown")
 	}
 }
