@@ -174,7 +174,7 @@ struct InstallPreviewView: View {
 			.foregroundStyle(viewModel.installSucceeded ? NullSignStyle.success : NullSignStyle.muted)
 			.animation(.smooth, value: viewModel.statusImage)
 	}
-	
+
 	@ViewBuilder
 	private func _button() -> some View {
 		Group {
@@ -355,6 +355,8 @@ struct InstallPreviewView: View {
 				build: $0.build, registeredAt: $0.registeredAt) }
 		}
 		let initialState = SystemInstallRuntime.appState(for: bundleID)
+		let initialMembership = SystemInstallRuntime.workspaceContainsApp(bundleID)
+		let session = SystemInstallRuntime.ProgressSession(identifier: bundleID)
 		let baseline = identity(initialState.app)
 		let expectedVersion = app.version.flatMap { $0.isEmpty ? nil : $0 }
 		let observer = SystemInstallRuntime.observeInstallation(for: bundleID, version: expectedVersion)
@@ -363,7 +365,8 @@ struct InstallPreviewView: View {
 		ReliabilityCenter.shared.record(.installing, "Attempt \(diagnosticID) bundle=\(bundleID) expected=\(expectedVersion ?? "unknown") baseline=\(initialState.diagnosticState) observer=\(observer != nil)")
 		return Task { @MainActor in
 			defer { observer?.stop() }
-			var tracker = InstallCompletionTracker(baseline: baseline, expectedVersion: expectedVersion, baselineKnown: initialState.isAvailable)
+			var tracker = InstallCompletionTracker(baseline: baseline, expectedVersion: expectedVersion,
+				baselineKnown: initialState.isAvailable, initialMembership: initialMembership)
 			let started = ProcessInfo.processInfo.systemUptime
 			var samples = 0
 			var lastDiagnostic = ""
@@ -377,9 +380,8 @@ struct InstallPreviewView: View {
 				}
 				if deliveryStarted { observer?.arm() }
 				let includeAppState = samples % 3 == 0
-				let reading = await Task.detached(priority: .utility) {
-					SystemInstallRuntime.observation(for: bundleID, includeAppState: includeAppState)
-				}.value
+				let reading = await session.observation(includeAppState: includeAppState, deliveryStarted: deliveryStarted)
+				let membership = reading.membership
 				guard !Task.isCancelled, viewModel.installFailure == nil, !viewModel.isCompleted else { return }
 				samples += 1
 				let snapshot = reading.progress
@@ -389,7 +391,7 @@ struct InstallPreviewView: View {
 				}
 				let elapsed = ProcessInfo.processInfo.systemUptime - started
 				let raw = snapshot.map { "fraction=\($0.fractionCompleted) units=\($0.completedUnitCount)/\($0.totalUnitCount) finished=\($0.isFinished) cancelled=\($0.isCancelled) paused=\($0.isPaused)" } ?? "progress=unavailable"
-				let diagnostic = "phase=\(viewModel.statusLabel) delivery=\(deliveryStarted) \(raw) app=\(appDiagnostic) observer=[\(observer?.diagnosticState ?? "unavailable")]"
+				let diagnostic = "phase=\(viewModel.statusLabel) delivery=\(deliveryStarted) published=\(reading.hasPublishedProgress) \(raw) membership=\(String(describing: initialMembership))->\(String(describing: membership)) app=\(appDiagnostic) observer=[\(observer?.diagnosticState ?? "unavailable")]"
 				if diagnostic != lastDiagnostic || elapsed - lastDiagnosticAt >= 15 {
 					ReliabilityCenter.shared.record(.installing, "Attempt \(diagnosticID) t=\(Int(elapsed)) \(diagnostic)")
 					lastDiagnostic = diagnostic
@@ -398,11 +400,17 @@ struct InstallPreviewView: View {
 				let update = tracker.observe(at: ProcessInfo.processInfo.systemUptime - started,
 					fraction: snapshot?.fractionCompleted, finished: snapshot?.isFinished ?? false,
 					cancelled: snapshot?.isCancelled ?? false, totalUnits: snapshot?.totalUnitCount ?? 0,
-					installed: identity(reading.state?.app), deliveryStarted: deliveryStarted, installEvent: observer?.didInstall == true)
+					installed: identity(reading.state?.app), deliveryStarted: deliveryStarted, installEvent: observer?.didInstall == true,
+					published: reading.hasPublishedProgress, membership: membership, isPlaceholder: reading.state?.diagnosticState == "placeholder")
 				if update.completed {
 					ReliabilityCenter.shared.record(.installing, "Attempt \(diagnosticID) confirmed by completion tracker")
 					viewModel.updateInstallProgress(1)
 					viewModel.updateStatus(.completed(.success(())))
+					return
+				}
+				if let error = update.observationError {
+					ReliabilityCenter.shared.record(.installing, "Attempt \(diagnosticID) \(error.localizedDescription)")
+					viewModel.updateStatus(.broken(error))
 					return
 				}
 				if let progress = update.progress { viewModel.updateInstallProgress(progress) }

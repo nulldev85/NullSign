@@ -15,7 +15,8 @@ with tempfile.TemporaryDirectory(prefix="nullsign-install-observation-") as dire
         for name, production, fixture in groups:
             executable = Path(directory) / (name + optimization)
             language = "6" if name == "runtime" else "5"
+            extra = [str(ROOT / "Feather/Utilities/InstallCompletionTracker.swift")] if name == "runtime" else []
             subprocess.run(["xcrun", "swiftc", "-swift-version", language, optimization,
-                            str(ROOT / production), str(ROOT / fixture), "-o", str(executable)],
+                            str(ROOT / production), *extra, str(ROOT / fixture), "-o", str(executable)],
                            check=True, timeout=60)
             subprocess.run([str(executable)], check=True, timeout=30)

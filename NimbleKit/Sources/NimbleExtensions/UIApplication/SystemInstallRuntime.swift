@@ -8,10 +8,40 @@ public enum SystemInstallRuntime {
 	public struct Observation: Sendable {
 		public let progress: ProgressSnapshot?
 		public let state: AppState?
+		public let hasPublishedProgress: Bool
+		public let membership: Bool?
 	}
 
 	public static func observation(for identifier: String, includeAppState: Bool) -> Observation {
-		Observation(progress: progress(for: identifier), state: includeAppState ? appState(for: identifier) : nil)
+		let current = progress(for: identifier)
+		return Observation(progress: current, state: includeAppState ? appState(for: identifier) : nil,
+			hasPublishedProgress: current != nil, membership: nil)
+	}
+
+	/// One session per installation attempt. Launch Services can remove the
+	/// progress from its lookup before the next poll sees the terminal update.
+	public actor ProgressSession {
+		private let identifier: String
+		private var activeProgress: Progress?
+
+		public init(identifier: String) { self.identifier = identifier }
+
+		public func observation(includeAppState: Bool, deliveryStarted: Bool) -> Observation {
+			let published = SystemInstallRuntime.workspace().flatMap {
+				SystemInstallRuntime.progressObject(workspace: $0, identifier: identifier, synchronous: true)
+			}
+			let checkMembership = published == nil && deliveryStarted && includeAppState
+			return observe(published, state: includeAppState ? SystemInstallRuntime.appState(for: identifier) : nil,
+				deliveryStarted: deliveryStarted, membership: checkMembership ? SystemInstallRuntime.workspaceContainsApp(identifier) : nil)
+		}
+
+		func observe(_ published: Progress?, state: AppState?, deliveryStarted: Bool, membership: Bool? = nil) -> Observation {
+			if deliveryStarted, let published, published.totalUnitCount > 0 {
+				activeProgress = published
+			}
+			return Observation(progress: (activeProgress ?? published).map(ProgressSnapshot.init),
+				state: state, hasPublishedProgress: published != nil, membership: membership)
+		}
 	}
 
 	public static func observeInstallation(for identifier: String, version: String?) -> InstallationObserver? {
@@ -100,6 +130,15 @@ public enum SystemInstallRuntime {
 		public let totalUnitCount: Int64
 		public let completedUnitCount: Int64
 		public let isPaused: Bool
+
+		init(_ value: Progress) {
+			fractionCompleted = value.fractionCompleted
+			isFinished = value.isFinished
+			isCancelled = value.isCancelled
+			totalUnitCount = value.totalUnitCount
+			completedUnitCount = value.completedUnitCount
+			isPaused = value.isPaused
+		}
 	}
 
 	public struct AppSnapshot: Sendable {
@@ -134,16 +173,17 @@ public enum SystemInstallRuntime {
 	}
 
 	static func progress(workspace: NSObject, identifier: String, synchronous: Bool) -> ProgressSnapshot? {
+		progressObject(workspace: workspace, identifier: identifier, synchronous: synchronous).map(ProgressSnapshot.init)
+	}
+
+	private static func progressObject(workspace: NSObject, identifier: String, synchronous: Bool) -> Progress? {
 		let selector = NSSelectorFromString("installProgressForBundleID:makeSynchronous:")
 		guard workspace.responds(to: selector), let implementation = workspace.method(for: selector) else { return nil }
 		// perform(_:with:with:) boxes its arguments as objects. The second
 		// argument here is an Objective-C BOOL, so call the correctly typed IMP.
 		typealias Query = @convention(c) (AnyObject, Selector, NSString, Bool) -> Unmanaged<AnyObject>?
 		let query = unsafeBitCast(implementation, to: Query.self)
-		guard let value = query(workspace, selector, identifier as NSString, synchronous)?.takeUnretainedValue() as? Progress else { return nil }
-		return ProgressSnapshot(fractionCompleted: value.fractionCompleted,
-			isFinished: value.isFinished, isCancelled: value.isCancelled, totalUnitCount: value.totalUnitCount,
-			completedUnitCount: value.completedUnitCount, isPaused: value.isPaused)
+		return query(workspace, selector, identifier as NSString, synchronous)?.takeUnretainedValue() as? Progress
 	}
 
 	public static func appState(for identifier: String) -> AppState {
@@ -166,6 +206,10 @@ public enum SystemInstallRuntime {
 		guard workspace.responds(to: selector), let implementation = workspace.method(for: selector) else { return nil }
 		typealias Query = @convention(c) (AnyObject, Selector, NSString) -> Bool
 		return unsafeBitCast(implementation, to: Query.self)(workspace, selector, identifier as NSString)
+	}
+
+	public static func workspaceContainsApp(_ identifier: String) -> Bool? {
+		workspace().flatMap { applicationIsInstalled(workspace: $0, identifier: identifier) }
 	}
 
 	static func appState(proxy: NSObject) -> AppState {

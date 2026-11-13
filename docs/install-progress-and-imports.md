@@ -1,4 +1,20 @@
-# Install progress and library reliability — 1.5.2 (48)
+# Install progress and library reliability — 1.5.2 (49)
+
+## Build 49
+
+A device trace showed progress advancing through 62, 76 and 92 units of 100.
+One second later the system lookup returned no job. The observer received no
+callbacks and the proxy continued reporting the app absent through the final
+sample 47 seconds later.
+
+Each install now retains its active Foundation progress object and checks it
+after the system removes the lookup entry. A finished or cancelled object can
+therefore still reach the card. For fresh installs, a separate membership lookup
+before handoff and after the active job disappears can confirm a newly installed
+target. An unchanged or unknown membership cannot confirm a reinstall.
+
+The native regressions exercise a late finish, cancellation, a clean retry
+and missing or unchanged membership. Device verification is pending.
 
 ## Build 48
 
@@ -8,9 +24,7 @@ Imported iPhone and iPad apps can supply their own primary icon as a PNG. The
 loader checks the package's declared files and retains the system renderer for
 catalog icons and styled appearances. Existing library copies use the same lookup.
 
-The install stall still needs a diagnostic export from an affected device. Builds
-47 and 48 capture the same install signals. After the target opens successfully
-and the percentage is still stuck, use Settings → Diagnostics → Export Diagnostic Log.
+Builds 47 and 48 capture the same install signals. The exported trace informed build 49.
 
 ## Build46 still stalls at97 percent
 

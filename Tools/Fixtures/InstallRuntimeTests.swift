@@ -36,7 +36,8 @@ final class AppProxyFixture: NSObject {
 }
 
 @main struct InstallRuntimeTests {
-	static func main() {
+	static func main() async {
+		await testUnpublishedProgress()
 		let workspace = WorkspaceFixture()
 		workspace.progress.completedUnitCount = 40
 		let first = SystemInstallRuntime.progress(workspace: workspace, identifier: "fixture.app", synchronous: false)
@@ -88,5 +89,42 @@ final class AppProxyFixture: NSObject {
 		precondition(workspace.removed == 1 && workspace.observer == nil)
 		precondition(SystemInstallRuntime.observeInstallation(workspace: NSObject(), identifier: "fixture.app", version: nil) == nil)
 		print("PASS real Objective-C observer registration, armed matching install callback, filtering and idempotent teardown")
+	}
+
+	static func testUnpublishedProgress() async {
+		let session = SystemInstallRuntime.ProgressSession(identifier: "fixture.app")
+		let job = Progress(totalUnitCount: 100)
+		var tracker = InstallCompletionTracker(baseline: nil, expectedVersion: "1")
+		func update(_ observation: SystemInstallRuntime.Observation) -> InstallCompletionTracker.Update {
+			let p = observation.progress
+			return tracker.observe(at: 0, fraction: p?.fractionCompleted, finished: p?.isFinished ?? false,
+				cancelled: p?.isCancelled ?? false, totalUnits: p?.totalUnitCount ?? 0,
+				installed: nil, published: observation.hasPublishedProgress)
+		}
+		for units: Int64 in [0, 62, 76, 92] {
+			job.completedUnitCount = units
+			let sample = await session.observe(job, state: nil, deliveryStarted: true)
+			precondition(sample.hasPublishedProgress && !update(sample).completed)
+		}
+		let missing = await session.observe(nil, state: nil, deliveryStarted: true)
+		precondition(!missing.hasPublishedProgress && missing.progress?.completedUnitCount == 92)
+		precondition(!update(missing).completed)
+		job.completedUnitCount = 100
+		let finished = await session.observe(nil, state: nil, deliveryStarted: true)
+		precondition(!finished.hasPublishedProgress && update(finished).completed)
+
+		let retry = SystemInstallRuntime.ProgressSession(identifier: "fixture.app")
+		let empty = await retry.observe(nil, state: nil, deliveryStarted: true)
+		precondition(empty.progress == nil)
+		let interrupted = Progress(totalUnitCount: 100)
+		interrupted.completedUnitCount = 92
+		tracker = InstallCompletionTracker(baseline: nil, expectedVersion: nil)
+		let active = await retry.observe(interrupted, state: nil, deliveryStarted: true)
+		precondition(!update(active).completed)
+		interrupted.cancel()
+		let cancelled = await retry.observe(nil, state: nil, deliveryStarted: true)
+		let outcome = update(cancelled)
+		precondition(!outcome.completed && outcome.observationError == .cancelled)
+		print("PASS active progress retained past lookup removal, late finish/cancel, clean retry")
 	}
 }

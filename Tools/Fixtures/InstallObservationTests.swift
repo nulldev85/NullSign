@@ -12,6 +12,20 @@ import Foundation
 	}
 
 	static func main() {
+		// The device trace lost its published progress at 92/100 and the proxy
+		// continued reporting no installed app. Membership is independent.
+		for initial: Bool? in [false, true, nil] {
+			var job = InstallCompletionTracker(baseline: nil, expectedVersion: "2.0", initialMembership: initial)
+			_ = sample(&job, at: 24, fraction: 0.92)
+			func removed(membership: Bool?, placeholder: Bool = false) -> Bool {
+				job.observe(at: 72, fraction: 0.92, finished: false, cancelled: false,
+					totalUnits: 100, installed: nil, published: false, membership: membership,
+					isPlaceholder: placeholder).completed
+			}
+			precondition(!removed(membership: nil) && !removed(membership: false))
+			precondition(!removed(membership: true, placeholder: true))
+			precondition(removed(membership: true) == (initial == false))
+		}
 		var tracker = InstallCompletionTracker(baseline: nil, expectedVersion: "2.0")
 		precondition(!sample(&tracker).completed)
 		precondition(sample(&tracker, app: identity("/new/App.app")).completed,
