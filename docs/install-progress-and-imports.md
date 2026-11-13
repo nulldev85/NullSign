@@ -1,4 +1,20 @@
-# Install progress and visible import failures — 1.5.2 (45)
+# Install progress and visible import failures — 1.5.2 (46)
+
+## Final presentation requested by the user
+
+The user rejected the extra waiting message, Close action, bouncing fallback
+and automatic dismissal. Build46 restores the original presentation: a
+determinate progress bar, the normal Installing label, then Completed with a
+full bar and checkmark on confirmed success. The card retains the original
+Open/Done action. It does not require Close or disappear automatically. Missing
+measurements retain the last measured progress rather than starting a bouncing
+animation. Completion still comes from the underlying installation signals;
+elapsed time or finishing payload transfer cannot fabricate success.
+
+The completion-event, off-UI-thread observation and packaging responsiveness
+work remain underneath. This supersedes the build44/45 presentation described
+below. Native/device confirmation remains pending; no success is claimed merely
+from changing the UI.
 
 ## Device feedback on build44
 

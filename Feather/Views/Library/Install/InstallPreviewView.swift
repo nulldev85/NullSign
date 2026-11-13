@@ -24,9 +24,7 @@ struct InstallPreviewView: View {
 	@State private var _hasStarted = false
 	@State private var _didRequestInstall = false
 	@State private var _needsBrowserFallback = false
-	@State private var _installationIndeterminate = false
 	@State private var _installationObserver: SystemInstallRuntime.InstallationObserver?
-	@State private var completionDismissTask: Task<Void, Never>?
 	@State private var _isPreparing: Bool
 	@State private var _signingStage: AppSigningStage? = .preparing
 	@State private var _preparedApp: AppInfoPresentable?
@@ -80,10 +78,6 @@ struct InstallPreviewView: View {
 					.foregroundStyle(NullSignStyle.muted)
 				Button("Continue in Browser") { _isWebviewPresenting = true }
 					.buttonStyle(NullSignSecondaryButtonStyle(height: 34))
-			} else if _awaitingUnconfirmedInstall {
-				Text("iOS is not reporting completion. If the app is ready on your Home Screen, you can close this card.")
-					.font(.roundedUI(.caption))
-					.foregroundStyle(NullSignStyle.muted)
 			} else if !_isPreparing, case .ready = viewModel.status, !isSharing {
 				Text("Confirm Install in the iOS prompt.")
 					.font(.roundedUI(.caption))
@@ -126,12 +120,6 @@ struct InstallPreviewView: View {
 				switch newStatus {
 				case .completed, .broken(_):
 					_installationObserver?.stop()
-					if case .completed(.success) = newStatus {
-						completionDismissTask = Task { @MainActor in
-							do { try await Task.sleep(nanoseconds: 800_000_000) } catch { return }
-							if viewModel.installSucceeded { dismiss() }
-						}
-					}
 					handoffTask?.cancel()
 					progressTask?.cancel()
 					progressTask = nil
@@ -160,7 +148,6 @@ struct InstallPreviewView: View {
 		#endif
 		
 		.onDisappear {
-			completionDismissTask?.cancel()
 			_installationObserver?.stop()
 			_installationObserver = nil
 			operationTask?.cancel()
@@ -179,8 +166,7 @@ struct InstallPreviewView: View {
 	@ViewBuilder
 	private func _status() -> some View {
 		Label(
-			_isPreparing ? .localized((_signingStage ?? .preparing).rawValue)
-				: (_awaitingUnconfirmedInstall ? .localized("Waiting for iOS") : viewModel.statusLabel),
+			_isPreparing ? .localized((_signingStage ?? .preparing).rawValue) : viewModel.statusLabel,
 			systemImage: _isPreparing ? "signature" : viewModel.statusImage
 		)
 			.font(.roundedUI(.footnote, weight: .bold))
@@ -201,7 +187,6 @@ struct InstallPreviewView: View {
 				}
 			} else if viewModel.installFailure != nil {
 				_actionButton("Retry", icon: "arrow.clockwise") {
-					completionDismissTask?.cancel()
 					_installationObserver?.stop()
 					operationTask?.cancel()
 					handoffTask?.cancel()
@@ -209,14 +194,11 @@ struct InstallPreviewView: View {
 					_hasStarted = false
 					_didRequestInstall = false
 					_needsBrowserFallback = false
-					_installationIndeterminate = false
 					_isPreparing = !app.isSigned && !isSharing
 					_signingStage = .preparing
 					viewModel.resetProgress()
 					installAttempt += 1
 				}
-			} else if _awaitingUnconfirmedInstall {
-				_actionButton("Close", icon: "xmark") { dismiss() }
 			}
 		}
 		.animation(.easeInOut(duration: 0.3), value: viewModel.isCompleted)
@@ -313,9 +295,8 @@ struct InstallPreviewView: View {
 		}
 	}
 
-	private var _displayedProgress: Double? {
+	private var _displayedProgress: Double {
 		if _isPreparing { return (_signingStage ?? .preparing).progress }
-		if _usesIndeterminateSystemProgress { return nil }
 		if viewModel.installFailure != nil, !originalApp.isSigned, _preparedApp == nil {
 			return (_signingStage ?? .preparing).progress
 		}
@@ -324,7 +305,7 @@ struct InstallPreviewView: View {
 			installerProgress: viewModel.overallProgress,
 			succeeded: viewModel.installSucceeded
 		)
-		return value > 0 || viewModel.installFailure != nil ? value : nil
+		return value
 	}
 
 	private func _openSystemInstaller() {
@@ -360,19 +341,6 @@ struct InstallPreviewView: View {
 		#endif
 		DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
 			UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
-		}
-	}
-
-	private var _awaitingUnconfirmedInstall: Bool {
-		if case .installing = viewModel.status { return _usesIndeterminateSystemProgress }
-		return false
-	}
-
-	private var _usesIndeterminateSystemProgress: Bool {
-		guard _installationIndeterminate, !viewModel.installSucceeded, viewModel.installFailure == nil else { return false }
-		switch viewModel.status {
-		case .sendingPayload, .installing: return true
-		default: return false
 		}
 	}
 
@@ -418,7 +386,6 @@ struct InstallPreviewView: View {
 					viewModel.updateStatus(.completed(.success(())))
 					return
 				}
-				_installationIndeterminate = update.progress == nil
 				if let progress = update.progress { viewModel.updateInstallProgress(progress) }
 				do { try await Task.sleep(nanoseconds: 1_000_000_000) }
 				catch { return }
