@@ -10,7 +10,8 @@ import CoreData
 // MARK: - Class extension: Apps (Shared)
 extension Storage {
 	func getUuidDirectory(for app: AppInfoPresentable) -> URL? {
-		guard let uuid = app.uuid else { return nil }
+		guard let uuid = app.uuid, !uuid.isEmpty, uuid != ".", uuid != "..",
+			!uuid.contains("/") else { return nil }
 		return app.isSigned
 			? FileManager.default.signed(uuid)
 			: FileManager.default.unsigned(uuid)
@@ -31,34 +32,41 @@ extension Storage {
 	/// drops the row before its bundle disappears from disk; the files are
 	/// then removed off the main thread. Apps that were already deleted (a
 	/// double tap, a stale row, a sheet still holding one) are skipped.
-	func deleteApps(_ apps: [AppInfoPresentable]) {
+	@discardableResult
+	func deleteApps(_ apps: [AppInfoPresentable]) -> Bool {
 		var directories: [URL] = []
 
+		// Resolve the full selection before changing anything. Signed copies
+		// can originate in a background context.
+		var rows: [NSManagedObject] = []
 		for app in apps {
-			if let object = app as? NSManagedObject {
-				guard
-					object.managedObjectContext === context,
-					!object.isDeleted
-				else {
-					continue
-				}
+			guard let object = app as? NSManagedObject else { return false }
+			if object.managedObjectContext == nil { continue }
+			if object.managedObjectContext === context {
+				rows.append(object)
+			} else {
+				guard !object.objectID.isTemporaryID,
+					let store = object.objectID.persistentStore,
+					container.persistentStoreCoordinator.persistentStores.contains(where: { $0 === store }),
+					let row = try? context.existingObject(with: object.objectID) else { return false }
+				rows.append(row)
 			}
-
+		}
+		for row in rows where !row.isDeleted {
+			guard let app = row as? AppInfoPresentable else { continue }
 			if let url = getUuidDirectory(for: app) {
 				directories.append(url)
 			}
 			deleteSourceMetadata(for: app.uuid, save: false)
 
-			if let object = app as? NSManagedObject {
-				context.delete(object)
-			}
+			context.delete(row)
 		}
 
 		// If the save was rolled back the rows are still listed, so their
 		// files must stay too.
-		if saveContextNow() {
-			FileManager.default.removeItemsInBackground(directories)
-		}
+		guard saveContextNow() else { return false }
+		FileManager.default.removeItemsInBackground(directories)
+		return true
 	}
 
 	func getCertificate(from app: AppInfoPresentable) -> CertificatePair? {

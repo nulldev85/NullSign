@@ -1,5 +1,30 @@
 import Foundation
 
+enum PhoneIconSelection {
+	static func files(in info: [String: Any], isPad: Bool) -> [String] {
+		let idiom = isPad ? "ipad" : "iphone"
+		var names: [String] = []
+		for key in ["CFBundleIcons~" + idiom, "CFBundleIcons"] {
+			if let icons = info[key] as? [String: Any],
+				let primary = icons["CFBundlePrimaryIcon"] as? [String: Any],
+				let files = primary["CFBundleIconFiles"] as? [String] {
+				names.append(contentsOf: files.reversed())
+			}
+		}
+		for key in ["CFBundleIconFiles~" + idiom, "CFBundleIconFiles"] {
+			if let files = info[key] as? [String] { names.append(contentsOf: files.reversed()) }
+		}
+		if let file = info["CFBundleIconFile"] as? String { names.append(file) }
+
+		var seen = Set<String>()
+		return names.filter { !$0.isEmpty }.flatMap { name -> [String] in
+			let base = name.lowercased().hasSuffix(".png") ? String(name.dropLast(4)) : name
+			return ["@3x~" + idiom, "@3x", "@2x~" + idiom, "@2x", "~" + idiom, ""]
+				.map { base + $0 + ".png" } + [name]
+		}.filter { seen.insert($0).inserted }
+	}
+}
+
 /// Resolve the icon declared by this package, not artwork associated with its
 /// bundle identifier or an unrelated/alternate icon left in the catalog.
 enum TVIconSelection {

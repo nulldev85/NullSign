@@ -1,4 +1,16 @@
-# Install progress and visible import failures — 1.5.2 (47 diagnostic)
+# Install progress and library reliability — 1.5.2 (48)
+
+## Build 48
+
+Delete now acts directly from the row menu, swipe action, or bulk confirmation.
+The library retains the selection and reports a failed save so the user can retry.
+Imported iPhone and iPad apps can supply their own primary icon as a PNG. The
+loader checks the package's declared files and retains the system renderer for
+catalog icons and styled appearances. Existing library copies use the same lookup.
+
+The install stall still needs a diagnostic export from an affected device. Builds
+47 and 48 capture the same install signals. After the target opens successfully
+and the percentage is still stuck, use Settings → Diagnostics → Export Diagnostic Log.
 
 ## Build46 still stalls at97 percent
 

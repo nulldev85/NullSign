@@ -38,6 +38,8 @@ jobs:
           python3 Tools/test-zsign-resources.py
           python3 Tools/test-certificate-import.py
           python3 Tools/test-app-import.py
+          xcrun swiftc Feather/Backend/Storage/Storage+Shared.swift Tools/Fixtures/LibraryDeletionTests.swift -o "$RUNNER_TEMP/test-library-deletion"
+          "$RUNNER_TEMP/test-library-deletion"
           python3 Tools/test-zsign-handler.py
           python3 Tools/test-one-tap-install.py
           python3 Tools/test-install-observation.py
