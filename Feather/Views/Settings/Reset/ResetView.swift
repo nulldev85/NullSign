@@ -169,7 +169,10 @@ struct ResetView: View {
 			}
 		}
 
-		let style: UIAlertController.Style = UIDevice.current.userInterfaceIdiom == .pad ? .alert : .actionSheet
+		// A wide window (iPad, iPhone Duo's inner display) gets a centered alert;
+		// a phone-width one gets the sheet from the bottom.
+		let isWide = UIApplication.topViewController()?.traitCollection.horizontalSizeClass == .regular
+		let style: UIAlertController.Style = isWide ? .alert : .actionSheet
 		var detail = message.isEmpty ? "This action cannot be undone." : "\(message)\n\nThis action cannot be undone."
 		if restartsApp {
 			detail += " NullSign will restart when it's done."

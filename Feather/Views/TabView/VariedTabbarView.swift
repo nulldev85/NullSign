@@ -18,51 +18,49 @@ struct VariedTabbarView: View {
 	// replaces this value so larger accessibility text also gets a matching viewport.
 	@State private var dockHeight: CGFloat = 72
 	@StateObject private var selfUpdate = SelfUpdateManager.shared
+	@Environment(\.horizontalSizeClass) private var _horizontalSizeClass
+	@Environment(\.verticalSizeClass) private var _verticalSizeClass
 
 	init() {}
 
+	/// Regular in both directions, as on iPhone Duo's inner display or a
+	/// full-screen iPad: the dock becomes a rail down the right edge, beside
+	/// the content instead of under it. Folding iPhone Duo shut (compact
+	/// width) brings the bottom dock back.
+	private var _usesSideRail: Bool {
+		_horizontalSizeClass == .regular && _verticalSizeClass == .regular
+	}
+
 	var body: some View {
 		GeometryReader { geometry in
-			VStack(spacing: 0) {
-				ZStack {
-					ForEach(TabEnum.defaultTabs.filter { visitedTabs.contains($0) }, id: \.self) { tab in
-						TabEnum.view(for: tab)
-							.id("\(tab.rawValue)-\(rootGeneration[tab, default: 0])")
-							.opacity(selectedTab == tab ? 1 : 0)
-							.allowsHitTesting(selectedTab == tab)
-							.accessibilityHidden(selectedTab != tab)
-					}
-				}
-				// Bound NavigationStack/List to the measured space above the dock.
-				// A flexible sibling alone lets UIKit-backed List content draw below it.
-				.frame(width: geometry.size.width, height: max(0, geometry.size.height - (isKeyboardVisible ? 0 : dockHeight)), alignment: .top)
-				.clipped()
+			let rail = _usesSideRail
+			// One layout that switches axis, so folding or unfolding keeps every
+			// tab's content (and its navigation) instead of rebuilding it.
+			let layout = rail ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(VStackLayout(spacing: 0))
 
-				if !isKeyboardVisible {
-					NullSignDock(
-						selection: Binding(
-							get: { selectedTab },
-							set: { tab in
-								visitedTabs.insert(tab)
-								selectedTab = tab
-								UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-							}
-						),
-						onReselect: { tab in
-							UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-							var transaction = Transaction()
-							transaction.disablesAnimations = true
-							withTransaction(transaction) {
-								rootGeneration[tab, default: 0] += 1
-							}
-						}
+			layout {
+				_tabContent
+					// Bound NavigationStack/List to the measured space beside or above
+					// the dock. A flexible sibling alone lets UIKit-backed List content
+					// draw under it.
+					.frame(
+						width: rail ? nil : geometry.size.width,
+						height: rail ? geometry.size.height : max(0, geometry.size.height - (isKeyboardVisible ? 0 : dockHeight)),
+						alignment: .top
 					)
-					.background {
-						GeometryReader { dockGeometry in
-							Color.clear.preference(key: NullSignDockHeightPreferenceKey.self, value: dockGeometry.size.height)
+					.frame(maxWidth: rail ? .infinity : nil)
+					.clipped()
+
+				// The rail sits beside the content, clear of the keyboard, so it
+				// stays while typing; the bottom dock steps aside for it.
+				if rail || !isKeyboardVisible {
+					_dock(vertical: rail)
+						.background {
+							GeometryReader { dockGeometry in
+								Color.clear.preference(key: NullSignDockHeightPreferenceKey.self, value: rail ? 0 : dockGeometry.size.height)
+							}
 						}
-					}
-					.transition(.opacity)
+						.transition(.opacity)
 				}
 			}
 			.frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
@@ -89,6 +87,42 @@ struct VariedTabbarView: View {
 	}
 }
 
+extension VariedTabbarView {
+	private var _tabContent: some View {
+		ZStack {
+			ForEach(TabEnum.defaultTabs.filter { visitedTabs.contains($0) }, id: \.self) { tab in
+				TabEnum.view(for: tab)
+					.id("\(tab.rawValue)-\(rootGeneration[tab, default: 0])")
+					.opacity(selectedTab == tab ? 1 : 0)
+					.allowsHitTesting(selectedTab == tab)
+					.accessibilityHidden(selectedTab != tab)
+			}
+		}
+	}
+
+	private func _dock(vertical: Bool) -> some View {
+		NullSignDock(
+			selection: Binding(
+				get: { selectedTab },
+				set: { tab in
+					visitedTabs.insert(tab)
+					selectedTab = tab
+					UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+				}
+			),
+			vertical: vertical,
+			onReselect: { tab in
+				UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+				var transaction = Transaction()
+				transaction.disablesAnimations = true
+				withTransaction(transaction) {
+					rootGeneration[tab, default: 0] += 1
+				}
+			}
+		)
+	}
+}
+
 private struct NullSignDockHeightPreferenceKey: PreferenceKey {
 	static let defaultValue: CGFloat = 0
 
@@ -101,23 +135,41 @@ private struct NullSignDockHeightPreferenceKey: PreferenceKey {
 /// A labeled floating dock with a dark selected capsule and electric-blue emphasis.
 private struct NullSignDock: View {
 	@Binding var selection: TabEnum
+	/// A rail down the right edge instead of a bar along the bottom.
+	var vertical = false
 	let onReselect: (TabEnum) -> Void
 	@Environment(\.accessibilityReduceMotion) private var _reduceMotion
 	@ObservedObject private var _updateManager = UpdateManager.shared
 	@ObservedObject private var _selfUpdate = SelfUpdateManager.shared
 
 	var body: some View {
-		HStack(spacing: 2) {
-			ForEach(TabEnum.defaultTabs, id: \.self) { tab in
-				_item(for: tab)
+		let layout = vertical ? AnyLayout(VStackLayout(spacing: 4)) : AnyLayout(HStackLayout(spacing: 2))
+
+		if vertical {
+			layout {
+				ForEach(TabEnum.defaultTabs, id: \.self) { tab in
+					_item(for: tab)
+				}
 			}
+			.padding(5)
+			.modifier(NullSignDockChrome())
+			.padding(.leading, 8)
+			.padding(.trailing, 12)
+			.padding(.vertical, 16)
+			.frame(maxHeight: .infinity)
+		} else {
+			layout {
+				ForEach(TabEnum.defaultTabs, id: \.self) { tab in
+					_item(for: tab)
+				}
+			}
+			.padding(5)
+			.modifier(NullSignDockChrome())
+			.frame(maxWidth: 420)
+			.padding(.horizontal, 20)
+			.padding(.top, 6)
+			.padding(.bottom, 4)
 		}
-		.padding(5)
-		.modifier(NullSignDockChrome())
-		.frame(maxWidth: 420)
-		.padding(.horizontal, 20)
-		.padding(.top, 6)
-		.padding(.bottom, 4)
 	}
 
 	private func _item(for tab: TabEnum) -> some View {
@@ -149,8 +201,9 @@ private struct NullSignDock: View {
 					.minimumScaleFactor(0.8)
 			}
 			.foregroundStyle(isSelected ? NullSignStyle.accent : Color.white)
-			.frame(maxWidth: .infinity)
-			.frame(minHeight: 52)
+			.frame(maxWidth: vertical ? nil : .infinity)
+			.frame(width: vertical ? 76 : nil)
+			.frame(minHeight: vertical ? 64 : 52)
 			.background {
 				if isSelected {
 					Capsule().fill(Color.black.opacity(0.6))

@@ -124,14 +124,19 @@ extension UIAlertController {
 		let alert = Self(title: title, message: message, preferredStyle: style)
 		actions.forEach { alert.addAction($0) }
 		
-		if
-			style == .actionSheet,
-			let popover = alert.popoverPresentationController,
-			let view = popoverFromView
-		{
-			popover.sourceView = view
-			popover.sourceRect = view.bounds
-			popover.permittedArrowDirections = .any
+		if style == .actionSheet, let popover = alert.popoverPresentationController {
+			if let view = popoverFromView {
+				popover.sourceView = view
+				popover.sourceRect = view.bounds
+				popover.permittedArrowDirections = .any
+			} else if let view = presenter?.view {
+				// In a regular-width window (iPad, iPhone Duo's inner display) an
+				// action sheet is a popover and needs an anchor; without one
+				// UIKit raises. Center it with no arrow instead.
+				popover.sourceView = view
+				popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
+				popover.permittedArrowDirections = []
+			}
 		}
 		
 		// No window to present from (e.g. a background task finishing while
