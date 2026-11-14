@@ -1,0 +1,40 @@
+name: Tidy test releases
+
+# Manual test builds each leave a draft release ("NullSign x.y.z (n) — manual
+# test <run>"). Once a public release from main supersedes them they only bury
+# that release on the Releases page, so delete the drafts created before it.
+# Drafts made after it (testing the next version) are kept.
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Build NullSign IPA]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  tidy:
+    # Only after a successful public release (a push to main), or by hand.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Delete draft test releases older than the latest public release
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo="$GITHUB_REPOSITORY"
+          cutoff=$(gh api "repos/$repo/releases/latest" --jq '.created_at')
+          echo "Latest public release created at $cutoff"
+          gh api "repos/$repo/releases" --paginate \
+            --jq ".[] | select(.draft and (.name | test(\"manual test\")) and .created_at < \"$cutoff\") | \"\(.id)\t\(.name)\"" |
+          while IFS=$'\t' read -r id name; do
+            echo "Deleting draft: $name"
+            gh api -X DELETE "repos/$repo/releases/$id"
+          done
