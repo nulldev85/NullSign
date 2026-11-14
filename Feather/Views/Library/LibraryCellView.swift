@@ -27,6 +27,7 @@ struct LibraryCellView: View {
 	@Binding var selectedSigningAppPresenting: AnyApp?
 	@Binding var selectedInstallAppPresenting: AnyApp?
 	@Binding var selectedAppUUIDs: Set<String>
+	let delete: (AppInfoPresentable) -> Void
 
 	private let _cardShape = RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous)
 
@@ -112,7 +113,7 @@ struct LibraryCellView: View {
 		.swipeActions(edge: .trailing, allowsFullSwipe: true) {
 			if !isSelecting {
 				Button(role: .destructive) {
-					_delete()
+					delete(app)
 				} label: {
 					Label(.localized("Delete"), systemImage: "trash")
 				}
@@ -224,17 +225,8 @@ extension LibraryCellView {
 		}
 	}
 
-	private func _delete() {
-		UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-		if let uuid = app.uuid {
-			selectedAppUUIDs.remove(uuid)
-		}
-		// Safe to call twice or on an app that is already gone.
-		Storage.shared.deleteApp(for: app)
-	}
-
 	private enum MenuAction {
-		case info, open, install, sign, export, delete
+		case info, open, install, sign, export
 		case update(AppUpdate)
 	}
 
@@ -262,7 +254,10 @@ extension LibraryCellView {
 			NullSignMenuAction(title: .localized("Export"), systemImage: "square.and.arrow.up", tint: NullSignStyle.warning) { _chooseAction(.export) }
 		}
 		NullSignSettingsDivider()
-		NullSignMenuAction(title: .localized("Delete"), systemImage: "trash", isDestructive: true) { _chooseAction(.delete) }
+		NullSignMenuAction(title: .localized("Delete"), systemImage: "trash", isDestructive: true) {
+			_isActionsPresenting = false
+			delete(app)
+		}
 	}
 
 	private func _chooseAction(_ action: MenuAction) {
@@ -270,7 +265,7 @@ extension LibraryCellView {
 		_isActionsPresenting = false
 	}
 
-	/// Dismiss before presenting signing/install/info UI or deleting this row.
+	/// Dismiss before presenting the next screen.
 	private func _performPendingAction() {
 		guard let action = _pendingAction else { return }
 		_pendingAction = nil
@@ -281,7 +276,6 @@ extension LibraryCellView {
 		case .install: selectedInstallAppPresenting = AnyApp(base: app)
 		case .sign: selectedSigningAppPresenting = AnyApp(base: app)
 		case .export: selectedInstallAppPresenting = AnyApp(base: app, archive: true)
-		case .delete: _delete()
 		case .update(let update): _startUpdate(update)
 		}
 	}

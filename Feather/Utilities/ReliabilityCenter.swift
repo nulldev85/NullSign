@@ -8,6 +8,7 @@ enum SigningStage: String {
 	case signing = "Signing"
 	case verifying = "Verifying"
 	case packaging = "Packaging"
+	case installing = "Installing"
 	case complete = "Complete"
 }
 
@@ -28,10 +29,10 @@ final class ReliabilityCenter {
 	func record(_ stage: SigningStage, _ message: String) {
 		let safeMessage = message
 			.replacingOccurrences(of: NSHomeDirectory(), with: "<app-container>")
-		let line = "\(timestampFormatter.string(from: Date())) [\(stage.rawValue)] \(safeMessage)\n"
 		Logger.signing.info("[\(stage.rawValue)] \(safeMessage)")
 
 		queue.async {
+			let line = "\(self.timestampFormatter.string(from: Date())) [\(stage.rawValue)] \(safeMessage)\n"
 			if let size = try? self.logURL.resourceValues(forKeys: [.fileSizeKey]).fileSize,
 			   size > self.maximumLogSize {
 				try? Data().write(to: self.logURL, options: .atomic)

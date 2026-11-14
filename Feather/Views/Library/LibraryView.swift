@@ -16,6 +16,7 @@ struct LibraryView: View {
 	@StateObject private var _libraryUpdater = LibraryUpdateManager.shared
 	@StateObject private var _selfUpdate = SelfUpdateManager.shared
 	@Environment(\.scenePhase) private var _scenePhase
+	@Environment(\.nullSignVerticalBars) private var _verticalBars
 	@AppStorage(LibraryPruner.settingKey) private var _keepNewestVersionOnly = false
 
 	@State private var _selectedInfoAppPresenting: AnyApp?
@@ -29,7 +30,7 @@ struct LibraryView: View {
 	@State private var _isUpdateCheckCompleteVisible = false
 	@State private var _isCertificatesPresenting = false
 	@State private var _isBulkDeleteConfirmationPresented = false
-	@State private var _bulkDeleteAfterDismissal = false
+	@State private var _deleteFailed = false
 
 	// Automatic re-checks are throttled so opening the tab doesn't hammer every added source.
 	private let _autoUpdateCheckInterval: TimeInterval = 6 * 60 * 60
@@ -100,6 +101,12 @@ struct LibraryView: View {
 
 		NBNavigationView("Signer", displayMode: .inline) {
 			List {
+				if _deleteFailed {
+					Text("Couldn't save the deletion. Your library copies are still available. Try Delete again.")
+						.font(.roundedUI(.footnote))
+						.foregroundStyle(NullSignStyle.danger)
+						.nullSignListRow()
+				}
 				NullSignOverviewBanner(
 					title: "On this device",
 					value: (_signedApps.count + _importedApps.count).formatted(),
@@ -159,8 +166,15 @@ struct LibraryView: View {
 						Button {
 							_setSelecting(!_isSelecting)
 						} label: {
-							Text(_isSelecting ? "Done" : "Select")
-								.font(.roundedUI(size: 15, weight: .bold))
+							// The side bar on iPhone Duo shows symbols; a text-only
+							// item would stay in a horizontal bar.
+							if _verticalBars {
+								Label(_isSelecting ? "Done" : "Select",
+									systemImage: _isSelecting ? "checkmark" : "checkmark.circle")
+							} else {
+								Text(_isSelecting ? "Done" : "Select")
+									.font(.roundedUI(size: 15, weight: .bold))
+							}
 						}
 					}
 				}
@@ -197,6 +211,7 @@ struct LibraryView: View {
 					allowedContentTypes:  [.ipa, .tipa],
 					allowsMultipleSelection: true,
 					onDocumentsPicked: { urls in
+						_isImportingPresenting = false
 						guard !urls.isEmpty else { return }
 
 						for url in urls {
@@ -231,7 +246,7 @@ struct LibraryView: View {
 					_pendingDownloadURL = url
 				}
 			}
-			.sheet(isPresented: $_isBulkDeleteConfirmationPresented, onDismiss: _deleteAfterConfirmation) {
+			.sheet(isPresented: $_isBulkDeleteConfirmationPresented) {
 				_bulkDeleteMenu
 			}
 			.onReceive(NotificationCenter.default.publisher(for: Notification.Name("Feather.installApp"))) { _ in
@@ -303,7 +318,8 @@ extension LibraryView {
 			selectedInfoAppPresenting: $_selectedInfoAppPresenting,
 			selectedSigningAppPresenting: $_selectedSigningAppPresenting,
 			selectedInstallAppPresenting: $_selectedInstallAppPresenting,
-			selectedAppUUIDs: $_selectedAppUUIDs
+			selectedAppUUIDs: $_selectedAppUUIDs,
+			delete: { _ = _deleteApps([$0]) }
 		)
 		.compatMatchedTransitionSource(id: app.uuid ?? "", ns: _namespace)
 		.nullSignListRow(top: 5, bottom: 5)
@@ -439,20 +455,14 @@ extension LibraryView {
 		NullSignMenuSheet(title: _bulkDeleteTitle, systemImage: "trash", detail: "The selected app files will be removed from this device. This cannot be undone.") {
 			NullSignSettingsCard {
 				NullSignMenuAction(title: "Delete Selected Apps", systemImage: "trash", isDestructive: true, isDisabled: _selectedAppUUIDs.isEmpty) {
-					_bulkDeleteAfterDismissal = true
 					_isBulkDeleteConfirmationPresented = false
+					_bulkDeleteSelectedApps()
 				}
 			}
 			Button("Cancel") { _isBulkDeleteConfirmationPresented = false }
 				.font(.roundedUI(.body, weight: .bold))
 				.frame(maxWidth: .infinity, minHeight: 44)
 		}
-	}
-
-	private func _deleteAfterConfirmation() {
-		guard _bulkDeleteAfterDismissal else { return }
-		_bulkDeleteAfterDismissal = false
-		_bulkDeleteSelectedApps()
 	}
 
 	private var _allVisibleSelected: Bool {
@@ -485,9 +495,16 @@ extension LibraryView {
 				return _selectedAppUUIDs.contains(uuid)
 			}
 
-		UINotificationFeedbackGenerator().notificationOccurred(.success)
-		Storage.shared.deleteApps(selectedApps)
-		_setSelecting(false)
+		if _deleteApps(selectedApps) { _setSelecting(false) }
+	}
+
+	private func _deleteApps(_ apps: [AppInfoPresentable]) -> Bool {
+		let ids = apps.compactMap(\.uuid)
+		let saved = Storage.shared.deleteApps(apps)
+		_deleteFailed = !saved
+		if saved { _selectedAppUUIDs.subtract(ids) }
+		UINotificationFeedbackGenerator().notificationOccurred(saved ? .success : .error)
+		return saved
 	}
 
 	private func _getAllApps() -> [AppInfoPresentable] {
@@ -554,14 +571,19 @@ extension LibraryView {
 				await ownUpdate
 			}
 		} label: {
-			HStack(spacing: 6) {
-				if updateManager.isChecking {
-					ProgressView()
-						.controlSize(.small)
+			if _verticalBars {
+				// A symbol for the side bar; the title shows in its overflow menu.
+				Label(_updateCheckTitle, systemImage: updateManager.isChecking ? "hourglass" : "arrow.triangle.2.circlepath")
+			} else {
+				HStack(spacing: 6) {
+					if updateManager.isChecking {
+						ProgressView()
+							.controlSize(.small)
+					}
+					Text(_updateCheckTitle)
+						.font(.roundedUI(size: 15, weight: .bold))
+						.lineLimit(1)
 				}
-				Text(_updateCheckTitle)
-					.font(.roundedUI(size: 15, weight: .bold))
-					.lineLimit(1)
 			}
 		}
 		.disabled(updateManager.isChecking)
@@ -571,9 +593,8 @@ extension LibraryView {
 		Button {
 			_isImportMenuPresenting = true
 		} label: {
-			Image(systemName: "plus")
+			Label(.localized("Import"), systemImage: "plus")
 		}
-		.accessibilityLabel(.localized("Import"))
 	}
 
 	/// Library apps with an update, and NullSign when it has one, as the

@@ -372,16 +372,30 @@ UIImage* tvOSIconTest(NSURL *bundleURL, NSArray<NSString *> *iconNames) {
 }
 
 
+static UIImage *FRRenderBundleIcon(NSURL *bundleURL);
+
 UIImage* iconTest(NSURL *bundleURL) {
+    @try {
+        return FRRenderBundleIcon(bundleURL);
+    } @catch (NSException *exception) {
+        return nil;
+    }
+}
+
+static UIImage *FRRenderBundleIcon(NSURL *bundleURL) {
     static dispatch_once_t onceToken;
+    static BOOL available;
     dispatch_once(&onceToken, ^{
         void* handle = dlopen("/System/Library/PrivateFrameworks/IconServices.framework/IconServices", RTLD_LAZY|RTLD_GLOBAL);
-        assert(handle);
-
-        method_exchangeImplementations(class_getInstanceMethod(PrivClass(ISBundleIcon), @selector(makeResourceProvider)), class_getInstanceMethod(ISBundleIconFake.class, @selector(makeResourceProvider)));
-        // stop IFBundle from connecting to lsd database
-        method_exchangeImplementations(class_getInstanceMethod(PrivClass(IFBundle), @selector(platform)), class_getInstanceMethod(IFBundleFake.class, @selector(platform)));
+        if (!handle) return;
+        Method provider = class_getInstanceMethod(PrivClass(ISBundleIcon), @selector(makeResourceProvider));
+        Method platform = class_getInstanceMethod(PrivClass(IFBundle), @selector(platform));
+        if (!provider || !platform) return;
+        method_exchangeImplementations(provider, class_getInstanceMethod(ISBundleIconFake.class, @selector(makeResourceProvider)));
+        method_exchangeImplementations(platform, class_getInstanceMethod(IFBundleFake.class, @selector(platform)));
+        available = YES;
     });
+    if (!available) return nil;
 
 //    NSBundle* bundle = [NSBundle bundleWithURL:[docPathUrl URLByAppendingPathComponent:@"me.oatmealdome.DolphiniOS-njb.app"]];
 //    ISBundleIcon* icon = [[PrivClass(ISBundleIcon) alloc] initWithBundleURL:[docPathUrl URLByAppendingPathComponent:@"com.aigch.OpenParsec1.app"]];
@@ -430,7 +444,7 @@ UIImage* iconTest(NSURL *bundleURL) {
     [request setImageDescriptor:descriptor];
     IFImage* ifImage = [request generateImageReturningRecordIdentifiers:nil];
     CGImageRef imageRef = [ifImage CGImage];
-    return [UIImage imageWithCGImage:imageRef];
+    return imageRef ? [UIImage imageWithCGImage:imageRef] : nil;
 
 }
 

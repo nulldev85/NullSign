@@ -23,11 +23,7 @@ enum AppInstallPreparation {
 		let certificate = certificates[index]
 		Storage.shared.rememberCertificate(certificate, for: app.platform)
 
-		// Match the defaults shown in the customization screen, including the
-		// explicit identifier mapping taking precedence over PPQ protection.
-		if options.ppqProtection, certificate.ppQCheck, let identifier = app.identifier {
-			options.appIdentifier = "\(identifier).\(options.ppqString)"
-		}
+		// Match the defaults shown in the customization screen.
 		if let identifier = app.identifier, let replacement = options.identifiers[identifier] {
 			options.appIdentifier = replacement
 		}

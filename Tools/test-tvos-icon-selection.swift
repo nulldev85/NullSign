@@ -36,6 +36,17 @@ enum TVIconSelectionTests {
 		precondition(TVIconSelection.assetNames(in: [:]) == ["App Icon - Small", "App Icon - Large", "App Icon", "AppIcon"])
 		precondition(TVIconSelection.looseFileNames(for: "Current.png") == ["Current@3x.png", "Current@2x.png", "Current.png"])
 		precondition(TVIconSelection.looseFileNames(for: "Current") == TVIconSelection.looseFileNames(for: "Current.png"))
+		let primary: [String: Any] = [
+			"CFBundleIcons": ["CFBundlePrimaryIcon": ["CFBundleIconFiles": ["Small", "Phone60"]]],
+			"CFBundleIcons~ipad": ["CFBundlePrimaryIcon": ["CFBundleIconFiles": ["Tablet76"]]],
+			"CFBundleIconFile": "Legacy.png"
+		]
+		let phoneFiles = PhoneIconSelection.files(in: primary, isPad: false)
+		precondition(phoneFiles.first == "Phone60@3x~iphone.png")
+		precondition(phoneFiles.contains("Phone60@2x.png") && phoneFiles.contains("Legacy.png"))
+		precondition(!phoneFiles.contains("Tablet76@2x.png"))
+		precondition(PhoneIconSelection.files(in: primary, isPad: true).first == "Tablet76@3x~ipad.png")
+		precondition(PhoneIconSelection.files(in: [:], isPad: false).isEmpty)
 		print("tvOS primary-icon selection tests passed, including changed artwork for the same bundle identifier.")
 	}
 }

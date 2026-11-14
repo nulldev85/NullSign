@@ -41,7 +41,7 @@ final class FRIconCache {
 private actor FRIconRenderer {
 	static let shared = FRIconRenderer()
 
-	func render(bundleURL: URL) -> UIImage? {
+	func render(bundleURL: URL, styled: Bool, isPad: Bool) -> UIImage? {
 		// The bundle can be deleted between a row appearing and this running;
 		// never hand IconServices a bundle that is no longer on disk.
 		guard let info = NSDictionary(contentsOf: bundleURL.appendingPathComponent("Info.plist")) as? [String: Any] else {
@@ -52,7 +52,10 @@ private actor FRIconRenderer {
 		if TVIconSelection.isTVApp(info) {
 			return tvOSIcon(in: bundleURL, info: info)
 		}
-		return iconTest(bundleURL)
+		let files = PhoneIconSelection.files(in: info, isPad: isPad)
+		if !styled, let bitmap = looseIcon(in: bundleURL, files: files) { return bitmap }
+		if let image = iconTest(bundleURL), image.size.width > 1, image.size.height > 1 { return image }
+		return styled ? looseIcon(in: bundleURL, files: files) : nil
 	}
 }
 
@@ -74,7 +77,9 @@ final class FRAppIconLoader: ObservableObject {
 
 		image = nil
 		task = Task {
-			let generated = await FRIconRenderer.shared.render(bundleURL: bundleURL)
+			let generated = await FRIconRenderer.shared.render(bundleURL: bundleURL,
+				styled: isTinted || (dynamic && appearance == .dark),
+				isPad: UIDevice.current.userInterfaceIdiom == .pad)
 
 			guard !Task.isCancelled, representedRequest == request else { return }
 
@@ -98,14 +103,16 @@ private func tvOSIcon(in bundleURL: URL, info: [String: Any]) -> UIImage? {
 		return image
 	}
 
+	return looseIcon(in: bundleURL, files: names.flatMap { TVIconSelection.looseFileNames(for: $0) })
+}
+
+private func looseIcon(in bundleURL: URL, files: [String]) -> UIImage? {
 	let root = bundleURL.standardizedFileURL.resolvingSymlinksInPath().path + "/"
-	for name in names {
-		for file in TVIconSelection.looseFileNames(for: name) {
-			let url = bundleURL.appendingPathComponent(file).standardizedFileURL.resolvingSymlinksInPath()
-			guard url.path.hasPrefix(root) else { continue }
-			if let image = UIImage(contentsOfFile: url.path), image.size.width > 1, image.size.height > 1 {
-				return image
-			}
+	for file in files {
+		let url = bundleURL.appendingPathComponent(file).standardizedFileURL.resolvingSymlinksInPath()
+		guard url.path.hasPrefix(root) else { continue }
+		if let image = UIImage(contentsOfFile: url.path), image.size.width > 1, image.size.height > 1 {
+			return image
 		}
 	}
 	return nil

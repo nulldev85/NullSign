@@ -15,9 +15,30 @@ struct DownloadHeaderView: View {
 
 	var body: some View {
 		let manualDownloads = downloadManager.manualDownloads
+		let failedDownload = downloadManager.downloads.first { $0.failure != nil }
 
 		ZStack {
-			if let firstDownload = manualDownloads.first {
+			if let failedDownload {
+				VStack(alignment: .leading, spacing: 8) {
+					HStack(spacing: 10) {
+						Image(systemName: "exclamationmark.triangle.fill")
+							.foregroundStyle(NullSignStyle.danger)
+						Text("Couldn't Import \(failedDownload.fileName)")
+							.font(.roundedUI(.subheadline, weight: .bold))
+						Spacer(minLength: 0)
+						Button("Dismiss") { downloadManager.cancelDownload(failedDownload) }
+							.buttonStyle(NullSignSecondaryButtonStyle(height: 34))
+					}
+					Text(failedDownload.failure ?? "Choose the original IPA and try again.")
+						.font(.roundedUI(.caption))
+						.foregroundStyle(NullSignStyle.muted)
+						.fixedSize(horizontal: false, vertical: true)
+				}
+				.padding(14)
+				.nullSignSurface(fill: NullSignStyle.groupedSurface)
+				.padding(.horizontal, 20)
+				.padding(.vertical, 6)
+			} else if let firstDownload = manualDownloads.first {
 				HStack(spacing: 12) {
 					DownloadItemView(download: firstDownload)
 					if manualDownloads.count > 1 {

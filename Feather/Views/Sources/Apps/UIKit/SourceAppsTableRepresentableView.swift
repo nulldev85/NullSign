@@ -47,7 +47,9 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 			header.view.backgroundColor = .clear
 			header.view.autoresizingMask = [.flexibleWidth]
 			let fixedHeight: CGFloat = 178
-			let width = UIScreen.main.bounds.width
+			// The table widens the header to its own width when it lays out; this
+			// only seeds it. Never the main screen: iPhone Duo has two.
+			let width = max(tableView.bounds.width, 1)
 			header.view.frame = CGRect(origin: .zero, size: CGSize(width: width, height: fixedHeight))
 			tableView.tableHeaderView = header.view
 		}

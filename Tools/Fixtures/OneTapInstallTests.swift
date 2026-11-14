@@ -22,8 +22,6 @@ final class CertificatePair { var ppQCheck = true }
 struct Options {
 	enum SigningOption { case `default`, onlyModify }
 	var signingOption = SigningOption.default
-	var ppqProtection = false
-	var ppqString = "protection"
 	var identifiers: [String: String] = [:]
 	var displayNames: [String: String] = [:]
 	var appIdentifier: String?
@@ -129,15 +127,17 @@ extension String { static func localized(_ string: String) -> String { string } 
 		print("PASS Modify Only stops before installation")
 
 		reset()
-		OptionsManager.shared.options.ppqProtection = true
+		// PPQ protection is gone: a certificate that reports a PPQ check still
+		// signs the app under its own identifier.
+		precondition(Storage.shared.certificates.first?.ppQCheck == true)
 		_ = try await AppInstallPreparation.prepare(imported) { _ in }
-		precondition(FR.capturedOptions?.appIdentifier == "test.original.protection")
+		precondition(FR.capturedOptions?.appIdentifier == nil)
 		OptionsManager.shared.options.identifiers = ["test.original": "test.replacement"]
 		OptionsManager.shared.options.displayNames = ["Original": "Renamed"]
 		_ = try await AppInstallPreparation.prepare(imported) { _ in }
 		precondition(FR.capturedOptions?.appIdentifier == "test.replacement")
 		precondition(FR.capturedOptions?.appName == "Renamed")
-		print("PASS PPQ and explicit name/identifier defaults match customization")
+		print("PASS no PPQ suffix; explicit name/identifier defaults match customization")
 
 		reset()
 		OptionsManager.shared.options.post_installAppAfterSigned = true

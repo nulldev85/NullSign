@@ -10,41 +10,6 @@ import Combine
 import UIKit.UIImpactFeedbackGenerator
 import BackgroundTasks
 
-final class Download: ObservableObject, Identifiable, @unchecked Sendable {
-	@Published var progress: Double = 0.0
-	@Published var bytesDownloaded: Int64 = 0
-	@Published var totalBytes: Int64 = 0
-	@Published var unpackageProgress: Double = 0.0
-	
-	var overallProgress: Double {
-		onlyArchiving
-		? unpackageProgress
-		: (0.3 * unpackageProgress) + (0.7 * progress)
-	}
-	
-	var task: URLSessionDownloadTask?
-	var resumeData: Data?
-	
-	let id: String
-	let url: URL
-	let fileName: String
-	let onlyArchiving: Bool
-	var sourceProvenance: SourceAppProvenance?
-	
-	init(
-		id: String,
-		url: URL,
-		onlyArchiving: Bool = false,
-		sourceProvenance: SourceAppProvenance? = nil
-	) {
-		self.id = id
-		self.url = url
-		self.onlyArchiving = onlyArchiving
-		self.sourceProvenance = sourceProvenance
-		self.fileName = url.lastPathComponent
-	}
-}
-
 class DownloadManager: NSObject, ObservableObject {
 	static let shared = DownloadManager()
 	
@@ -59,7 +24,7 @@ class DownloadManager: NSObject, ObservableObject {
 	#if !targetEnvironment(macCatalyst)
 	private func _updateBackgroundAudioState() {
 		if #unavailable(iOS 26.0){
-			if !downloads.isEmpty {
+			if downloads.contains(where: { $0.failure == nil }) {
 				BackgroundAudioManager.shared.start()
 			} else  {
 				BackgroundAudioManager.shared.stop()
@@ -86,11 +51,14 @@ class DownloadManager: NSObject, ObservableObject {
 		if let existingDownload = downloads.first(where: {
 			$0.url == url && ($0.sourceProvenance != nil) == requestHasSourceProvenance
 		}) {
-			// Already transferring: restarting would orphan the running task.
-			if existingDownload.task?.state != .running {
-				resumeDownload(existingDownload)
+			if existingDownload.failure != nil {
+				// An explicit retry gets fresh progress and clears its old error.
+				cancelDownload(existingDownload)
+			} else {
+				// A completed network task may still be importing its archive.
+				if existingDownload.task?.state == .suspended { resumeDownload(existingDownload) }
+				return existingDownload
 			}
-			return existingDownload
 		}
 		
 		let download = Download(id: id, url: url, sourceProvenance: sourceProvenance)
@@ -186,18 +154,24 @@ extension DownloadManager: URLSessionDownloadDelegate {
 			if let cleanupDirectory {
 				FileManager.default.removeItemsInBackground([cleanupDirectory])
 			}
-			if err != nil {
-				let generator = UINotificationFeedbackGenerator()
-				generator.notificationOccurred(.error)
-			}
-			
 			DispatchQueue.main.async {
-				if let index = DownloadManager.shared.getDownloadIndex(by: dl.id) {
-					DownloadManager.shared.downloads.remove(at: index)
+				if let index = self.getDownloadIndex(by: dl.id) {
+					if let err {
+						// The header observes this manager, not each child Download.
+						self.objectWillChange.send()
+						dl.failure = err.localizedDescription
+						UINotificationFeedbackGenerator().notificationOccurred(.error)
+					} else {
+						self.downloads.remove(at: index)
+					}
 					
 					#if !targetEnvironment(macCatalyst)
 					if #available(iOS 26.0, *) {
-						BackgroundTaskManager.shared.updateProgress(for: dl.id, progress: 1.0)
+						if err == nil {
+							BackgroundTaskManager.shared.updateProgress(for: dl.id, progress: 1)
+						} else {
+							BackgroundTaskManager.shared.stopTask(for: dl.id, success: false)
+						}
 					}
 					
 					self._updateBackgroundAudioState()

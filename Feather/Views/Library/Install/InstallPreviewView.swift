@@ -7,6 +7,7 @@
 
 import SwiftUI
 import NimbleViews
+import NimbleExtensions
 import IDeviceSwift
 import OSLog
 
@@ -23,6 +24,7 @@ struct InstallPreviewView: View {
 	@State private var _hasStarted = false
 	@State private var _didRequestInstall = false
 	@State private var _needsBrowserFallback = false
+	@State private var _installationObserver: SystemInstallRuntime.InstallationObserver?
 	@State private var _isPreparing: Bool
 	@State private var _signingStage: AppSigningStage? = .preparing
 	@State private var _preparedApp: AppInfoPresentable?
@@ -103,18 +105,13 @@ struct InstallPreviewView: View {
 				}
 				
 				if case .sendingPayload = newStatus {
+					_installationObserver?.arm()
 					handoffTask?.cancel()
 					_needsBrowserFallback = false
 					_isWebviewPresenting = false
 				}
 				
 				if case .installing = newStatus {
-					if progressTask == nil {
-						progressTask = startInstallProgressPolling(
-							bundleID: app.identifier!,
-							viewModel: viewModel
-						)
-					}
 					if app.identifier == Bundle.main.bundleIdentifier {
 						_stepAsideForSelfUpdate()
 					}
@@ -122,6 +119,7 @@ struct InstallPreviewView: View {
 				
 				switch newStatus {
 				case .completed, .broken(_):
+					_installationObserver?.stop()
 					handoffTask?.cancel()
 					progressTask?.cancel()
 					progressTask = nil
@@ -134,6 +132,14 @@ struct InstallPreviewView: View {
 			}
 		}
 		.onAppear(perform: _install)
+		.onReceive(NotificationCenter.default.publisher(for: SystemInstallRuntime.installationDidFinish).receive(on: DispatchQueue.main)) { notification in
+			guard let observer = notification.object as? SystemInstallRuntime.InstallationObserver,
+				observer === _installationObserver, observer.didInstall,
+				!viewModel.isCompleted, viewModel.installFailure == nil else { return }
+			viewModel.updateInstallProgress(1)
+			ReliabilityCenter.shared.record(.installing, "Confirmed installation by matching workspace event")
+			viewModel.updateStatus(.completed(.success(())))
+		}
 		.onChange(of: installAttempt) { _ in _install() }
 		
 		#if !targetEnvironment(macCatalyst)
@@ -143,6 +149,8 @@ struct InstallPreviewView: View {
 		#endif
 		
 		.onDisappear {
+			_installationObserver?.stop()
+			_installationObserver = nil
 			operationTask?.cancel()
 			operationTask = nil
 			handoffTask?.cancel()
@@ -166,7 +174,7 @@ struct InstallPreviewView: View {
 			.foregroundStyle(viewModel.installSucceeded ? NullSignStyle.success : NullSignStyle.muted)
 			.animation(.smooth, value: viewModel.statusImage)
 	}
-	
+
 	@ViewBuilder
 	private func _button() -> some View {
 		Group {
@@ -180,6 +188,7 @@ struct InstallPreviewView: View {
 				}
 			} else if viewModel.installFailure != nil {
 				_actionButton("Retry", icon: "arrow.clockwise") {
+					_installationObserver?.stop()
 					operationTask?.cancel()
 					handoffTask?.cancel()
 					installer = nil
@@ -287,7 +296,7 @@ struct InstallPreviewView: View {
 		}
 	}
 
-	private var _displayedProgress: Double? {
+	private var _displayedProgress: Double {
 		if _isPreparing { return (_signingStage ?? .preparing).progress }
 		if viewModel.installFailure != nil, !originalApp.isSigned, _preparedApp == nil {
 			return (_signingStage ?? .preparing).progress
@@ -297,12 +306,17 @@ struct InstallPreviewView: View {
 			installerProgress: viewModel.overallProgress,
 			succeeded: viewModel.installSucceeded
 		)
-		return value > 0 || viewModel.installFailure != nil ? value : nil
+		return value
 	}
 
 	private func _openSystemInstaller() {
 		guard !_didRequestInstall, !isSharing, let installer else { return }
 		_didRequestInstall = true
+		if let identifier = app.identifier {
+			// Observe BEFORE opening iOS: a fast or cached install may finish
+			// before the final payload stream callback arrives.
+			progressTask = startInstallProgressPolling(bundleID: identifier, viewModel: viewModel)
+		}
 		// Keep the progress card on screen. Opening itms-services directly
 		// removes Safari's extra Open dialog; iOS still asks to confirm Install.
 		UIApplication.shared.open(installer.installEndpoint, options: [:]) { accepted in
@@ -336,44 +350,73 @@ struct InstallPreviewView: View {
 		viewModel: InstallerStatusViewModel
 	) -> Task<Void, Never> {
 
-		Task.detached(priority: .background) {
-			var hasStarted = false
-
-			while !Task.isCancelled {
-				let snapshot = await UIApplication.installProgressSnapshot(for: bundleID)
-				let rawProgress = snapshot?.fractionCompleted ?? 0.0
-
-				if rawProgress > 0 {
-					hasStarted = true
+		func identity(_ value: SystemInstallRuntime.AppSnapshot?) -> InstalledAppIdentity? {
+			value.map { InstalledAppIdentity(bundlePath: $0.bundlePath, version: $0.version,
+				build: $0.build, registeredAt: $0.registeredAt) }
+		}
+		let initialState = SystemInstallRuntime.appState(for: bundleID)
+		let initialMembership = SystemInstallRuntime.workspaceContainsApp(bundleID)
+		let session = SystemInstallRuntime.ProgressSession(identifier: bundleID)
+		let baseline = identity(initialState.app)
+		let expectedVersion = app.version.flatMap { $0.isEmpty ? nil : $0 }
+		let observer = SystemInstallRuntime.observeInstallation(for: bundleID, version: expectedVersion)
+		_installationObserver = observer
+		let diagnosticID = String(UUID().uuidString.prefix(8))
+		ReliabilityCenter.shared.record(.installing, "Attempt \(diagnosticID) bundle=\(bundleID) expected=\(expectedVersion ?? "unknown") baseline=\(initialState.diagnosticState) observer=\(observer != nil)")
+		return Task { @MainActor in
+			defer { observer?.stop() }
+			var tracker = InstallCompletionTracker(baseline: baseline, expectedVersion: expectedVersion,
+				baselineKnown: initialState.isAvailable, initialMembership: initialMembership)
+			let started = ProcessInfo.processInfo.systemUptime
+			var samples = 0
+			var lastDiagnostic = ""
+			var lastDiagnosticAt: TimeInterval = -15
+			var appDiagnostic = initialState.diagnosticState
+			while !Task.isCancelled, !viewModel.isCompleted, viewModel.installFailure == nil {
+				let deliveryStarted: Bool
+				switch viewModel.status {
+				case .sendingPayload, .installing: deliveryStarted = true
+				default: deliveryStarted = false
 				}
-
-				let progress = await hasStarted
-					? _normalizeInstallProgress(rawProgress)
-					: 0.0
-
-				Logger.misc.info("Install progress for \(bundleID): \(progress)")
-
-				await MainActor.run {
-					viewModel.updateInstallProgress(progress)
+				if deliveryStarted { observer?.arm() }
+				let includeAppState = samples % 3 == 0
+				let reading = await session.observation(includeAppState: includeAppState, deliveryStarted: deliveryStarted)
+				let membership = reading.membership
+				guard !Task.isCancelled, viewModel.installFailure == nil, !viewModel.isCompleted else { return }
+				samples += 1
+				let snapshot = reading.progress
+				if let state = reading.state {
+					let current = identity(state.app)
+					appDiagnostic = "\(state.diagnosticState) changed=\(current != baseline) version=\(current?.version ?? "unknown") build=\(current?.build ?? "unknown")"
 				}
-
-				// iOS may report a terminal Progress object whose fraction stops below
-				// 1.0. Treat the system's finished flag as authoritative; disappearance
-				// after progress began remains the fallback used on older releases.
-				if hasStarted && (snapshot?.isFinished == true || snapshot == nil) {
-					await MainActor.run {
-						viewModel.updateInstallProgress(1.0)
-						viewModel.updateStatus(.completed(.success(())))
-					}
-					break
+				let elapsed = ProcessInfo.processInfo.systemUptime - started
+				let raw = snapshot.map { "fraction=\($0.fractionCompleted) units=\($0.completedUnitCount)/\($0.totalUnitCount) finished=\($0.isFinished) cancelled=\($0.isCancelled) paused=\($0.isPaused)" } ?? "progress=unavailable"
+				let diagnostic = "phase=\(viewModel.statusLabel) delivery=\(deliveryStarted) published=\(reading.hasPublishedProgress) \(raw) membership=\(String(describing: initialMembership))->\(String(describing: membership)) app=\(appDiagnostic) observer=[\(observer?.diagnosticState ?? "unavailable")]"
+				if diagnostic != lastDiagnostic || elapsed - lastDiagnosticAt >= 15 {
+					ReliabilityCenter.shared.record(.installing, "Attempt \(diagnosticID) t=\(Int(elapsed)) \(diagnostic)")
+					lastDiagnostic = diagnostic
+					lastDiagnosticAt = elapsed
 				}
-
-				try? await Task.sleep(nanoseconds: 500_000_000)
+				let update = tracker.observe(at: ProcessInfo.processInfo.systemUptime - started,
+					fraction: snapshot?.fractionCompleted, finished: snapshot?.isFinished ?? false,
+					cancelled: snapshot?.isCancelled ?? false, totalUnits: snapshot?.totalUnitCount ?? 0,
+					installed: identity(reading.state?.app), deliveryStarted: deliveryStarted, installEvent: observer?.didInstall == true,
+					published: reading.hasPublishedProgress, membership: membership, isPlaceholder: reading.state?.diagnosticState == "placeholder")
+				if update.completed {
+					ReliabilityCenter.shared.record(.installing, "Attempt \(diagnosticID) confirmed by completion tracker")
+					viewModel.updateInstallProgress(1)
+					viewModel.updateStatus(.completed(.success(())))
+					return
+				}
+				if let error = update.observationError {
+					ReliabilityCenter.shared.record(.installing, "Attempt \(diagnosticID) \(error.localizedDescription)")
+					viewModel.updateStatus(.broken(error))
+					return
+				}
+				if let progress = update.progress { viewModel.updateInstallProgress(progress) }
+				do { try await Task.sleep(nanoseconds: 1_000_000_000) }
+				catch { return }
 			}
 		}
-	}
-
-	private func _normalizeInstallProgress(_ rawProgress: Double) -> Double {
-		min(1.0, max(0.0, rawProgress))
 	}
 }

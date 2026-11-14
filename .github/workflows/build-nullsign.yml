@@ -10,7 +10,10 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-latest
+    # iPhone Duo's inner display only runs an app full screen when it is built
+    # with the iOS 27.1 SDK; older SDKs get a letterboxed window. GitHub's
+    # Xcode images are per major version, so this one carries Xcode 27.x.
+    runs-on: xcode-27
     timeout-minutes: 45
 
     steps:
@@ -22,7 +25,7 @@ jobs:
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: latest-stable
+          xcode-version: '27.1'
 
       - name: Apply pinned Zsign fixes
         run: python3 Tools/prepare-zsign.py
@@ -38,8 +41,11 @@ jobs:
           python3 Tools/test-zsign-resources.py
           python3 Tools/test-certificate-import.py
           python3 Tools/test-app-import.py
+          xcrun swiftc Feather/Backend/Storage/Storage+Shared.swift Tools/Fixtures/LibraryDeletionTests.swift -o "$RUNNER_TEMP/test-library-deletion"
+          "$RUNNER_TEMP/test-library-deletion"
           python3 Tools/test-zsign-handler.py
           python3 Tools/test-one-tap-install.py
+          python3 Tools/test-install-observation.py
           python3 Tools/test-ar-decompression.py
           xcrun swiftc Feather/Utilities/AnyCodable.swift Feather/Utilities/CertificateReader/Models/CertificateModel.swift Tools/test-certificate-profile.swift -o "$RUNNER_TEMP/test-certificate-profile"
           "$RUNNER_TEMP/test-certificate-profile"
