@@ -14,13 +14,16 @@ public class NBFetchService {
 		case invalidURL
 		case networkError(Error)
 		case noData
+		case httpStatus(Int)
 		case parsingError(Error)
-		
+
 		public var errorDescription: String? {
 			switch self {
 			case .invalidURL: "The URL is invalid."
 			case .networkError(let error): "Network error: \(error.localizedDescription)"
 			case .noData: "No data received."
+			case .httpStatus(404): "The server has no file at this address (HTTP 404). If the source is on GitHub Releases, its newest release may still be uploading. Try again in a few minutes."
+			case .httpStatus(let code): "The server returned HTTP \(code) instead of the source."
 			case .parsingError(let error): "Failed to parse data: \(Self._describe(error))"
 			}
 		}
@@ -92,7 +95,15 @@ extension NBFetchService {
 					completion(.failure(NBFetchServiceError.noData))
 					return
 				}
-				
+
+				// A missing file comes back as an HTML error page. Report the
+				// status, not "isn't valid JSON", so a source whose file is
+				// briefly absent (a release still uploading) says so.
+				if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+					completion(.failure(NBFetchServiceError.httpStatus(http.statusCode)))
+					return
+				}
+
 				do {
 					let decoder = JSONDecoder()
 					let decodedData = try decoder.decode(T.self, from: data)

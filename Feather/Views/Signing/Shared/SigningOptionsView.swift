@@ -15,21 +15,6 @@ struct SigningOptionsView: View {
 	
 	// MARK: Body
 	var body: some View {
-		if (temporaryOptions == nil) {
-			Section {
-				_toggle(
-					.localized("PPQ Protection"),
-					systemImage: "shield",
-					isOn: $options.ppqProtection,
-					temporaryValue: temporaryOptions?.ppqProtection
-				)
-			} header: {
-				SigningSectionHeader(title: .localized("Protection"))
-			} footer: {
-				Text("PPQ protection appends a short random value to signed bundle identifiers. Signing-service certificates usually do not need it.")
-			}
-		}
-		
 		Section {
 			Self.picker(
 				.localized("Appearance"),

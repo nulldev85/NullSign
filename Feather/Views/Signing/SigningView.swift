@@ -150,16 +150,6 @@ struct SigningView: View {
 			.disabled(_isSigning)
 		}
 		.onAppear {
-			// ppq protection
-			if
-				_optionsManager.options.ppqProtection,
-				let identifier = app.identifier,
-				let cert = _selectedCert(),
-				cert.ppQCheck
-			{
-				_temporaryOptions.appIdentifier = "\(identifier).\(_optionsManager.options.ppqString)"
-			}
-			
 			if
 				let currentBundleId = app.identifier,
 				let newBundleId = _temporaryOptions.identifiers[currentBundleId]

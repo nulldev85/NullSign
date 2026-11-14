@@ -1,4 +1,23 @@
-# Install progress and library reliability — 1.5.2 (49)
+# Install progress and library reliability — 1.5.2 (50)
+
+## Build 50
+
+The user confirmed build 49 on the phone. Build 50 adds two requested changes.
+
+PPQ protection is removed: the Signing Defaults toggle, the suffix editor, the
+per-sign toggle and the code that appended the suffix to bundle identifiers.
+Saved options decode without the removed keys, so other settings are kept, and
+anyone who had it on now signs under the app's own identifier. The certificate
+screens still show whether a certificate reports a PPQ check.
+
+Users could not add the AIOStreams source
+(`github.com/wizaarddlabs/aiostreams-ios/releases/latest/download/altstore.json`).
+Its current file follows GitHub's redirects and decodes under the AltSourceKit
+model on inspection, so no decoder change was made. The source publishes a
+release about hourly, and `releases/latest` can briefly point at a release
+whose `altstore.json` is not uploaded yet; GitHub then answers 404 with an HTML
+page, which NullSign reported as invalid JSON. Source fetches now report a
+non-2xx HTTP status instead. Adding the source on a phone is still unverified.
 
 ## Build 49
 

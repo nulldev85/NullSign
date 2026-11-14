@@ -68,12 +68,6 @@ struct Options: Codable, Equatable {
 	var injectPath: InjectPath
 	/// Inject folder (i.e. `Frameworks/`)
 	var injectFolder: InjectFolder
-	/// Random string appended to the app identifier
-	var ppqString: String
-	/// Basic protection against PPQ
-	var ppqProtection: Bool
-	/// (Better) protection against PPQ
-	var dynamicProtection: Bool
 	/// App identifiers list which matches and replaces
 	var identifiers: [String: String]
 	/// App name list which matches and replaces
@@ -131,9 +125,6 @@ struct Options: Codable, Equatable {
 		
 		injectPath: .executable_path,
 		injectFolder: .frameworks,
-		ppqString: randomString(),
-		ppqProtection: false,
-		dynamicProtection: false,
 		identifiers: [:],
 		displayNames: [:],
 		injectionFiles: [],
@@ -221,10 +212,6 @@ struct Options: Codable, Equatable {
 		case frameworks = "/Frameworks/"
 	}
 	
-	/// Default random value for `ppqString`
-	static func randomString() -> String {
-		String((0..<6).compactMap { _ in UUID().uuidString.randomElement() })
-	}
 }
 
 // MARK: - LocalizedDescribable
