@@ -16,6 +16,7 @@ struct LibraryView: View {
 	@StateObject private var _libraryUpdater = LibraryUpdateManager.shared
 	@StateObject private var _selfUpdate = SelfUpdateManager.shared
 	@Environment(\.scenePhase) private var _scenePhase
+	@Environment(\.nullSignVerticalBars) private var _verticalBars
 	@AppStorage(LibraryPruner.settingKey) private var _keepNewestVersionOnly = false
 
 	@State private var _selectedInfoAppPresenting: AnyApp?
@@ -165,8 +166,15 @@ struct LibraryView: View {
 						Button {
 							_setSelecting(!_isSelecting)
 						} label: {
-							Text(_isSelecting ? "Done" : "Select")
-								.font(.roundedUI(size: 15, weight: .bold))
+							// The side bar on iPhone Duo shows symbols; a text-only
+							// item would stay in a horizontal bar.
+							if _verticalBars {
+								Label(_isSelecting ? "Done" : "Select",
+									systemImage: _isSelecting ? "checkmark" : "checkmark.circle")
+							} else {
+								Text(_isSelecting ? "Done" : "Select")
+									.font(.roundedUI(size: 15, weight: .bold))
+							}
 						}
 					}
 				}
@@ -563,14 +571,19 @@ extension LibraryView {
 				await ownUpdate
 			}
 		} label: {
-			HStack(spacing: 6) {
-				if updateManager.isChecking {
-					ProgressView()
-						.controlSize(.small)
+			if _verticalBars {
+				// A symbol for the side bar; the title shows in its overflow menu.
+				Label(_updateCheckTitle, systemImage: updateManager.isChecking ? "hourglass" : "arrow.triangle.2.circlepath")
+			} else {
+				HStack(spacing: 6) {
+					if updateManager.isChecking {
+						ProgressView()
+							.controlSize(.small)
+					}
+					Text(_updateCheckTitle)
+						.font(.roundedUI(size: 15, weight: .bold))
+						.lineLimit(1)
 				}
-				Text(_updateCheckTitle)
-					.font(.roundedUI(size: 15, weight: .bold))
-					.lineLimit(1)
 			}
 		}
 		.disabled(updateManager.isChecking)
@@ -580,9 +593,8 @@ extension LibraryView {
 		Button {
 			_isImportMenuPresenting = true
 		} label: {
-			Image(systemName: "plus")
+			Label(.localized("Import"), systemImage: "plus")
 		}
-		.accessibilityLabel(.localized("Import"))
 	}
 
 	/// Library apps with an update, and NullSign when it has one, as the

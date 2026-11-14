@@ -97,9 +97,8 @@ struct SourceAppsView: View {
 					_didCopySourceURL = false
 					_isSourceMenuPresenting = true
 				} label: {
-					Image(systemName: "arrow.up.arrow.down")
+					Label(.localized("Source Options"), systemImage: "arrow.up.arrow.down")
 				}
-				.accessibilityLabel(.localized("Source Options"))
 			}
 		}
 		.sheet(isPresented: $_isSourceMenuPresenting) {

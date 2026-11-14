@@ -1,6 +1,6 @@
-# Install progress and library reliability — 1.5.2 (51)
+# Install progress and library reliability — 1.5.2 (52)
 
-## Build 51: iPhone Duo
+## Builds 51–52: iPhone Duo
 
 A tester reported NullSign not filling iPhone Duo's inner display and asked
 for its navigation on the right.
@@ -9,14 +9,23 @@ Full screen. Apple's iPhone Duo tech talk: apps built with the iOS 27.1 SDK
 (Xcode 27.1) extend to the edges of the inner display; older SDKs get a
 familiar-size window. NullSign was built by `macos-latest` with Xcode 26.6 and
 the iOS 26.5 SDK. CI now runs on GitHub's `xcode-27` image (macOS 27) with
-Xcode 27.1 pinned. This is the first build with that toolchain.
+Xcode 27.1 pinned.
 
-Navigation. System tab bars move to the side on their own; NullSign's dock is
-custom. When both size classes are regular (the inner display, or a
-full-screen iPad) the dock becomes a vertical rail on the right edge, beside
-the content and clear of the keyboard. Compact width (the folded outer display,
-other iPhones) keeps the bottom dock. One `AnyLayout` switches the axis so
-folding and unfolding keep each tab's navigation.
+Navigation (build 52). The HIG ("Designing for iPhone Duo", Vertical controls)
+places toolbars, navigation controls and the tab bar together in one column on
+the side: on the closed outer display (the right, aligned with the camera) and
+on the inner display in landscape, along an app's outer edge in Split View; the
+inner display in portrait keeps horizontal bars. A custom bar cannot join that
+column, and the HIG says not to override the placement. NullSign's custom dock
+is replaced by the system `TabView` on every device, keeping the Signer badge
+and tap-again-to-root. Build 51's size-class rail is withdrawn: it placed the
+rail on the inner display in portrait and missed the outer display.
+
+Toolbar items. The system leaves text-only items in a horizontal bar and uses
+symbols on the side. `toolbarVerticalEdge` (iOS 27.1) is published to each tab
+as `nullSignVerticalBars`; Library's Select and Check for Updates show a symbol
+and title only when bars are vertical, keeping their text elsewhere. Import,
+Add Source and Source Options carry titles as well as symbols for overflow.
 
 Also: action sheets without an anchor are centered when UIKit presents them as
 popovers in a regular-width window, Reset chooses alert or sheet by width

@@ -103,9 +103,8 @@ struct SourcesView: View {
 					Button {
 						_isAddingPresenting = true
 					} label: {
-						Image(systemName: "plus")
+						Label(.localized("Add Source"), systemImage: "plus")
 					}
-					.accessibilityLabel(.localized("Add Source"))
 				}
 			}
 			.refreshable {
