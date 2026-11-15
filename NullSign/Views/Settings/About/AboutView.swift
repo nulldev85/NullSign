@@ -38,11 +38,11 @@ struct AboutView: View {
 							detail: nil,
 							systemImage: _selfUpdateIcon,
 							showsChevron: false,
-							isBusy: _selfUpdate.isChecking
+							isBusy: _selfUpdate.isChecking || _isUpdating
 						)
 					}
 					.buttonStyle(.plain)
-					.disabled(_selfUpdate.isChecking)
+					.disabled(_selfUpdate.isChecking || _isUpdating)
 				}
 
 				NullSignSettingsSection(
@@ -116,18 +116,33 @@ struct AboutView: View {
 
 // MARK: - App Updates
 extension AboutView {
+	/// One tap updates, as in NullSign 1.x; otherwise it looks again.
 	private func _selfUpdateAction() {
 		if let available = _selfUpdate.available {
-			_selected = available
+			_selfUpdate.beginUpdate(to: available)
 		} else {
 			Task { await _selfUpdate.check() }
+		}
+	}
+
+	private var _isUpdating: Bool {
+		switch _selfUpdate.phase {
+		case .downloading, .importing, .signing: return true
+		default: return false
 		}
 	}
 
 	private var _selfUpdateTitle: String {
 		if _selfUpdate.isChecking { return .localized("Checking for Updates…") }
 		if let available = _selfUpdate.available {
-			return .localized("Update to NullSign %@", arguments: available.label)
+			switch _selfUpdate.phase {
+			case .downloading(let progress):
+				return .localized("Downloading NullSign %@ · %lld%%", arguments: available.label, Int(progress * 100))
+			case .importing: return .localized("Preparing NullSign %@…", arguments: available.label)
+			case .signing: return .localized("Signing NullSign %@…", arguments: available.label)
+			case .failed: return .localized("Couldn't Update — Tap to Try Again")
+			default: return .localized("Update to NullSign %@", arguments: available.label)
+			}
 		}
 		if _selfUpdate.latest != nil { return .localized("You're on the Latest Version") }
 		if _selfUpdate.lastError != nil { return .localized("Couldn't Check — Tap to Try Again") }
@@ -142,6 +157,9 @@ extension AboutView {
 	}
 
 	private var _selfUpdateDetail: String {
+		if case .failed(let reason) = _selfUpdate.phase, _selfUpdate.available != nil {
+			return reason
+		}
 		if _selfUpdate.available != nil {
 			return .localized("NullSign downloads the update, signs it with your certificate and installs it. iOS asks you to confirm, then NullSign closes while the new version replaces it. Open it again once it's done.")
 		}

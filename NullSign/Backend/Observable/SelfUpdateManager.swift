@@ -171,12 +171,13 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 		if available != nil { presentUpdatePrompt = true }
 	}
 
-	/// Looks again when NullSign comes back, at most every six hours.
+	/// Looks again when NullSign comes back or the Signer opens, at most every
+	/// half hour, the same as sources.
 	@MainActor
 	func checkIfNeeded() async {
 		guard isAutoCheckEnabled else { return }
 		if let last = UserDefaults.standard.object(forKey: Keys.lastCheck) as? Date,
-		   Date().timeIntervalSince(last) < 6 * 60 * 60 {
+		   Date().timeIntervalSince(last) < 30 * 60 {
 			return
 		}
 		await check()
