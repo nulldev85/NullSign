@@ -119,3 +119,39 @@ extension Storage {
 		}
 	}
 }
+
+// MARK: - NullSign's own source
+extension Storage {
+	/// Null's Apps: NullSign itself, Lineup and Lineup tvOS.
+	static let nullSignSourceURL = URL(string: "https://raw.githubusercontent.com/nulldev85/AppSource/main/apps.json")!
+
+	/// NullSign comes with its own source, added once on first launch. If it's
+	/// already there (NullSign 1.x saved it under its URL, lowercased) nothing
+	/// is added, and once someone removes it, it isn't added again.
+	func addNullSignSourceIfNeeded() {
+		let key = "nullsign.didAddDefaultSource"
+		guard !UserDefaults.standard.bool(forKey: key) else { return }
+		UserDefaults.standard.set(true, forKey: key)
+
+		let url = Self.nullSignSourceURL
+		let target = url.absoluteString.lowercased()
+		let alreadyAdded = getSources().contains { source in
+			let identifier = source.identifier?.lowercased()
+			let sourceURL = source.sourceURL?.absoluteString.lowercased()
+				.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+			return identifier == target || sourceURL == target
+		}
+		guard !alreadyAdded else { return }
+
+		addSource(
+			url,
+			name: "Null’s Apps",
+			identifier: url.absoluteString,
+			iconURL: URL(string: "https://raw.githubusercontent.com/nulldev85/AppSource/main/icons/source.png")
+		) { error in
+			if let error {
+				Logger.misc.error("Couldn't add NullSign's source: \(error.localizedDescription)")
+			}
+		}
+	}
+}

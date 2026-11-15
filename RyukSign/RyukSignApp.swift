@@ -405,6 +405,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, DownloadManager.ErrorDelegat
 		StorageManager.purgeStaleTemporary()
 		InstallCleanup.flush()
 		_addDefaultCertificates()
+		Storage.shared.addNullSignSourceIfNeeded()
 		FR.refreshSSLCertificatesIfStale()
 		_registerBackgroundTasks()
 

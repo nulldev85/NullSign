@@ -35,6 +35,10 @@ unchanged so every NullSign change is its own diff.
 - RyukSign's self-update checks NullSign's releases, whose tags never parse as
   a version, so it offers nothing until NullSign's self-update replaces it.
   Featured source, GitHub and About links point at NullSign; Ryuk is credited.
+- NullSign comes with its own source, Null's Apps
+  (`nulldev85/AppSource/main/apps.json`), added once on first launch. If a
+  1.x library already has it (saved under its URL, lowercased) nothing is
+  added; once removed, it isn't added again.
 - Opening an IPA from Files: the file is copied into the app off the main
   thread (RyukSign copied it on the main thread, which freezes on large or
   iCloud files), then imported, with an alert naming any failure.
