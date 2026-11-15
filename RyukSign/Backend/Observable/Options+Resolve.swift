@@ -74,18 +74,18 @@ extension Options {
 
 	private static func _ppqTransform(_ identifier: String) -> String {
 		let modified = identifier
-			.replacingOccurrences(of: "google", with: "ryu", options: .caseInsensitive)
-			.replacingOccurrences(of: "facebook", with: "ryu", options: .caseInsensitive)
+			.replacingOccurrences(of: "google", with: "nul", options: .caseInsensitive)
+			.replacingOccurrences(of: "facebook", with: "nul", options: .caseInsensitive)
 			.replacingOccurrences(of: "ios", with: "anox", options: .caseInsensitive)
 
 		switch modified.filter({ $0 == "." }).count {
 		case 2...:
-			guard let firstDot = modified.firstIndex(of: ".") else { return "ryuk." + modified }
-			return "ryuk" + modified[firstDot...]
+			guard let firstDot = modified.firstIndex(of: ".") else { return "null." + modified }
+			return "null" + modified[firstDot...]
 		case 1:
-			return "ryuk." + modified
+			return "null." + modified
 		default:
-			return "ryuk.app." + modified
+			return "null.app." + modified
 		}
 	}
 }

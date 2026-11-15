@@ -24,7 +24,7 @@ enum BackupCrypto {
 
 		var errorDescription: String? {
 			switch self {
-			case .badFormat: String.localized("This file isn't a valid RyukSign backup.")
+			case .badFormat: String.localized("This file isn't a valid NullSign backup.")
 			case .wrongPassword: String.localized("Incorrect password or corrupted backup.")
 			case .passwordRequired: String.localized("This backup needs a password.")
 			case .cryptoFailed: String.localized("Backup encryption failed, please try again.")

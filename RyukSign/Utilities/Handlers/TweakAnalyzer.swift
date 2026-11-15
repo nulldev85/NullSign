@@ -115,7 +115,7 @@ enum TweakAnalyzer {
 			if let app = appURL, _appHasSubstrate(app) {
 				notes.append(.localized("Hooks via CydiaSubstrate — the app already includes it."))
 			} else {
-				notes.append(.localized("Hooks via CydiaSubstrate. The app doesn't include it, so RyukSign adds ElleKit (a Substrate replacement) automatically when signing."))
+				notes.append(.localized("Hooks via CydiaSubstrate. The app doesn't include it, so NullSign adds ElleKit (a Substrate replacement) automatically when signing."))
 			}
 		}
 		if loads.isEmpty {
@@ -279,12 +279,12 @@ enum TweakAnalyzer {
 			? String.localized("Debian package (%@).", arguments: contents)
 			: String.localized("%@", arguments: packageDesc)
 
-		var notes: [String] = [.localized("RyukSign unpacks the .deb and injects each dylib/framework and copies bundles automatically.")]
+		var notes: [String] = [.localized("NullSign unpacks the .deb and injects each dylib/framework and copies bundles automatically.")]
 		if needsSubstrate {
 			if let app = appURL, _appHasSubstrate(app) {
 				notes.append(.localized("Needs CydiaSubstrate — the app already includes it."))
 			} else {
-				notes.append(.localized("Needs CydiaSubstrate. The app doesn't include it, so RyukSign adds ElleKit automatically when signing."))
+				notes.append(.localized("Needs CydiaSubstrate. The app doesn't include it, so NullSign adds ElleKit automatically when signing."))
 			}
 		}
 

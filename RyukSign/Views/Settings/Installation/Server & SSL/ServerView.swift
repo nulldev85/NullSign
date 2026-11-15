@@ -93,7 +93,7 @@ private extension ServerView {
 	var _certificateSection: some View {
 		Section {
 			Picker(.localized("Certificate"), systemImage: "lock.shield", selection: $_useLocalCertificate) {
-				Text(verbatim: "RyukSign").tag(false)
+				Text(.localized("Hosted")).tag(false)
 				Text(.localized("On Device")).tag(true)
 			}
 

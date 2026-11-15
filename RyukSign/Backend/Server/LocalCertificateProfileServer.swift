@@ -39,12 +39,12 @@ enum LocalCertificateProfileServer {
 		let keepAlive = BackgroundTaskManager(
 			taskName: "LocalCertificateProfile",
 			expirationTitle: .localized("Certificate"),
-			expirationBody: .localized("Open RyukSign again to finish installing the certificate.")
+			expirationBody: .localized("Open NullSign again to finish installing the certificate.")
 		)
 		keepAlive.start()
 		_keepAlive = keepAlive
 
-		UIApplication.shared.open(URL(string: "http://127.0.0.1:\(port)/RyukSign.mobileconfig")!)
+		UIApplication.shared.open(URL(string: "http://127.0.0.1:\(port)/NullSign.mobileconfig")!)
 		DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
 			if _server === server { stop() }
 		}

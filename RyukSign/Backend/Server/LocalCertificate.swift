@@ -73,8 +73,8 @@ enum LocalCertificate {
 	private static func _createAuthority() throws -> (X509.Certificate, P256.Signing.PrivateKey) {
 		let key = P256.Signing.PrivateKey()
 		let name = try DistinguishedName {
-			CommonName("RyukSign Local Authority")
-			OrganizationName("RyukSign")
+			CommonName("NullSign Local Authority")
+			OrganizationName("NullSign")
 		}
 
 		let certificate = try X509.Certificate(
@@ -183,7 +183,7 @@ enum LocalCertificate {
 			"PayloadVersion": 1,
 			"PayloadIdentifier": "com.ryuksign.localcertificate.authority",
 			"PayloadUUID": UUID().uuidString,
-			"PayloadDisplayName": "RyukSign Local Authority",
+			"PayloadDisplayName": "NullSign Local Authority",
 			"PayloadCertificateFileName": "RyukSign.cer",
 			"PayloadContent": Data(der)
 		]
@@ -193,8 +193,8 @@ enum LocalCertificate {
 			"PayloadVersion": 1,
 			"PayloadIdentifier": "com.ryuksign.localcertificate",
 			"PayloadUUID": UUID().uuidString,
-			"PayloadDisplayName": "RyukSign Local Install",
-			"PayloadDescription": "Lets RyukSign install apps through its own server on this device.",
+			"PayloadDisplayName": "NullSign Local Install",
+			"PayloadDescription": "Lets NullSign install apps through its own server on this device.",
 			"PayloadContent": [payload]
 		]
 

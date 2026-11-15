@@ -26,7 +26,7 @@ struct SigningOptionsView: View {
 					values: Options.PPQProtection.allCases
 				)
 			} footer: {
-				Text(.localized("Feather appends a random string to the app's bundle identifier. Ryuk also rewrites the identifier (ryuk prefix, keyword replacement) before appending it. Both help prevent your Apple ID from being flagged by Apple, so only disable this when using a signing service."))
+				Text(.localized("Feather appends a random string to the app's bundle identifier. NullSign also rewrites the identifier (null prefix, keyword replacement) before appending it. Both help prevent your Apple ID from being flagged by Apple, so only disable this when using a signing service."))
 			}
 		}
 

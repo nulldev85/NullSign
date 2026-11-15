@@ -244,14 +244,14 @@ struct Options: Codable, Equatable {
 		case disabled
 		/// Feather method: append ppqString to the untouched identifier
 		case `default`
-		/// Ryuk method: prefix with "ryuk", replace known keywords, append ppqString
+		/// NullSign method: prefix with "null", replace known keywords, append ppqString
 		case ryuk = "Ryuk"
 
 		var localizedDescription: String {
 			switch self {
 			case .disabled: .localized("Disabled")
 			case .default: "Feather"
-			case .ryuk: "Ryuk"
+			case .ryuk: "NullSign"
 			}
 		}
 	}

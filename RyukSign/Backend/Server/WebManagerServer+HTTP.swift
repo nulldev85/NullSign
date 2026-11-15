@@ -352,7 +352,7 @@ extension WebManagerServer {
 		guard
 			let url = Bundle.main.url(forResource: "WebManager", withExtension: "html"),
 			let html = try? String(contentsOf: url, encoding: .utf8)
-		else { return "<h1>RyukSign Web Manager</h1>" }
+		else { return "<h1>NullSign Web Manager</h1>" }
 		return html
 	}()
 }

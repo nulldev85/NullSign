@@ -179,6 +179,7 @@
 			<dict>
 				<key>public.filename-extension</key>
 				<array>
+					<string>nullsignbackup</string>
 					<string>ryukbackup</string>
 				</array>
 				<key>public.mime-type</key>

@@ -25,7 +25,7 @@ struct WebManagerAuthMiddleware: AsyncMiddleware {
 		}
 
 		var headers = HTTPHeaders()
-		headers.replaceOrAdd(name: .wwwAuthenticate, value: "Basic realm=\"RyukSign Web Manager\"")
+		headers.replaceOrAdd(name: .wwwAuthenticate, value: "Basic realm=\"NullSign Web Manager\"")
 		return Response(status: .unauthorized, headers: headers)
 	}
 
