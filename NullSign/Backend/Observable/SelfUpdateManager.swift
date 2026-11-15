@@ -135,7 +135,10 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 	/// The certificate updates are signed with: the one chosen in Updates, else
 	/// the signer's selected certificate.
 	func resolvedCertificate() -> CertificatePair? {
-		let idx = certIndex >= 0 ? certIndex : UserDefaults.standard.integer(forKey: "feather.selectedCert")
+		if certIndex >= 0 { return Storage.shared.getCertificate(for: certIndex) }
+		// NullSign is an iPhone app, so never an Apple TV certificate.
+		let idx = Storage.shared.preferredCertificateIndex(for: .iOS)
+			?? UserDefaults.standard.integer(forKey: "feather.selectedCert")
 		return Storage.shared.getCertificate(for: idx)
 	}
 

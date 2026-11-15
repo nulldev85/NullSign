@@ -489,14 +489,15 @@ struct NullSignValidity {
 }
 
 enum NullSignIdentity {
-	/// The certificate the signer preselects: the selected index (newest
-	/// first, as CertificatesView and SigningView sort them), else the newest.
+	/// The certificate iPhone apps are signed with: the selected one when it
+	/// covers iOS, else the iPhone certificate NullSign falls back to.
 	/// Display only — this never changes which certificate is used to sign.
 	static func activeCertificate<C: RandomAccessCollection>(in certificates: C) -> CertificatePair?
 	where C.Element == CertificatePair, C.Index == Int {
-		let selected = UserDefaults.standard.integer(forKey: "feather.selectedCert")
-		if certificates.indices.contains(selected) {
-			return certificates[selected]
+		// The certificate iPhone apps are signed with, in the same newest-first
+		// order as the list.
+		if let index = Storage.shared.preferredCertificateIndex(for: .iOS), certificates.indices.contains(index) {
+			return certificates[index]
 		}
 		return certificates.first
 	}

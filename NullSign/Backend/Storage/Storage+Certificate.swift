@@ -113,18 +113,39 @@ extension Storage {
 }
 
 // MARK: - Platforms (NullSign)
-/// Apple TV apps are signed with a certificate whose provisioning profile
-/// includes tvOS. iPhone apps keep the certificate selected in Certificates;
-/// tvOS apps remember their own.
+/// iPhone apps are signed with a certificate whose provisioning profile
+/// covers iOS, and Apple TV apps with one that covers tvOS. The certificate
+/// selected in Certificates is used whenever it fits the app; otherwise
+/// NullSign uses the one last used for that platform, else the first that fits.
 extension Storage {
-	private static let _tvOSCertificateKey = "feather.selectedCert.tvOS"
+	private static func _certificateKey(for platform: AppPlatform) -> String {
+		"feather.selectedCert.\(platform.rawValue)"
+	}
+
+	/// A certificate's profile never changes, so its platforms are read once.
+	private static let _platformCache = NSCache<NSString, NSArray>()
+
+	private func _platforms(of cert: CertificatePair) -> [String]? {
+		if let uuid = cert.uuid, let cached = Self._platformCache.object(forKey: uuid as NSString) as? [String] {
+			return cached
+		}
+		guard let profile = getProvisionFileDecoded(for: cert) else { return nil }
+		let platforms = profile.Platform.map { $0.lowercased() }
+		if let uuid = cert.uuid {
+			Self._platformCache.setObject(platforms as NSArray, forKey: uuid as NSString)
+		}
+		return platforms
+	}
 
 	func certificate(_ cert: CertificatePair, supports platform: AppPlatform) -> Bool {
-		guard let profile = getProvisionFileDecoded(for: cert) else { return false }
-		let platforms = profile.Platform.map { $0.lowercased() }
+		guard let platforms = _platforms(of: cert) else {
+			// An unreadable profile is never assumed to cover Apple TV.
+			return platform == .iOS
+		}
 		switch platform {
 		case .iOS:
-			return platforms.contains { $0.contains("ios") || $0.contains("iphone") }
+			// Profiles that name no platform predate the field and are iOS.
+			return platforms.isEmpty || platforms.contains { $0.contains("ios") || $0.contains("iphone") }
 		case .tvOS:
 			return platforms.contains { $0.contains("tvos") || $0.contains("appletv") }
 		}
@@ -136,31 +157,50 @@ extension Storage {
 		let selected = UserDefaults.standard.integer(forKey: "feather.selectedCert")
 		let certificates = getAllCertificates()
 
-		guard platform == .tvOS else {
-			return certificates.indices.contains(selected) ? selected : nil
-		}
-
-		if let uuid = UserDefaults.standard.string(forKey: Self._tvOSCertificateKey),
-		   let index = certificates.firstIndex(where: { $0.uuid == uuid && certificate($0, supports: .tvOS) }) {
-			return index
-		}
-		if certificates.indices.contains(selected), certificate(certificates[selected], supports: .tvOS) {
+		if certificates.indices.contains(selected), certificate(certificates[selected], supports: platform) {
 			return selected
 		}
-		return certificates.firstIndex { certificate($0, supports: .tvOS) }
+		if let uuid = UserDefaults.standard.string(forKey: Self._certificateKey(for: platform)),
+		   let index = certificates.firstIndex(where: { $0.uuid == uuid && certificate($0, supports: platform) }) {
+			return index
+		}
+		if let index = certificates.firstIndex(where: { certificate($0, supports: platform) }) {
+			return index
+		}
+		// No certificate fits an iPhone app: fall back to the selected one so
+		// signing can still say what's wrong.
+		return platform == .iOS && certificates.indices.contains(selected) ? selected : nil
 	}
 
-	/// Remembers the certificate chosen for tvOS apps.
+	/// Remembers the certificate chosen for apps of this platform.
 	func rememberCertificate(_ cert: CertificatePair, for platform: AppPlatform) {
-		guard platform == .tvOS, certificate(cert, supports: .tvOS), let uuid = cert.uuid else { return }
-		UserDefaults.standard.set(uuid, forKey: Self._tvOSCertificateKey)
+		guard certificate(cert, supports: platform), let uuid = cert.uuid else { return }
+		UserDefaults.standard.set(uuid, forKey: Self._certificateKey(for: platform))
 	}
 
 	/// The certificate to sign an app with: the chosen one when its profile
 	/// covers the app's platform, else that platform's preferred certificate.
 	func signingCertificate(for app: AppInfoPresentable, chosen: CertificatePair?) -> CertificatePair? {
-		guard app.platform == .tvOS else { return chosen }
-		if let chosen, certificate(chosen, supports: .tvOS) { return chosen }
-		return preferredCertificateIndex(for: .tvOS).flatMap(getCertificate(for:)) ?? chosen
+		let platform = app.platform
+		if let chosen, certificate(chosen, supports: platform) { return chosen }
+		return preferredCertificateIndex(for: platform).flatMap(getCertificate(for:)) ?? chosen
+	}
+
+	/// Carries NullSign 1.x's choices into 2.0, once. 1.x remembered the
+	/// iPhone certificate on its own, apart from the selected one, which could
+	/// be left on an Apple TV certificate.
+	func migrateNullSign1CertificateChoice() {
+		let key = "nullsign.didMigrate1xCertificateChoice"
+		guard !UserDefaults.standard.bool(forKey: key) else { return }
+		UserDefaults.standard.set(true, forKey: key)
+
+		let certificates = getAllCertificates()
+		guard
+			let uuid = UserDefaults.standard.string(forKey: Self._certificateKey(for: .iOS)),
+			let index = certificates.firstIndex(where: { $0.uuid == uuid && certificate($0, supports: .iOS) })
+		else {
+			return
+		}
+		UserDefaults.standard.set(index, forKey: "feather.selectedCert")
 	}
 }

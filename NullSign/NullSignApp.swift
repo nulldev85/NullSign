@@ -416,6 +416,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, DownloadManager.ErrorDelegat
 		InstallCleanup.flush()
 		_addDefaultCertificates()
 		Storage.shared.addNullSignSourceIfNeeded()
+		Storage.shared.migrateNullSign1CertificateChoice()
+		_migrateNullSign1InstallationMethod()
 		FR.refreshSSLCertificatesIfStale()
 		_registerBackgroundTasks()
 
@@ -610,6 +612,22 @@ class AppDelegate: NSObject, UIApplicationDelegate, DownloadManager.ErrorDelegat
 		let controlFont = UIFont.roundedUI(size: 17, weight: .bold, textStyle: .body)
 		for state in [UIControl.State.normal, .highlighted, .disabled, .focused] {
 			UIBarButtonItem.appearance().setTitleTextAttributes([.font: controlFont], for: state)
+		}
+	}
+
+	/// NullSign 1.x's "Apple TV / Tunnel" installation method only held Apple
+	/// TV pairing; iPhone apps still installed through the local server. 2.0
+	/// reads that setting as installing iPhone apps over a pairing file, which
+	/// nobody coming from that screen has. Put it back once.
+	private func _migrateNullSign1InstallationMethod() {
+		let defaults = UserDefaults.standard
+		let key = "nullsign.didMigrate1xInstallationMethod"
+		guard !defaults.bool(forKey: key) else { return }
+		defaults.set(true, forKey: key)
+
+		if defaults.integer(forKey: "Feather.installationMethod") == 1,
+		   !FileManager.default.fileExists(atPath: HeartbeatManager.pairingFile()) {
+			defaults.set(0, forKey: "Feather.installationMethod")
 		}
 	}
 

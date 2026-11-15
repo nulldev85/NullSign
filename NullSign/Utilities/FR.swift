@@ -47,11 +47,13 @@ enum FR {
 		certificate: CertificatePair?,
 		completion: @escaping (Result<Signed, Error>) -> Void
 	) {
-		// iOS won't install a tvOS app signed with a profile that lacks tvOS.
-		if let certificate, app.platform == .tvOS, !Storage.shared.certificate(certificate, supports: .tvOS) {
-			completion(.failure(NSError(domain: "Signing", code: -1, userInfo: [
-				NSLocalizedDescriptionKey: String.localized("This is an Apple TV app. Choose a certificate whose provisioning profile includes tvOS.")
-			])))
+		// An app signed with a profile for the other platform never installs.
+		let platform = app.platform
+		if let certificate, options.signingOption == .default, !Storage.shared.certificate(certificate, supports: platform) {
+			let message: String = platform == .tvOS
+				? .localized("This is an Apple TV app. Choose a certificate whose provisioning profile includes tvOS.")
+				: .localized("This is an iPhone app. Choose a certificate whose provisioning profile includes iOS, not an Apple TV one.")
+			completion(.failure(NSError(domain: "Signing", code: -1, userInfo: [NSLocalizedDescriptionKey: message])))
 			return
 		}
 

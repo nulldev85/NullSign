@@ -172,8 +172,13 @@ extension SigningView {
 					.foregroundColor(.disabled())
 			}
 
-			if app.platform == .tvOS, let cert = _selectedCert(), !Storage.shared.certificate(cert, supports: .tvOS) {
-				Label(.localized("This certificate's profile doesn't include tvOS. Choose one that does to sign this Apple TV app."), systemImage: "exclamationmark.triangle.fill")
+			if let cert = _selectedCert(), !Storage.shared.certificate(cert, supports: app.platform) {
+				Label(
+					app.platform == .tvOS
+						? String.localized("This certificate's profile doesn't include tvOS. Choose one that does to sign this Apple TV app.")
+						: String.localized("This certificate is for Apple TV apps. Choose an iOS certificate to sign this iPhone app."),
+					systemImage: "exclamationmark.triangle.fill"
+				)
 					.font(.footnote)
 					.foregroundStyle(NullSignStyle.warning)
 			}

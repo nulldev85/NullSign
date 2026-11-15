@@ -27,7 +27,7 @@ final class AppInstaller: ObservableObject {
 	/// tvOS apps install on the paired Apple TV over Wi-Fi, whatever method
 	/// iPhone apps use.
 	private let _isAppleTV: Bool
-	private let _installationMethod = UserDefaults.standard.integer(forKey: "Feather.installationMethod")
+	private let _installationMethod = AppInstaller.effectiveInstallationMethod()
 	private let _serverMethod = UserDefaults.standard.integer(forKey: "Feather.serverMethod")
 	private let _useShareSheet = UserDefaults.standard.bool(forKey: "Feather.useShareSheetForArchiving")
 
@@ -57,6 +57,42 @@ final class AppInstaller: ObservableObject {
 	/// iPhone apps installed through the local server and iOS's install prompt.
 	private var _usesServer: Bool { !_isAppleTV && _installationMethod == 0 }
 
+	/// The installation type iPhone apps use. Installing over a pairing file
+	/// can't work without this iPhone's pairing file, so until one is
+	/// imported NullSign installs through the local server. An Apple TV
+	/// pairing is separate and doesn't count.
+	nonisolated static func effectiveInstallationMethod() -> Int {
+		let method = UserDefaults.standard.integer(forKey: "Feather.installationMethod")
+		if method == 1, !FileManager.default.fileExists(atPath: HeartbeatManager.pairingFile()) {
+			return 0
+		}
+		return method
+	}
+
+	/// Ends the search and points the device connection back at this iPhone.
+	private func _releaseAppleTV() {
+		guard _isAppleTV else { return }
+		AppleTVManager.shared.stopScanning()
+		if HeartbeatManager.shared.isAppleTVTarget {
+			HeartbeatManager.shared.usePhoneTarget()
+		}
+	}
+
+	/// A restart gives an Apple TV a new port, and its address can change, so
+	/// NullSign looks for the paired Apple TV again before connecting.
+	private func _connectAppleTV() async throws {
+		let manager = AppleTVManager.shared
+		if let paired = manager.pairedDevice {
+			let deadline = Date().addingTimeInterval(6)
+			while Date() < deadline, !manager.discovered.contains(where: {
+				$0.connectionPort != nil && ($0.name == paired.name || $0.host == paired.host)
+			}) {
+				try await Task.sleep(nanoseconds: 250_000_000)
+			}
+		}
+		try manager.prepareForInstall()
+	}
+
 	deinit {
 		_archive?.cleanup()
 		_progressTask?.cancel()
@@ -81,6 +117,7 @@ final class AppInstaller: ObservableObject {
 
 	func stop() {
 		_hasFinished = true
+		_releaseAppleTV()
 		_completion = nil
 		_disarmDeclineWatch()
 		_statusObserver = nil
@@ -109,9 +146,13 @@ final class AppInstaller: ObservableObject {
 		defer { keepAlive.stop() }
 
 		do {
-			// Fail before packaging when no Apple TV is paired or reachable.
 			if _isAppleTV {
-				try AppleTVManager.shared.prepareForInstall()
+				// Fail before packaging when no Apple TV is paired.
+				if AppleTVManager.shared.pairedDevice == nil {
+					try AppleTVManager.shared.prepareForInstall()
+				}
+				// Find the Apple TV on the network while the app is packaged.
+				AppleTVManager.shared.startScanning()
 			}
 
 			let (packageUrl, exported) = try await _package()
@@ -122,6 +163,7 @@ final class AppInstaller: ObservableObject {
 			}
 
 			if _isAppleTV {
+				try await _connectAppleTV()
 				FileLogger.log("installing \(app.identifier ?? "?") on Apple TV \(AppleTVManager.shared.pairedDevice?.name ?? "?")", category: "install")
 				try await InstallationProxy(viewModel: viewModel).install(at: packageUrl, suspend: false)
 			} else if _installationMethod == 1 {
@@ -283,10 +325,7 @@ final class AppInstaller: ObservableObject {
 	private func _finish(_ result: Result<Outcome, Error>) {
 		guard !_hasFinished else { return }
 		_hasFinished = true
-		if _isAppleTV, HeartbeatManager.shared.isAppleTVTarget {
-			// Point the device connection back at this iPhone.
-			HeartbeatManager.shared.usePhoneTarget()
-		}
+		_releaseAppleTV()
 		_disarmDeclineWatch()
 		_statusObserver = nil
 		fallbackPage = nil

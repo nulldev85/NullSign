@@ -28,7 +28,7 @@ struct TunnelView: View {
 				if doesHavePairingFile {
 					Text(.localized("Seems like you've gotten your hands on your pairing file!"))
 				} else {
-					Text(.localized("No pairing file found, please import it."))
+					Text(.localized("No pairing file found. Import one to install this way; until then, iPhone apps install with Server. Apple TV pairing is separate, in Settings > Apple TV."))
 				}
 			}
 			.listRowBackground(NullSignStyle.groupedSurface)
