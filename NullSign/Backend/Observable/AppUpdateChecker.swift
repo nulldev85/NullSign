@@ -148,8 +148,34 @@ final class AppUpdateChecker: ObservableObject {
 	@discardableResult
 	func autoUpdate(_ update: AppUpdate) -> Bool {
 		guard isAutomatic(update) else { return false }
-		DownloadManager.shared.startDownload(for: update.best.app)
+		startUpdate(update.best, for: update)
 		return true
+	}
+
+	/// Downloads an update. When the installed copy was signed, the new
+	/// version is signed the same way and installed over it, as in NullSign
+	/// 1.x; otherwise it waits in the library to be signed.
+	@discardableResult
+	func startUpdate(_ candidate: AppUpdate.Candidate, for update: AppUpdate?) -> Download? {
+		let download = DownloadManager.shared.startDownload(for: candidate.app)
+		download?.replacesLibraryUUID = update.flatMap(Self._signedCopy(of:))
+		return download
+	}
+
+	/// The update that offers this source app, if any.
+	func update(offering app: ASRepository.App) -> AppUpdate? {
+		updates.first { $0.candidates.contains { $0.app.currentUniqueId == app.currentUniqueId } }
+	}
+
+	func update(withID id: String) -> AppUpdate? {
+		updates.first { $0.id == id }
+	}
+
+	/// The signed copy an update replaces: the newest copy when it's signed,
+	/// else any signed copy.
+	private static func _signedCopy(of update: AppUpdate) -> String? {
+		let copies = update.libraryUUIDs.compactMap(Storage.shared.app(withUuid:))
+		return (copies.first { $0.uuid == update.libraryUUID && $0.isSigned } ?? copies.first { $0.isSigned })?.uuid
 	}
 
 	func pin(_ candidate: AppUpdate.Candidate?, for key: String) {

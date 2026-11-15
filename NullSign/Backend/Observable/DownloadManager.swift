@@ -770,6 +770,32 @@ class DownloadManager: NSObject, ObservableObject {
 	}
 
 	private func autoSignOrFinish(_ app: AppInfoPresentable, for download: Download) {
+		// An update for a signed app: sign it like that app and install it
+		// over it, as NullSign 1.x did.
+		if let uuid = download.replacesLibraryUUID,
+		   let installed = Storage.shared.app(withUuid: uuid), installed.isSigned {
+			endImport(for: download)
+			objectWillChange.send()
+			download.isSigning = true
+
+			Task { @MainActor in
+				switch await AutoSignManager.shared.signUpdate(app, replacing: installed) {
+				case .success(let signed):
+					InstallQueue.shared.enqueue(signed)
+				case .failure(let error):
+					// Keep the download so it can still be signed by hand.
+					self.report(for: download, status: "❌ Update failed") {
+						Toast.error(error.localizedDescription, duration: .sticky)
+					}
+				}
+
+				self.objectWillChange.send()
+				download.isSigning = false
+				self.finishImport(of: download, succeeded: true)
+			}
+			return
+		}
+
 		guard AutoSignManager.isEnabled else {
 			if isAppInBackground { sendCompletionNotification(for: download, status: "✅ Added to Library") }
 			finishImport(of: download, succeeded: true)

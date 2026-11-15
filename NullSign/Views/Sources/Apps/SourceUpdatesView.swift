@@ -277,7 +277,7 @@ struct UpdatePickerView: View {
 			)
 			Spacer(minLength: 8)
 			UpdateCapsuleButton {
-				DownloadManager.shared.startDownload(for: candidate.app)
+				AppUpdateChecker.shared.startUpdate(candidate, for: AppUpdateChecker.shared.update(withID: key))
 				_dismiss()
 			}
 		}

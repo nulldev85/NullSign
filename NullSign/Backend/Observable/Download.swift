@@ -48,6 +48,9 @@ class Download: Identifiable, @unchecked Sendable {
 	let onlyArchiving: Bool
 	let appDescription: String?
 	var origin: AppOrigin?
+	/// The signed library app this download updates. Once imported, it's
+	/// signed like that app and installed over it.
+	var replacesLibraryUUID: String?
 
 	var isManual: Bool {
 		id.contains("FeatherManualDownload")

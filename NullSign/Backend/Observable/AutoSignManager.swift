@@ -65,6 +65,45 @@ final class AutoSignManager {
 		return result
 	}
 
+	/// Signs an update like the copy it replaces: that copy's bundle ID and
+	/// certificate (the selected one once that has lapsed), so it installs over
+	/// it rather than beside it.
+	func signUpdate(_ app: AppInfoPresentable, replacing installed: AppInfoPresentable) async -> Result<Signed, Error> {
+		let identifier = installed.identifier
+		let original = Storage.shared.getCertificate(from: installed)
+		let previous = _tail
+		let job = Task { () -> Result<Signed, Error> in
+			await previous.value
+
+			var options = Options.batchBase.resolved(for: app)
+			options.appIdentifier = identifier
+			options.post_installAppAfterSigned = false
+			options.post_deleteAppAfterSigned = false
+
+			let usable = original.flatMap { cert in
+				!cert.revoked && (cert.expiration ?? .distantFuture) > Date() ? cert : nil
+			}
+			let certificate = Storage.shared.signingCertificate(for: app, chosen: usable ?? Self._certificate())
+			guard options.signingOption != .default || certificate != nil else {
+				return .failure(AutoSignError.noCertificate)
+			}
+
+			let result = await withCheckedContinuation { continuation in
+				FR.signPackageFile(app, using: options, icon: nil, certificate: certificate) {
+					continuation.resume(returning: $0)
+				}
+			}
+			// The download only existed to feed the signer.
+			if case .success = result, OptionsManager.shared.options.post_deleteAppAfterSigned {
+				Storage.shared.deleteApp(for: app)
+			}
+			return result
+		}
+
+		_tail = Task { _ = await job.value }
+		return await job.value
+	}
+
 	nonisolated private static func _certificate() -> CertificatePair? {
 		Storage.shared.getCertificate(for: UserDefaults.standard.integer(forKey: "feather.selectedCert"))
 	}

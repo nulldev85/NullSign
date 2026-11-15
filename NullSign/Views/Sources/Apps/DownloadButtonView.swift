@@ -90,7 +90,14 @@ struct DownloadButtonView: View {
 			} else if let installedApp = installedApp {
 				HStack(spacing: 8) {
 					if _hasUpdate {
-						UpdateCapsuleButton { downloadManager.startDownload(for: app) }
+						UpdateCapsuleButton {
+							if let update = _updateChecker.update(offering: app),
+							   let candidate = update.candidates.first(where: { $0.app.currentUniqueId == app.currentUniqueId }) {
+								_updateChecker.startUpdate(candidate, for: update)
+							} else {
+								downloadManager.startDownload(for: app)
+							}
+						}
 							.transition(.scale.combined(with: .opacity))
 					} else if installedApp.isDowngrade {
 						Button {

@@ -155,56 +155,64 @@ final class SourcesViewModel: ObservableObject {
 			}
 		}
 
-		for startIndex in stride(from: 0, to: items.count, by: batchSize) {
-			let endIndex = min(startIndex + batchSize, items.count)
-			let batch = Array(items[startIndex..<endIndex])
+		// Keep a few requests in flight at all times, so one slow or large
+		// source never holds the rest back, and publish each as it lands.
+		let maxInFlight = max(batchSize, 6)
+		let requests: [(url: URL, requestURL: URL, headers: [String: String], cacheURL: URL?)] = items.map { item in
+			(
+				url: item.url,
+				// A pull to refresh asks for a fresh file, past any server cache.
+				requestURL: force ? SourceRefresh.freshURL(for: item.url) : item.url,
+				headers: force ? SourceRefresh.noCacheHeaders : [:],
+				cacheURL: cacheEnabled ? item.url : nil
+			)
+		}
 
-			// Child tasks touch only Sendable values, never the NSManagedObject.
-			let fetched: [(Int, ASRepository?)] = await withTaskGroup(of: (Int, ASRepository?).self) { group in
-				for (offset, item) in batch.enumerated() {
-					let globalIndex = startIndex + offset
-					let url = item.url
-					let cacheURL = cacheEnabled ? url : nil
-					// A pull to refresh asks for a fresh file, past any server cache.
-					let requestURL = force ? SourceRefresh.freshURL(for: url) : url
-					let headers = force ? SourceRefresh.noCacheHeaders : [:]
+		await withTaskGroup(of: (Int, ASRepository?).self) { group in
+			var next = 0
 
-					group.addTask {
-						let repo: ASRepository? = await withCheckedContinuation { continuation in
-							service.fetch(from: requestURL, headers: headers, onData: { data in
-								if let cacheURL { SourceCache.store(data, for: cacheURL) }
-							}) { (result: RepositoryDataHandler) in
-								switch result {
-								case .success(let repo):
-									continuation.resume(returning: repo)
-								case .failure(let error):
-									Logger.misc.error("Source fetch FAILED \(url.absoluteString, privacy: .public): \(error.localizedDescription, privacy: .public)")
-									continuation.resume(returning: nil)
-								}
-							}
-						}
-						return (globalIndex, repo)
-					}
-				}
-
-				var collected: [(Int, ASRepository?)] = []
-				for await pair in group {
-					collected.append(pair)
-				}
-				return collected
-			}
-
-			for (idx, repo) in fetched {
-				let key = items[idx].url.absoluteString
+			func apply(_ index: Int, _ repo: ASRepository?) {
+				let key = items[index].url.absoluteString
 				if let repo {
-					working[items[idx].source] = repo
+					working[items[index].source] = repo
 					refreshFailures.remove(key)
 				} else {
 					refreshFailures.insert(key)
 				}
+				sources = working
 			}
 
-			self.sources = working
+			while next < requests.count {
+				// Child tasks touch only Sendable values, never the NSManagedObject.
+				let index = next
+				let request = requests[index]
+				next += 1
+
+				group.addTask {
+					let repo: ASRepository? = await withCheckedContinuation { continuation in
+						service.fetch(from: request.requestURL, headers: request.headers, onData: { data in
+							if let cacheURL = request.cacheURL { SourceCache.store(data, for: cacheURL) }
+						}) { (result: RepositoryDataHandler) in
+							switch result {
+							case .success(let repo):
+								continuation.resume(returning: repo)
+							case .failure(let error):
+								Logger.misc.error("Source fetch FAILED \(request.url.absoluteString, privacy: .public): \(error.localizedDescription, privacy: .public)")
+								continuation.resume(returning: nil)
+							}
+						}
+					}
+					return (index, repo)
+				}
+
+				// Wait for one to finish before starting another.
+				guard next >= maxInFlight, let finished = await group.next() else { continue }
+				apply(finished.0, finished.1)
+			}
+
+			for await finished in group {
+				apply(finished.0, finished.1)
+			}
 		}
 
 		Logger.misc.info("fetchSources DONE: \(working.count, privacy: .public)/\(items.count, privacy: .public) loaded")

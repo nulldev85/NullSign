@@ -379,6 +379,9 @@ struct LibraryView: View {
         } primaryAction: {
             _checkForUpdates()
         }
+        // Toolbar menus don't always redraw their label when state changes,
+        // which left the spinner running after the check finished.
+        .id(_isCheckingForUpdates)
     }
 
     private var _updateCheckTitle: String {
