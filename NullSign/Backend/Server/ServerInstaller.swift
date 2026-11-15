@@ -54,6 +54,12 @@ class ServerInstaller: Identifiable, ObservableObject {
 		backgroundTaskManager?.stop()
 	}
 	
+	/// Lets the app sleep: the payload has been handed over.
+	func endKeepAlive() {
+		backgroundTaskManager?.stop()
+		backgroundTaskManager = nil
+	}
+
 	private func _configureRoutes() throws {
 		_server?.get("*") { [weak self] req in
 			guard let self else { return Response(status: .badGateway) }

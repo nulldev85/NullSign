@@ -242,6 +242,9 @@ final class AppInstaller: ObservableObject {
 			_disarmDeclineWatch()
 		case .installing where _usesServer:
 			_startProgressPolling()
+			if app.identifier == Bundle.main.bundleIdentifier {
+				_stepAsideForSelfUpdate()
+			}
 		case .completed(let result):
 			_progressTask?.cancel()
 			_progressTask = nil
@@ -348,6 +351,18 @@ final class AppInstaller: ObservableObject {
 
 	private static func error(_ message: String) -> Error {
 		NSError(domain: "Install", code: -1, userInfo: [NSLocalizedDescriptionKey: message])
+	}
+
+	/// iOS replaces an app only once it's off the screen. When NullSign is
+	/// installing its own update, the new version has been handed over by
+	/// now, so it stops keeping itself awake and goes to the Home Screen; iOS
+	/// then closes it and puts the new version in its place.
+	private func _stepAsideForSelfUpdate() {
+		FileLogger.log("stepping aside for NullSign's own update", category: "install")
+		_server?.endKeepAlive()
+		DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+			UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
+		}
 	}
 
 	// MARK: Progress
