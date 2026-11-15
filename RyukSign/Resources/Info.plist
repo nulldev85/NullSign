@@ -176,6 +176,7 @@
 			<string>thewonderofyou.Feather</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>nullsign</string>
 				<string>feather</string>
 			</array>
 		</dict>

@@ -150,7 +150,8 @@ struct RyukSignApp: App {
     }
 	
 	private func _handleURL(_ url: URL) {
-		if url.scheme == "feather" {
+		// nullsign:// is NullSign's own scheme; feather:// stays for Feather-style links.
+		if url.scheme == "nullsign" || url.scheme == "feather" {
 			/// feather://import-certificate?p12=<base64>&mobileprovision=<base64>&password=<base64>
 			if url.host == "import-certificate" {
 				guard
@@ -243,31 +244,48 @@ struct RyukSignApp: App {
 		} else {
 			let ext = url.pathExtension.lowercased()
 			if ext == "ipa" || ext == "tipa" {
-				// Handle file import using NSFileCoordinator for proper access control
-				let tempDir = FileManager.default.uniqueTemporaryDirectory("FeatherShared")
-				let destinationURL = tempDir.appendingPathComponent(url.lastPathComponent)
+				_importSharedPackage(url)
+				return
+			}
 
-				let didStartAccessing = url.startAccessingSecurityScopedResource()
+			// Tweak files shared into the app (Open in / share sheet / AirDrop) → Tweak Manager.
+			let tweakExtensions: Set<String> = ["dylib", "deb", "framework", "bundle", "zip"]
+			if tweakExtensions.contains(ext) {
+				_importSharedTweak(url)
+				return
+			}
+		}
+	}
 
-				let coordinator = NSFileCoordinator()
-				var coordinatorError: NSError?
+	/// Imports an IPA or TIPA opened from Files or shared from another app. The
+	/// file is copied into the app first, while access to it is granted, and the
+	/// copy is imported. The copy runs off the main thread: a large file, or one
+	/// iCloud still has to download, kept the app frozen until it arrived.
+	private func _importSharedPackage(_ url: URL) {
+		let tempDir = FileManager.default.uniqueTemporaryDirectory("FeatherShared")
+		let destinationURL = tempDir.appendingPathComponent(url.lastPathComponent)
 
-				var copyError: Error?
-				coordinator.coordinate(readingItemAt: url, options: .withoutChanges, error: &coordinatorError) { sourceURL in
-					do {
-						try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-						try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
-					} catch {
-						copyError = error
-					}
+		DispatchQueue.global(qos: .userInitiated).async {
+			let didStartAccessing = url.startAccessingSecurityScopedResource()
+			defer { if didStartAccessing { url.stopAccessingSecurityScopedResource() } }
+
+			var coordinatorError: NSError?
+			var copyError: Error?
+			NSFileCoordinator().coordinate(readingItemAt: url, options: .withoutChanges, error: &coordinatorError) { sourceURL in
+				do {
+					try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+					try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
+				} catch {
+					copyError = error
 				}
+			}
+			let copied = FileManager.default.fileExists(atPath: destinationURL.path)
+			let failedCopy = copyError
+			let failedRead: Error? = coordinatorError
 
-				if didStartAccessing {
-					url.stopAccessingSecurityScopedResource()
-				}
-
+			DispatchQueue.main.async {
 				// Surface the real reason the staged copy failed, if any.
-				if let error = copyError {
+				if let error = failedCopy {
 					UIAlertController.showErrorWithCopy(
 						title: .localized("Import Failed"),
 						message: "Could not copy the shared file into the app.\n\nFile: \(url.lastPathComponent)\nReason: \(error.localizedDescription)"
@@ -275,7 +293,7 @@ struct RyukSignApp: App {
 					return
 				}
 
-				if let error = coordinatorError {
+				if let error = failedRead {
 					UIAlertController.showErrorWithCopy(
 						title: .localized("Import Failed"),
 						message: "Could not read the shared file. The other app may have denied access.\n\nFile: \(url.lastPathComponent)\nReason: \(error.localizedDescription)"
@@ -283,7 +301,7 @@ struct RyukSignApp: App {
 					return
 				}
 
-				guard FileManager.default.fileExists(atPath: destinationURL.path) else {
+				guard copied else {
 					UIAlertController.showErrorWithCopy(
 						title: .localized("Import Failed"),
 						message: "The shared file could not be copied into the app. It may be inaccessible, or storage may be full.\n\nFile: \(url.lastPathComponent)"
@@ -303,15 +321,6 @@ struct RyukSignApp: App {
 						Toast.success(.localized("Imported successfully"), systemImage: "square.and.arrow.down.fill")
 					}
 				}
-
-				return
-			}
-
-			// Tweak files shared into the app (Open in / share sheet / AirDrop) → Tweak Manager.
-			let tweakExtensions: Set<String> = ["dylib", "deb", "framework", "bundle", "zip"]
-			if tweakExtensions.contains(ext) {
-				_importSharedTweak(url)
-				return
 			}
 		}
 	}

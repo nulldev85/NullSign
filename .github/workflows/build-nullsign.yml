@@ -10,9 +10,8 @@ permissions:
 
 jobs:
   build:
-    # iPhone Duo's inner display only runs an app full screen when it is built
-    # with the iOS 27.1 SDK; older SDKs get a letterboxed window. GitHub's
-    # Xcode images are per major version, so this one carries Xcode 27.x.
+    # iPhone Duo's inner display runs an app full screen only when it is built
+    # with the iOS 27.1 SDK. GitHub's Xcode images are per major version.
     runs-on: xcode-27
     timeout-minutes: 45
 
@@ -27,58 +26,17 @@ jobs:
         with:
           xcode-version: '27.1'
 
-      - name: Apply pinned Zsign fixes
-        run: python3 Tools/prepare-zsign.py
-
-      - name: Select OpenSSL 3 for native regression tests
-        run: |
-          brew install openssl@3
-          echo "OPENSSL_PREFIX=$(brew --prefix openssl@3)" >> "$GITHUB_ENV"
-
-      - name: Test native resource sealing and signing failure handling
-        run: |
-          python3 Tools/test-zsign-patches.py
-          python3 Tools/test-zsign-resources.py
-          python3 Tools/test-certificate-import.py
-          python3 Tools/test-app-import.py
-          xcrun swiftc Feather/Backend/Storage/Storage+Shared.swift Tools/Fixtures/LibraryDeletionTests.swift -o "$RUNNER_TEMP/test-library-deletion"
-          "$RUNNER_TEMP/test-library-deletion"
-          python3 Tools/test-zsign-handler.py
-          python3 Tools/test-one-tap-install.py
-          python3 Tools/test-install-observation.py
-          python3 Tools/test-ar-decompression.py
-          xcrun swiftc Feather/Utilities/AnyCodable.swift Feather/Utilities/CertificateReader/Models/CertificateModel.swift Tools/test-certificate-profile.swift -o "$RUNNER_TEMP/test-certificate-profile"
-          "$RUNNER_TEMP/test-certificate-profile"
-
-      - name: Set up typography check runtime
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Verify SF Rounded coverage
-        run: node Tools/check-typography.mjs --self-test
-
-      - name: Verify icon styling
-        run: node Tools/check-icon-style.mjs
-
-      - name: Verify shared Settings palette
-        run: node Tools/check-color-scheme.mjs
-
-      - name: Verify tvOS icon selection
-        run: |
-          node Tools/check-tvos-icon-policy.mjs
-          xcrun swiftc Feather/Utilities/TVIconSelection.swift Tools/test-tvos-icon-selection.swift -o "$RUNNER_TEMP/test-tvos-icon-selection"
-          "$RUNNER_TEMP/test-tvos-icon-selection"
-
-      - name: Verify app icon assets
-        run: node Tools/check-app-icon.mjs
-
+      # NullSign 2.0 is built on RyukSign's project (RyukSign.xcodeproj); the
+      # app it produces is NullSign: com.elmat.NullSign, named NullSign.
       - name: Build unsigned NullSign IPA
+        shell: bash
         run: |
-          cmp -s Feather/Resources/NullSignBlue.icon/Assets/nullsign.png Feather/Resources/Assets.xcassets/NullSignBlue.appiconset/nullsign.png
-          make iphoneos
+          set -euo pipefail
+          make
+          cp packages/RyukSign.ipa packages/NullSign-unsigned.ipa
 
       - name: Verify IPA structure
+        id: verify
         shell: bash
         run: |
           set -euo pipefail
@@ -87,30 +45,40 @@ jobs:
           unzip -q packages/NullSign-unsigned.ipa -d "$workdir"
           plist_count="$(find "$workdir/Payload" -mindepth 2 -maxdepth 2 -type f -path '*.app/Info.plist' | wc -l | tr -d ' ')"
           test "$plist_count" -eq 1
-          plist_path="$(find "$workdir/Payload" -mindepth 2 -maxdepth 2 -type f -path '*.app/Info.plist')"
-          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist_path"
+          plist="$(find "$workdir/Payload" -mindepth 2 -maxdepth 2 -type f -path '*.app/Info.plist')"
+          app_dir="$(dirname "$plist")"
 
-          expected_version="$(sed -nE 's/^NULLSIGN_MARKETING_VERSION[[:space:]]*=[[:space:]]*([^[:space:]]+).*$/\1/p' NullSign.xcconfig)"
-          expected_build="$(sed -nE 's/^NULLSIGN_BUILD_NUMBER[[:space:]]*=[[:space:]]*([^[:space:]]+).*$/\1/p' NullSign.xcconfig)"
-          actual_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist_path")"
-          actual_build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist_path")"
+          bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")"
+          name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$plist")"
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")"
+          build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")"
 
-          test -n "$expected_version"
-          test -n "$expected_build"
-          test "$actual_version" = "$expected_version"
-          test "$actual_build" = "$expected_build"
+          # Installs over NullSign 1.x, and updates compare numeric builds.
+          test "$bundle_id" = "com.elmat.NullSign"
+          test "$name" = "NullSign"
+          [[ "$version" =~ ^[0-9]+(\.[0-9]+)*$ ]]
+          [[ "$build" =~ ^[0-9]+$ ]]
 
-          icon_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName' "$plist_path")"
-          test "$icon_name" = "NullSignBlue"
-          node Tools/check-packaged-icon.mjs "$workdir/Payload/NullSign.app"
-          python3 Tools/test-ar-decompression.py --ipa packages/NullSign-unsigned.ipa
-          echo "Verified NullSign $actual_version ($actual_build)"
+          # Every extension must sit under NullSign's identifier.
+          if [ -d "$app_dir/PlugIns" ]; then
+            for appex in "$app_dir"/PlugIns/*.appex; do
+              ext_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$appex/Info.plist")"
+              echo "Extension: $ext_id"
+              [[ "$ext_id" == com.elmat.NullSign.* ]]
+            done
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "Verified NullSign $version ($build), $bundle_id"
 
       - name: Store manual IPA in draft test release
         if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
           TEST_TAG: test-${{ github.run_id }}-${{ github.run_attempt }}
+          VERSION: ${{ steps.verify.outputs.version }}
+          BUILD: ${{ steps.verify.outputs.build }}
         shell: bash
         run: |
           set -euo pipefail
@@ -120,36 +88,30 @@ jobs:
             cd packages
             shasum -a 256 NullSign-unsigned.ipa > NullSign-unsigned.ipa.sha256
           )
-          version="$(sed -nE 's/^NULLSIGN_MARKETING_VERSION[[:space:]]*=[[:space:]]*([^[:space:]]+).*$/\1/p' NullSign.xcconfig)"
-          build="$(sed -nE 's/^NULLSIGN_BUILD_NUMBER[[:space:]]*=[[:space:]]*([^[:space:]]+).*$/\1/p' NullSign.xcconfig)"
-          test -n "$version"
-          test -n "$build"
           {
             echo "Unpublished manual test IPA. Merge remains a separate decision."
             echo
-            echo "Version: $version ($build)"
+            echo "Version: $VERSION ($BUILD)"
             echo "Branch: $GITHUB_REF_NAME"
             echo "Commit: $GITHUB_SHA"
             echo "Build: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           } > "$RUNNER_TEMP/test-release-notes.md"
           gh release create "$TEST_TAG" "$ipa" packages/NullSign-unsigned.ipa.sha256 \
             --repo "$GITHUB_REPOSITORY" \
-            --title "NullSign $version ($build) — manual test $GITHUB_RUN_ID" \
+            --title "NullSign $VERSION ($BUILD) — manual test $GITHUB_RUN_ID" \
             --notes-file "$RUNNER_TEMP/test-release-notes.md" \
             --target "$GITHUB_SHA" \
             --draft \
             --latest=false
           test "$(gh release view "$TEST_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft')" = true
           release_url="$(gh release view "$TEST_TAG" --repo "$GITHUB_REPOSITORY" --json url --jq '.url')"
-          test -n "$release_url"
           {
-            echo "### NullSign $version ($build) test IPA"
+            echo "### NullSign $VERSION ($BUILD) test IPA"
             echo
             printf '[Download the test IPA](%s)\n' "$release_url"
             echo
             echo 'Open the draft release above and download `NullSign-unsigned.ipa`.'
             echo 'The draft is visible to repository maintainers and is not a public release.'
-            echo 'A SHA-256 checksum is attached alongside the IPA.'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish public source release from main
@@ -164,7 +126,7 @@ jobs:
           workdir="$(mktemp -d)"
           trap 'rm -rf "$workdir"' EXIT
           unzip -q "$ipa" -d "$workdir"
-          plist="$workdir/Payload/NullSign.app/Info.plist"
+          plist="$(find "$workdir/Payload" -mindepth 2 -maxdepth 2 -type f -path '*.app/Info.plist')"
           bundle_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")
           version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")
           build=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")

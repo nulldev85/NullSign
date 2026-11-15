@@ -4,7 +4,7 @@
 <dict>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.ryuk2.anoxclan.com</string>
+		<string>group.com.elmat.NullSign</string>
 	</array>
 	<key>com.apple.security.network.client</key>
 	<true/>

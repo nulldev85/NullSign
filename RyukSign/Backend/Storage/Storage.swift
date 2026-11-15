@@ -28,6 +28,7 @@ final class Storage: ObservableObject {
 		container.viewContext.automaticallyMergesChangesFromParent = true
 		container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
 		_migrateSortIndexIfNeeded()
+		_migrateOriginalIdentifierIfNeeded()
 	}
 	
 	var context: NSManagedObjectContext {
@@ -69,8 +70,9 @@ final class Storage: ObservableObject {
 
 	private func _loadPersistentStoreAggressively() {
 		container.loadPersistentStores { description, error in
-			if error != nil {
-				self._destroyStore(at: description.url)
+			if let error {
+				Logger.misc.error("CoreData store failed to load, setting it aside: \(error.localizedDescription)")
+				self._setAsideStore(at: description.url)
 				self.container.loadPersistentStores { _, error in
 					if let error {
 						fatalError("Core Data unrecoverable: \(error)")
@@ -78,6 +80,30 @@ final class Storage: ObservableObject {
 				}
 			}
 		}
+	}
+
+	// Libraries from NullSign 1.x have no originalIdentifier; the model gives
+	// them an empty one so they migrate. Fill in the bundle identifier, which
+	// is what an app imported or signed since then records.
+	private func _migrateOriginalIdentifierIfNeeded() {
+		let key = "nullsign.originalIdentifierMigrated"
+		guard !UserDefaults.standard.bool(forKey: key) else { return }
+
+		let empty = NSPredicate(format: "originalIdentifier == nil OR originalIdentifier == ''")
+		let signedRequest: NSFetchRequest<Signed> = Signed.fetchRequest()
+		signedRequest.predicate = empty
+		for app in (try? context.fetch(signedRequest)) ?? [] {
+			app.originalIdentifier = app.identifier
+		}
+
+		let importedRequest: NSFetchRequest<Imported> = Imported.fetchRequest()
+		importedRequest.predicate = empty
+		for app in (try? context.fetch(importedRequest)) ?? [] {
+			app.originalIdentifier = app.identifier
+		}
+
+		saveContext()
+		UserDefaults.standard.set(true, forKey: key)
 	}
 
 	// Backfills sortIndex from the old date-desc order so manual reordering starts stable
@@ -101,25 +127,24 @@ final class Storage: ObservableObject {
 		UserDefaults.standard.set(true, forKey: key)
 	}
 
-	private func _destroyStore(at url: URL?) {
+	/// A store that won't open is moved into a dated backup folder, never
+	/// deleted, and the app starts with an empty one. Library and certificate
+	/// files stay where they are, so nothing a person added is lost.
+	private func _setAsideStore(at url: URL?) {
 		guard let url else { return }
 
 		let base = url.deletingPathExtension()
 		let fm = FileManager.default
+		let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+		let backup = URL.documentsDirectory
+			.appendingPathComponent("Library Backups", isDirectory: true)
+			.appendingPathComponent(stamp, isDirectory: true)
+		try? fm.createDirectory(at: backup, withIntermediateDirectories: true)
 
-		let files = [
-			base.appendingPathExtension("sqlite"),
-			base.appendingPathExtension("sqlite-wal"),
-			base.appendingPathExtension("sqlite-shm")
-		]
-
-		for file in files {
-			try? fm.removeItem(at: file)
+		for ext in ["sqlite", "sqlite-wal", "sqlite-shm"] {
+			let file = base.appendingPathExtension(ext)
+			guard fm.fileExists(atPath: file.path) else { continue }
+			try? fm.moveItem(at: file, to: backup.appendingPathComponent(file.lastPathComponent))
 		}
-
-		try? FileManager.default.removeFileIfNeeded(at: FileManager.default.signed)
-		try? FileManager.default.removeFileIfNeeded(at: FileManager.default.unsigned)
-		try? FileManager.default.removeFileIfNeeded(at: FileManager.default.certificates)
-		UserDefaults.standard.set(0, forKey: "feather.selectedCert")
 	}
 }

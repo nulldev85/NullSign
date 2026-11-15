@@ -51,7 +51,11 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 	@Published var installProgress: Double = 0
 	@Published var presentUpdatePrompt = false
 
-	private let _repo = "faroukbmiled/RyukSign"
+	// NullSign 2.0 build A: NullSign's own self-update (from its AppSource
+	// feed) replaces this in a later build. Until then this checks NullSign's
+	// releases, whose source-<run> tags never parse as a version, so it never
+	// offers RyukSign (or anything) as an update.
+	private let _repo = "nulldev85/NullSign"
 	private let _perPage = 30
 
 	private enum Keys {

@@ -615,7 +615,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
 				COMPRESS_PNG_FILES = NO;
-				CURRENT_PROJECT_VERSION = 2dbf78cc8947292c963bcef71fbde7ffad2180b4;
+				CURRENT_PROJECT_VERSION = 53;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = S4Q99652S6;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 6HK6J39N3Q;
@@ -627,7 +627,7 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RyukSign/Resources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = RyukSign;
+				INFOPLIST_KEY_CFBundleDisplayName = NullSign;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright (c) 2024 Samara M";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "RyukSign uses your local network to transfer IPAs and tweaks to this device over the Web Manager server.";
@@ -651,8 +651,8 @@
 					"$(PROJECT_DIR)/RyukSign/Resources/idevice",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 4.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = ryuk2.anoxclan.com;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.elmat.NullSign;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "@all devices dist";
@@ -685,7 +685,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
 				COMPRESS_PNG_FILES = NO;
-				CURRENT_PROJECT_VERSION = 2dbf78cc8947292c963bcef71fbde7ffad2180b4;
+				CURRENT_PROJECT_VERSION = 53;
 				DEAD_CODE_STRIPPING = YES;
 				DEPLOYMENT_POSTPROCESSING = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
@@ -696,7 +696,7 @@
 				GCC_PREPROCESSOR_DEFINITIONS = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RyukSign/Resources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = RyukSign;
+				INFOPLIST_KEY_CFBundleDisplayName = NullSign;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright (c) 2024 Samara M";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "RyukSign uses your local network to transfer IPAs and tweaks to this device over the Web Manager server.";
@@ -720,8 +720,8 @@
 					"$(PROJECT_DIR)/RyukSign/Resources/idevice",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 4.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = ryuk2.anoxclan.com;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.elmat.NullSign;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "@all devices dist";
@@ -816,7 +816,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
 				COMPRESS_PNG_FILES = NO;
-				CURRENT_PROJECT_VERSION = 2dbf78cc8947292c963bcef71fbde7ffad2180b4;
+				CURRENT_PROJECT_VERSION = 53;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = S4Q99652S6;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 6HK6J39N3Q;
@@ -829,7 +829,7 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RyukSign/Resources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = RyukSign;
+				INFOPLIST_KEY_CFBundleDisplayName = NullSign;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright (c) 2024 Samara M";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "RyukSign uses your local network to transfer IPAs and tweaks to this device over the Web Manager server.";
@@ -853,8 +853,8 @@
 					"$(PROJECT_DIR)/RyukSign/Resources/idevice",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 4.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = ryuk2.anoxclan.com;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.elmat.NullSign;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "@all devices dist";
@@ -883,7 +883,7 @@
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Manual;
 				COMPRESS_PNG_FILES = NO;
-				CURRENT_PROJECT_VERSION = 2dbf78cc8947292c963bcef71fbde7ffad2180b4;
+				CURRENT_PROJECT_VERSION = 53;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
@@ -967,7 +967,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
 				COMPRESS_PNG_FILES = NO;
-				CURRENT_PROJECT_VERSION = 2dbf78cc8947292c963bcef71fbde7ffad2180b4;
+				CURRENT_PROJECT_VERSION = 53;
 				DEAD_CODE_STRIPPING = YES;
 				DEPLOYMENT_POSTPROCESSING = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
@@ -978,7 +978,7 @@
 				GCC_PREPROCESSOR_DEFINITIONS = "APPSTORE=1";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RyukSign/Resources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = RyukSign;
+				INFOPLIST_KEY_CFBundleDisplayName = NullSign;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright (c) 2024 Samara M";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "RyukSign uses your local network to transfer IPAs and tweaks to this device over the Web Manager server.";
@@ -1002,8 +1002,8 @@
 					"$(PROJECT_DIR)/RyukSign/Resources/idevice",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 4.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = ryuk2.anoxclan.com;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.elmat.NullSign;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "@all devices dist";
@@ -1031,7 +1031,7 @@
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Manual;
 				COMPRESS_PNG_FILES = NO;
-				CURRENT_PROJECT_VERSION = 2dbf78cc8947292c963bcef71fbde7ffad2180b4;
+				CURRENT_PROJECT_VERSION = 53;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
@@ -1058,12 +1058,12 @@
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 2dbf78cc8947292c963bcef71fbde7ffad2180b4;
+				CURRENT_PROJECT_VERSION = 53;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 6HK6J39N3Q;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RyukSignWidgetExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = RyukSignWidgetExtension;
+				INFOPLIST_KEY_CFBundleDisplayName = NullSign;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1071,8 +1071,8 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
-				PRODUCT_BUNDLE_IDENTIFIER = ryuk2.anoxclan.com.FeatherWidgetExtension;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.elmat.NullSign.FeatherWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "ryuksign widget";
@@ -1099,12 +1099,12 @@
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 2dbf78cc8947292c963bcef71fbde7ffad2180b4;
+				CURRENT_PROJECT_VERSION = 53;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 6HK6J39N3Q;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RyukSignWidgetExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = RyukSignWidgetExtension;
+				INFOPLIST_KEY_CFBundleDisplayName = NullSign;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1112,8 +1112,8 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
-				PRODUCT_BUNDLE_IDENTIFIER = ryuk2.anoxclan.com.FeatherWidgetExtension;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.elmat.NullSign.FeatherWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "ryuksign widget";
@@ -1140,12 +1140,12 @@
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 2dbf78cc8947292c963bcef71fbde7ffad2180b4;
+				CURRENT_PROJECT_VERSION = 53;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 6HK6J39N3Q;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RyukSignWidgetExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = RyukSignWidgetExtension;
+				INFOPLIST_KEY_CFBundleDisplayName = NullSign;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1153,8 +1153,8 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
-				PRODUCT_BUNDLE_IDENTIFIER = ryuk2.anoxclan.com.FeatherWidgetExtension;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.elmat.NullSign.FeatherWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "ryuksign widget";
@@ -1182,12 +1182,12 @@
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 2dbf78cc8947292c963bcef71fbde7ffad2180b4;
+				CURRENT_PROJECT_VERSION = 53;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 6HK6J39N3Q;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RyukSignWidgetExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = RyukSignWidgetExtension;
+				INFOPLIST_KEY_CFBundleDisplayName = NullSign;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1195,8 +1195,8 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
-				PRODUCT_BUNDLE_IDENTIFIER = ryuk2.anoxclan.com.FeatherWidgetExtension;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.elmat.NullSign.FeatherWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "ryuksign widget";
@@ -1223,7 +1223,7 @@
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Manual;
 				COMPRESS_PNG_FILES = NO;
-				CURRENT_PROJECT_VERSION = 2dbf78cc8947292c963bcef71fbde7ffad2180b4;
+				CURRENT_PROJECT_VERSION = 53;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
@@ -1248,7 +1248,7 @@
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Manual;
 				COMPRESS_PNG_FILES = NO;
-				CURRENT_PROJECT_VERSION = 2dbf78cc8947292c963bcef71fbde7ffad2180b4;
+				CURRENT_PROJECT_VERSION = 53;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;

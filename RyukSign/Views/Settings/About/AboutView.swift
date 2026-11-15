@@ -21,15 +21,16 @@ extension AboutView {
 struct AboutView: View {
 	// Hardcoded: upstream's creditsv2.json now 404s.
 	private let _credits: [CreditsModel] = [
-		.init(name: "Ryuk", desc: "RyukSign Developer", github: "faroukbmiled"),
+		.init(name: "nulldev85", desc: "NullSign Developer", github: "nulldev85"),
+		.init(name: "Ryuk", desc: "RyukSign — NullSign 2.0 is built on it", github: "faroukbmiled"),
 		.init(name: "claration", desc: "Feather — original project", github: "claration"),
 		.init(name: "Asami", desc: "Developer", github: "Nyasami"),
 		.init(name: "Lakhan Lothiyi", desc: "AltStore Repositories", github: "llsc12"),
 	]
 
-	private let _sourceURL = "https://github.com/faroukbmiled/RyukSign"
+	private let _sourceURL = "https://github.com/nulldev85/NullSign"
 	private let _upstreamURL = "https://github.com/claration/Feather"
-	private let _licenseURL = "https://github.com/faroukbmiled/RyukSign/blob/main/LICENSE"
+	private let _licenseURL = "https://github.com/nulldev85/NullSign/blob/main/LICENSE"
 
 	// MARK: Body
 	var body: some View {

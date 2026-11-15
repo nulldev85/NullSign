@@ -33,7 +33,7 @@ struct SourcesAddView: View {
 
 	@State var recommendedSourcesData: [(url: URL, data: ASRepository)] = []
 	let recommendedSources: [URL] = [
-		"https://raw.githubusercontent.com/faroukbmiled/RyukSign/refs/heads/main/app-repo.json",
+		"https://raw.githubusercontent.com/nulldev85/AppSource/main/apps.json",
 		"https://raw.githubusercontent.com/claration/Feather/refs/heads/main/app-repo.json",
 		"https://raw.githubusercontent.com/Aidoku/Aidoku/altstore/apps.json",
 		"https://github.com/chachillie/Flycast-iOS/raw/main/flycast-ios.json",
@@ -147,7 +147,8 @@ struct SourcesAddView: View {
 		Form {
 			sourceURLSection
 			importExportSection
-			premiumRyukSignSection
+			// NullSign removes RyukSign's premium sources (activated through
+			// RyukSign's server with a device ID); the section is never shown.
 			ryukReposSection
 			displaySection
 			featuredSection

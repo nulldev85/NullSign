@@ -97,7 +97,7 @@ class DownloadManager: NSObject, ObservableObject {
 
 		_foregroundSession = URLSession(configuration: foregroundConfig, delegate: self, delegateQueue: nil)
 
-		let backgroundConfig: URLSessionConfiguration = URLSessionConfiguration.background(withIdentifier: "ryuk2.anoxclan.com.background")
+		let backgroundConfig: URLSessionConfiguration = URLSessionConfiguration.background(withIdentifier: "com.elmat.NullSign.background")
 		backgroundConfig.isDiscretionary = false // don't wait for ideal conditions
 		backgroundConfig.sessionSendsLaunchEvents = true
 		backgroundConfig.shouldUseExtendedBackgroundIdleMode = false

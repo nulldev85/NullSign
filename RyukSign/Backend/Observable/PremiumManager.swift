@@ -46,7 +46,12 @@ final class PremiumManager: ObservableObject {
 		}.count
 	}
 
+	/// NullSign removes RyukSign's premium sources: nothing here ever contacts
+	/// RyukSign's server or sends a device ID.
+	static let isAvailable = false
+
 	func redeem(key: String) async throws -> Int {
+		guard Self.isAvailable else { throw PremiumError.unavailable }
 		guard let endpoint = URL(string: RyukSignAPI.apiValidateEndpoint) else {
 			throw PremiumError.message("Internal error: Invalid API URL configuration.")
 		}
@@ -71,6 +76,7 @@ final class PremiumManager: ObservableObject {
 	}
 
 	func restore() async throws -> Int {
+		guard Self.isAvailable else { throw PremiumError.unavailable }
 		isWorking = true
 		defer { isWorking = false }
 
@@ -82,6 +88,7 @@ final class PremiumManager: ObservableObject {
 	}
 
 	func recoverFromServer() async throws -> Int {
+		guard Self.isAvailable else { throw PremiumError.unavailable }
 		isWorking = true
 		defer { isWorking = false }
 
