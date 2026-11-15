@@ -16,6 +16,7 @@ struct ExtendedTabbarView: View {
 
     @ObservedObject private var tabSelection = TabSelectionObserver.shared
     @ObservedObject private var updateChecker = AppUpdateChecker.shared
+    @ObservedObject private var _selfUpdate = SelfUpdateManager.shared
     @ObservedObject private var _tweakManager = TweakManager.shared
     @ObservedObject private var _tabPrefs = TabBarPreferences.shared
     @AppStorage("Feather.showSourcesUpdateBadge") private var _showSourcesUpdateBadge: Bool = true
@@ -70,7 +71,7 @@ struct ExtendedTabbarView: View {
     }
 
     private func _badgeCount(for tab: TabEnum) -> Int {
-        if tab == .library && _showSourcesUpdateBadge { return updateChecker.updateCount } // NullSign shows updates on Signer
+        if tab == .library && _showSourcesUpdateBadge { return updateChecker.signerBadgeCount(selfUpdateAvailable: _selfUpdate.available != nil) } // NullSign shows updates, its own included, on Signer
         if tab == .tweaks { return _tweakManager.defaultInjectCount }
         return 0
     }

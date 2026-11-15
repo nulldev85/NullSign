@@ -19,6 +19,8 @@ struct LibraryView: View {
     @ObservedObject private var tabSelection = TabSelectionObserver.shared
     @ObservedObject private var _updateChecker = AppUpdateChecker.shared
     @ObservedObject private var _sourcesViewModel = SourcesViewModel.shared
+    @ObservedObject private var _selfUpdate = SelfUpdateManager.shared
+    @State private var _selfUpdateNotes: SelfUpdateRelease?
     @AppStorage("RyukSign.libraryShowsUpdates") private var _showsUpdates = true
     @Environment(\.accessibilityReduceMotion) private var _reduceMotion
     @State private var _updateRoute: UpdateRoute?
@@ -144,6 +146,14 @@ struct LibraryView: View {
                 .navigationDestination(isPresented: $_isCertificatesPresenting) {
                     CertificatesView()
                 }
+                .sheet(item: $_selfUpdateNotes) { release in
+                    SelfUpdateSheet(release: release)
+                }
+                .task {
+                    // As in NullSign 1.x, opening the Signer looks for a newer
+                    // NullSign (at most every six hours).
+                    await _selfUpdate.checkIfNeeded()
+                }
                 .sheet(item: $_updateRoute) { route in
                     NavigationStack {
                         UpdatePickerView(route: route)
@@ -218,6 +228,13 @@ struct LibraryView: View {
                     _isCertificatesPresenting = true
                 }
                 .nullSignListRow(top: 4, bottom: 6)
+
+                if let release = _selfUpdate.available {
+                    NullSignSelfUpdateBanner(selfUpdate: _selfUpdate, release: release) {
+                        _selfUpdateNotes = release
+                    }
+                    .nullSignListRow(top: 4, bottom: 6)
+                }
 
                 if _hasApps {
                     _libraryTools
@@ -376,7 +393,10 @@ struct LibraryView: View {
         guard !_isCheckingForUpdates else { return }
         _isCheckingForUpdates = true
         Task {
+            // NullSign's own update is checked alongside the library's.
+            async let ownUpdate: Void = _selfUpdate.check()
             await _sourcesViewModel.fetchSources(Storage.shared.getSources(), refresh: true)
+            await ownUpdate
             _isCheckingForUpdates = false
         }
     }

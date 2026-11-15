@@ -380,3 +380,12 @@ final class AppUpdateChecker: ObservableObject {
 			.compactMap { Int($0) }
 	}
 }
+
+// MARK: - Signer badge (NullSign)
+extension AppUpdateChecker {
+	/// Apps with an update, NullSign's own among them, each counted once.
+	func signerBadgeCount(selfUpdateAvailable: Bool) -> Int {
+		let ownAlreadyCounted = updates.contains { $0.id == SelfUpdateManager.sourceBundleIdentifier }
+		return updateCount + (selfUpdateAvailable && !ownAlreadyCounted ? 1 : 0)
+	}
+}

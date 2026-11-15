@@ -112,6 +112,13 @@ different format.
   pairing-only path are gone. NullSign checks on launch and again when it
   comes back, at most every six hours. Updates, All Versions and the update
   sheet show builds; ignored versions are kept per build.
+- From 2.0.0 (58), as in NullSign 1.x: while a newer NullSign is out, a
+  "NullSign X Is Out" card sits at the top of the Signer with a one-tap
+  Update (tap the card for what's new), and NullSign's own update counts in
+  the Signer tab's badge (once, even if the library also lists a NullSign
+  IPA). Opening the Signer checks at most every six hours, and Check for
+  Updates checks NullSign along with the library. The launch prompt
+  remains.
 - Add Source is NullSign's layout: a URL with Paste, and importing and
   copying source lists. The only featured source is NullSign's own, shown
   only after someone removes it so it can be added back. RyukSign's curated
