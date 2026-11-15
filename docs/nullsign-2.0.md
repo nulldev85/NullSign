@@ -118,7 +118,11 @@ different format.
   the Signer tab's badge (once, even if the library also lists a NullSign
   IPA). Opening the Signer checks at most every six hours, and Check for
   Updates checks NullSign along with the library. The launch prompt
-  remains.
+  remains. Once the update installs, the card, badge and prompt stop
+  offering it (NullSign normally restarts as the new version; if it keeps
+  running, the installed release is remembered until it does), and the
+  signed copy made for the update is removed from the Signer on the next
+  launch.
 - Add Source is NullSign's layout: a URL with Paste, and importing and
   copying source lists. The only featured source is NullSign's own, shown
   only after someone removes it so it can be added back. RyukSign's curated

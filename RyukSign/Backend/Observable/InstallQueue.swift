@@ -94,7 +94,10 @@ final class InstallQueue: ObservableObject {
 				UIActivityViewController.show(activityItems: [package])
 			}
 		case .success:
-			if let app = installer?.app { InstallCleanup.stage(app) }
+			if let app = installer?.app {
+				InstallCleanup.stage(app)
+				SelfUpdateManager.shared.installFinished(app)
+			}
 			_advanceAfterResult()
 		case .failure(let error):
 			_failures.append((installer?.app.name ?? .localized("App"), error))

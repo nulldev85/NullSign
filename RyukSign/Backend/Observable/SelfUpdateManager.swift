@@ -96,7 +96,15 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 		static let ignored = "Feather.selfUpdateIgnored"
 		static let certIndex = "Feather.selfUpdateCertIndex"
 		static let lastCheck = "Feather.selfUpdateLastCheck"
+		/// The signed copy of an update handed to the installer: its library
+		/// uuid, removed on the next launch.
+		static let pendingCopy = "NullSign.selfUpdatePendingCopy"
 	}
+
+	/// A release that installed while this NullSign kept running. Until iOS
+	/// relaunches the new version, it and anything older aren't offered.
+	private var _installed: SelfUpdateRelease?
+	private var _pendingRelease: SelfUpdateRelease?
 
 	private var _downloadContinuation: CheckedContinuation<URL, Error>?
 	private var _progressHandler: ((Double) -> Void)?
@@ -154,6 +162,7 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 
 	@MainActor
 	func checkOnLaunch() async {
+		_removeUpdateCopy()
 		guard isAutoCheckEnabled else { return }
 		await check()
 		if available != nil { presentUpdatePrompt = true }
@@ -193,7 +202,45 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 			available = nil
 			return
 		}
+		if let installed = _installed, !AppUpdateChecker.isNewerRelease(
+			candidate.version, build: candidate.build,
+			than: installed.version, installedBuild: installed.build
+		) {
+			available = nil
+			return
+		}
 		available = ignoredVersions.contains(candidate.label) ? nil : candidate
+	}
+
+	// MARK: - After an update
+
+	/// The install queue finished installing an app. When it's the update
+	/// NullSign signed for itself, the update is done: stop offering it.
+	@MainActor
+	func installFinished(_ app: AppInfoPresentable) {
+		guard
+			let pending = _pendingRelease,
+			let uuid = app.uuid,
+			uuid == UserDefaults.standard.string(forKey: Keys.pendingCopy)
+		else {
+			return
+		}
+		_installed = pending
+		_pendingRelease = nil
+		presentUpdatePrompt = false
+		phase = .idle
+		_recomputeAvailable()
+	}
+
+	/// The signed copy of an update only existed to install it. Once NullSign
+	/// is running again (updated, or not), it leaves the Signer.
+	@MainActor
+	private func _removeUpdateCopy() {
+		guard let uuid = UserDefaults.standard.string(forKey: Keys.pendingCopy) else { return }
+		UserDefaults.standard.removeObject(forKey: Keys.pendingCopy)
+		if let copy = Storage.shared.app(withUuid: uuid) {
+			Storage.shared.deleteApp(for: copy)
+		}
 	}
 
 	/// Every NullSign release in the app source, newest first.
@@ -304,6 +351,11 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 			// The signed copy is what installs; the download isn't kept.
 			Storage.shared.deleteApp(for: app)
 			imported = nil
+
+			// Replaces any copy left by an update that didn't install.
+			_removeUpdateCopy()
+			UserDefaults.standard.set(signed.uuid, forKey: Keys.pendingCopy)
+			_pendingRelease = release
 
 			phase = .done
 			InstallQueue.shared.enqueue(signed)
