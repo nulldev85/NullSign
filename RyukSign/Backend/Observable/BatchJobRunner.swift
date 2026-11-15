@@ -169,9 +169,11 @@ final class BatchJobRunner: ObservableObject {
 
 			let options = _overrides[items[index].id] ?? _options.resolved(for: app)
 			let icon = _icons[items[index].id]
+			// Apple TV apps in the batch use a tvOS certificate.
+			let certificate = Storage.shared.signingCertificate(for: app, chosen: _certificate)
 
 			let result = await withCheckedContinuation { (continuation: CheckedContinuation<Result<Signed, Error>, Never>) in
-				FR.signPackageFile(app, using: options, icon: icon, certificate: _certificate) { result in
+				FR.signPackageFile(app, using: options, icon: icon, certificate: certificate) { result in
 					continuation.resume(returning: result)
 				}
 			}

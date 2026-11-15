@@ -9,6 +9,7 @@ import SwiftUI
 import NimbleViews
 import Nuke
 import CoreData
+import IDeviceSwift
 
 // MARK: - View
 struct ResetView: View {
@@ -173,7 +174,11 @@ extension ResetView {
 	}
 	
 	static func resetCertificates(resetAll: Bool = false) {
-		if !resetAll { UserDefaults.standard.set(0, forKey: "feather.selectedCert") }
+		if !resetAll {
+			UserDefaults.standard.set(0, forKey: "feather.selectedCert")
+			UserDefaults.standard.removeObject(forKey: "feather.selectedCert.iOS")
+			UserDefaults.standard.removeObject(forKey: "feather.selectedCert.tvOS")
+		}
 		Storage.shared.clearContext(request: CertificatePair.fetchRequest())
 		try? FileManager.default.removeFileIfNeeded(at: FileManager.default.certificates)
 	}
@@ -190,6 +195,8 @@ extension ResetView {
 		deleteImportedApps()
 		resetTweaks()
 		resetCertificates(resetAll: true)
+		// Removes the saved Apple TV pairing too.
+		MainActor.assumeIsolated { AppleTVManager.shared.forget() }
 		resetUserDefaults()
 	}
 }

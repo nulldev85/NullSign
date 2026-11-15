@@ -67,24 +67,80 @@ final class FRIconCache {
 	}
 }
 
+/// Renders icons one at a time. IconServices is private API with no
+/// thread-safety guarantees, and a list appearing used to start one render
+/// per row at once.
+private actor FRIconRenderer {
+	static let shared = FRIconRenderer()
+
+	func render(bundleURL: URL, styled: Bool, isPad: Bool) -> UIImage? {
+		// The bundle can be deleted between a row appearing and this running;
+		// never hand IconServices a bundle that is no longer on disk.
+		guard let info = NSDictionary(contentsOf: bundleURL.appendingPathComponent("Info.plist")) as? [String: Any] else {
+			return nil
+		}
+
+		// An Apple TV app's icon is a layer stack in its asset catalog, which
+		// IconServices' iOS recipe can't read.
+		if TVIconSelection.isTVApp(info) {
+			return tvOSIcon(in: bundleURL, info: info)
+		}
+		let files = PhoneIconSelection.files(in: info, isPad: isPad)
+		if !styled, let bitmap = looseIcon(in: bundleURL, files: files) { return bitmap }
+		if let image = iconTest(bundleURL), image.size.width > 1, image.size.height > 1 { return image }
+		return styled ? looseIcon(in: bundleURL, files: files) : nil
+	}
+}
+
+/// Read the package's own bitmap renditions. Do not ask UIKit/IconServices to
+/// flatten a foreign tvOS layer stack, or substitute bundled copies of an icon.
+private func tvOSIcon(in bundleURL: URL, info: [String: Any]) -> UIImage? {
+	let names = TVIconSelection.assetNames(in: info)
+	if let image = tvOSIconTest(bundleURL, names), image.size.width > 1 {
+		return image
+	}
+
+	return looseIcon(in: bundleURL, files: names.flatMap { TVIconSelection.looseFileNames(for: $0) })
+}
+
+private func looseIcon(in bundleURL: URL, files: [String]) -> UIImage? {
+	let root = bundleURL.standardizedFileURL.resolvingSymlinksInPath().path + "/"
+	for file in files {
+		let url = bundleURL.appendingPathComponent(file).standardizedFileURL.resolvingSymlinksInPath()
+		guard url.path.hasPrefix(root) else { continue }
+		if let image = UIImage(contentsOfFile: url.path), image.size.width > 1, image.size.height > 1 {
+			return image
+		}
+	}
+	return nil
+}
+
 @MainActor
 final class FRAppIconLoader: ObservableObject {
 	@Published var image: UIImage?
 	private var task: Task<Void, Never>?
+	private var representedRequest: String?
 
 	func load(bundleURL: URL, appearance: FRIconAppearance, tint: String, isTinted: Bool, dynamic: Bool) {
+		let request = "\(bundleURL.path)#\(appearance.rawValue)#\(tint)#\(isTinted)#\(dynamic)"
+		task?.cancel()
+		// A reused row must not keep showing the previous app's icon.
+		if representedRequest != request { image = nil }
+		representedRequest = request
+
 		if let cached = FRIconCache.shared.image(for: bundleURL, appearance: appearance, tint: tint, isTinted: isTinted, dynamic: dynamic) {
 			self.image = cached
 			return
 		}
 
-		task?.cancel()
 		task = Task {
-			let generated = await Task.detached(priority: .userInitiated) {
-				return iconTest(bundleURL)
-			}.value
+			let generated = await FRIconRenderer.shared.render(
+				bundleURL: bundleURL,
+				styled: isTinted || (dynamic && appearance == .dark),
+				isPad: UIDevice.current.userInterfaceIdiom == .pad
+			)
 
-			guard !Task.isCancelled else { return }
+			guard !Task.isCancelled, representedRequest == request else { return }
 
 			if let generated {
 				FRIconCache.shared.insert(generated, for: bundleURL, appearance: appearance, tint: tint, isTinted: isTinted, dynamic: dynamic)
@@ -141,7 +197,12 @@ struct FRAppIconView: View {
 
 	var body: some View {
 		Group {
-			if let image = loader.image ?? _cachedImage {
+			if app == nil {
+				// NullSign itself.
+				Image("NullSignBrand")
+					.renderingMode(.original)
+					.appIconStyle(size: size)
+			} else if let image = loader.image ?? _cachedImage {
 				Image(uiImage: image)
 					.appIconStyle(size: size)
 			} else {
@@ -149,8 +210,12 @@ struct FRAppIconView: View {
 					.appIconStyle(size: size)
 			}
 		}
-		.task(id: "\(appearance.rawValue)\(selectedColorHex)\(shouldTintIcons)\(shouldChangeIconsBasedOffStyle)") {
-			_load()
+		.task(id: "\(app?.uuid ?? "self")\(appearance.rawValue)\(selectedColorHex)\(shouldTintIcons)\(shouldChangeIconsBasedOffStyle)") {
+			if app != nil {
+				_load()
+			} else {
+				loader.cancel()
+			}
 		}
 		.onDisappear {
 			loader.cancel()

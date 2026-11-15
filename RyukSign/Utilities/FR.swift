@@ -47,6 +47,14 @@ enum FR {
 		certificate: CertificatePair?,
 		completion: @escaping (Result<Signed, Error>) -> Void
 	) {
+		// iOS won't install a tvOS app signed with a profile that lacks tvOS.
+		if let certificate, app.platform == .tvOS, !Storage.shared.certificate(certificate, supports: .tvOS) {
+			completion(.failure(NSError(domain: "Signing", code: -1, userInfo: [
+				NSLocalizedDescriptionKey: String.localized("This is an Apple TV app. Choose a certificate whose provisioning profile includes tvOS.")
+			])))
+			return
+		}
+
 		Task.detached {
 			let log = SigningLog.shared
 			log.reset()

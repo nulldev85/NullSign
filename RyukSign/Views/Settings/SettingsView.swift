@@ -17,6 +17,7 @@ import IDeviceSwift
 /// icons (Feather and RyukSign artwork) aren't part of NullSign.
 struct SettingsView: View {
     @ObservedObject private var _selfUpdate = SelfUpdateManager.shared
+    @ObservedObject private var _appleTV = AppleTVManager.shared
     @AppStorage("Feather.installationMethod") private var _installationMethod = 0
     @State private var _isCertificatesPresenting = false
 
@@ -91,6 +92,14 @@ extension SettingsView {
                 value: _installationMethod == 0 ? String.localized("Server") : String.localized("Pairing")
             ) {
                 InstallationView()
+            }
+            NullSignSettingsDivider()
+            _link(
+                .localized("Apple TV"),
+                systemImage: "appletv.fill",
+                value: _appleTV.pairedDevice?.name ?? String.localized("Not Paired")
+            ) {
+                AppleTVPairingView()
             }
         }
     }

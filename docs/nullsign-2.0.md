@@ -14,7 +14,7 @@ unchanged so every NullSign change is its own diff.
    2.0.0 (55)).
 3. NullSign's app updates, self-update and source parsing (build C,
    2.0.0 (56)).
-4. Apple TV signing, installing and pairing.
+4. Apple TV signing, installing and pairing (build D, 2.0.0 (57)).
 
 ## Build A: identity and users' data
 
@@ -122,3 +122,31 @@ different format.
 - About is NullSign 1.x's: version and build, NullSign's own updates,
   Feather's credits (claration and contributors, Nyasami, llsc12) and the
   GPL v3 license with a link to NullSign's source.
+
+## Build D: Apple TV
+
+- IDeviceKit is NullSign's fork (`nulldev85/IDeviceKit` at `a8e66f5`):
+  RyukSign's pinned `837cf1e` plus NullSign 1.x's Apple TV commits
+  (persistent pairing transport over Wi-Fi, hostname and IPv6 discovery,
+  six-digit PIN handshake, monotonic install progress) and idevice 0.1.66.
+  Zsign stays at RyukSign's pin, which already contains NullSign 1.x's.
+- Pairing: Settings > Apple TV (also in Installation) finds Apple TVs on the
+  same Wi-Fi, pairs with the six-digit code the TV shows and keeps the
+  pairing; Forget removes it, and Reset All forgets it too. No VPN, computer
+  or pairing file is needed. Info.plist declares the remote pairing Bonjour
+  services and the local network prompt.
+- Installing: tvOS apps install on the paired Apple TV over Wi-Fi, whatever
+  installation type iPhone apps use. NullSign checks for a paired, reachable
+  Apple TV before packaging, then points the device connection back at the
+  iPhone when it's done. The install card shows "On Apple TV" instead of Open.
+- Signing: iPhone apps keep the certificate selected in Certificates. Apple TV
+  apps use a certificate whose provisioning profile includes tvOS (the one
+  last used for tvOS, else the selected one if it covers tvOS, else the first
+  that does), in Sign, batch signing and auto-sign. Signing a tvOS app with a
+  profile that lacks tvOS stops with an explanation, and certificates that
+  cover tvOS carry a tvOS tag.
+- Icons: NullSign 1.x's icon renderer reads Apple TV apps' layered icons from
+  their asset catalogs, renders icons one at a time, and keeps RyukSign's
+  icon cache.
+- NullSign can install its own update with the Server installation type
+  again (RyukSign refused), as NullSign 1.x did; build C's self-update needs it.

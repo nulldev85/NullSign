@@ -85,7 +85,7 @@
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>RyukSign Backup</string>
+			<string>NullSign Backup</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
@@ -140,9 +140,13 @@
 	<array>
 		<string>_http._tcp</string>
 		<string>_webdav._tcp</string>
+		<string>_remotepairing-manual-pairing._tcp</string>
+		<string>_remotepairing._tcp</string>
 	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>NullSign uses your local network to pair with and install apps on your Apple TV, and to share files with Web Manager.</string>
 	<key>NSUserNotificationUsageDescription</key>
-	<string>RyukSign will notify you when downloads complete and are ready to import.</string>
+	<string>NullSign will notify you when downloads complete and are ready to import.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
@@ -163,7 +167,7 @@
 				<string>public.data</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>RyukSign Backup</string>
+			<string>NullSign Backup</string>
 			<key>UTTypeIcons</key>
 			<dict>
 				<key>UTTypeIconText</key>

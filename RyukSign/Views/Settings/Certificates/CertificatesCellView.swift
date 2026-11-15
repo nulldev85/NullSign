@@ -75,6 +75,11 @@ extension CertificatesCellView {
 			pills.append(NBPillItem(title: .localized("Revoked"), icon: "xmark.octagon", color: NullSignStyle.danger))
 		}
 		
+		// Profiles that can sign Apple TV apps.
+		if Storage.shared.certificate(cert, supports: .tvOS) {
+			pills.append(NBPillItem(title: "tvOS", icon: "appletv.fill", color: NullSignStyle.crimson))
+		}
+
 		if let info = cert.expiration?.expirationInfo() {
 			pills.append(NBPillItem(
 				title: info.formatted,

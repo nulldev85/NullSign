@@ -111,3 +111,56 @@ extension Storage {
 		return (try? context.fetch(fetchRequest)) ?? []
 	}
 }
+
+// MARK: - Platforms (NullSign)
+/// Apple TV apps are signed with a certificate whose provisioning profile
+/// includes tvOS. iPhone apps keep the certificate selected in Certificates;
+/// tvOS apps remember their own.
+extension Storage {
+	private static let _tvOSCertificateKey = "feather.selectedCert.tvOS"
+
+	func certificate(_ cert: CertificatePair, supports platform: AppPlatform) -> Bool {
+		guard let profile = getProvisionFileDecoded(for: cert) else { return false }
+		let platforms = profile.Platform.map { $0.lowercased() }
+		switch platform {
+		case .iOS:
+			return platforms.contains { $0.contains("ios") || $0.contains("iphone") }
+		case .tvOS:
+			return platforms.contains { $0.contains("tvos") || $0.contains("appletv") }
+		}
+	}
+
+	/// The index, newest first, of the certificate to sign an app for this
+	/// platform with.
+	func preferredCertificateIndex(for platform: AppPlatform) -> Int? {
+		let selected = UserDefaults.standard.integer(forKey: "feather.selectedCert")
+		let certificates = getAllCertificates()
+
+		guard platform == .tvOS else {
+			return certificates.indices.contains(selected) ? selected : nil
+		}
+
+		if let uuid = UserDefaults.standard.string(forKey: Self._tvOSCertificateKey),
+		   let index = certificates.firstIndex(where: { $0.uuid == uuid && certificate($0, supports: .tvOS) }) {
+			return index
+		}
+		if certificates.indices.contains(selected), certificate(certificates[selected], supports: .tvOS) {
+			return selected
+		}
+		return certificates.firstIndex { certificate($0, supports: .tvOS) }
+	}
+
+	/// Remembers the certificate chosen for tvOS apps.
+	func rememberCertificate(_ cert: CertificatePair, for platform: AppPlatform) {
+		guard platform == .tvOS, certificate(cert, supports: .tvOS), let uuid = cert.uuid else { return }
+		UserDefaults.standard.set(uuid, forKey: Self._tvOSCertificateKey)
+	}
+
+	/// The certificate to sign an app with: the chosen one when its profile
+	/// covers the app's platform, else that platform's preferred certificate.
+	func signingCertificate(for app: AppInfoPresentable, chosen: CertificatePair?) -> CertificatePair? {
+		guard app.platform == .tvOS else { return chosen }
+		if let chosen, certificate(chosen, supports: .tvOS) { return chosen }
+		return preferredCertificateIndex(for: .tvOS).flatMap(getCertificate(for:)) ?? chosen
+	}
+}

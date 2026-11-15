@@ -115,6 +115,13 @@ private struct InstallStatusView: View {
 				} message: {
 					Text(failure.message)
 				}
+			} else if viewModel.isCompleted, app.platform == .tvOS {
+				// tvOS apps open from the Apple TV's Home Screen.
+				Label(.localized("On Apple TV"), systemImage: "appletv.fill")
+					.font(.roundedUI(.footnote, weight: .bold))
+					.foregroundStyle(NullSignStyle.muted)
+					.padding()
+					.compatTransition()
 			} else if viewModel.isCompleted {
 				Button {
 					UIApplication.openApp(with: app.identifier ?? "")

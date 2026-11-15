@@ -50,7 +50,9 @@ struct SigningView: View {
 	
 	init(app: AppInfoPresentable) {
 		self.app = app
-		let storedCert = UserDefaults.standard.integer(forKey: "feather.selectedCert")
+		// Apple TV apps start on a tvOS certificate; iPhone apps on the selected one.
+		let storedCert = Storage.shared.preferredCertificateIndex(for: app.platform)
+			?? UserDefaults.standard.integer(forKey: "feather.selectedCert")
 		__temporaryCertificate = State(initialValue: storedCert)
 	}
 		
@@ -169,6 +171,12 @@ extension SigningView {
 					.font(.footnote)
 					.foregroundColor(.disabled())
 			}
+
+			if app.platform == .tvOS, let cert = _selectedCert(), !Storage.shared.certificate(cert, supports: .tvOS) {
+				Label(.localized("This certificate's profile doesn't include tvOS. Choose one that does to sign this Apple TV app."), systemImage: "exclamationmark.triangle.fill")
+					.font(.footnote)
+					.foregroundStyle(NullSignStyle.warning)
+			}
 		}
 	}
 	
@@ -186,6 +194,10 @@ extension SigningView {
 				isCancel: true
 			)
 			return
+		}
+
+		if let certificate = _selectedCert() {
+			Storage.shared.rememberCertificate(certificate, for: app.platform)
 		}
 
 		NBHaptic.tap()

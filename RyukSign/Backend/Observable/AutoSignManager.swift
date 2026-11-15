@@ -41,7 +41,7 @@ final class AutoSignManager {
 
 	private static func _perform(_ app: AppInfoPresentable) async -> Result<Signed, Error> {
 		let options = Options.batchBase.resolved(for: app)
-		let certificate = _certificate()
+		let certificate = Storage.shared.signingCertificate(for: app, chosen: _certificate())
 
 		guard options.signingOption != .default || certificate != nil else {
 			return .failure(AutoSignError.noCertificate)

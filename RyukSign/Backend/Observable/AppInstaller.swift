@@ -24,6 +24,9 @@ final class AppInstaller: ObservableObject {
 	@Published var fallbackPage: URL?
 
 	private let _isSharing: Bool
+	/// tvOS apps install on the paired Apple TV over Wi-Fi, whatever method
+	/// iPhone apps use.
+	private let _isAppleTV: Bool
 	private let _installationMethod = UserDefaults.standard.integer(forKey: "Feather.installationMethod")
 	private let _serverMethod = UserDefaults.standard.integer(forKey: "Feather.serverMethod")
 	private let _useShareSheet = UserDefaults.standard.bool(forKey: "Feather.useShareSheetForArchiving")
@@ -42,12 +45,17 @@ final class AppInstaller: ObservableObject {
 	init(app: AppInfoPresentable, isSharing: Bool = false) {
 		self.app = app
 		self._isSharing = isSharing
-		self.viewModel = InstallerStatusViewModel(isIdevice: _installationMethod == 1)
+		let isAppleTV = !isSharing && app.platform == .tvOS
+		self._isAppleTV = isAppleTV
+		self.viewModel = InstallerStatusViewModel(isIdevice: isAppleTV || _installationMethod == 1)
 
-		if !isSharing, _installationMethod == 0 {
+		if !isSharing, !isAppleTV, _installationMethod == 0 {
 			_server = try? ServerInstaller(app: app, viewModel: viewModel)
 		}
 	}
+
+	/// iPhone apps installed through the local server and iOS's install prompt.
+	private var _usesServer: Bool { !_isAppleTV && _installationMethod == 0 }
 
 	deinit {
 		_archive?.cleanup()
@@ -60,10 +68,9 @@ final class AppInstaller: ObservableObject {
 		guard _completion == nil, !_hasFinished else { return }
 		_completion = completion
 
-		guard _isSharing || app.identifier != Bundle.main.bundleIdentifier! || _installationMethod == 1 else {
-			_finish(.failure(Self.error(.localized("You cannot update '%@' with itself, please use an alternative tool to update it.", arguments: Bundle.main.name))))
-			return
-		}
+		// NullSign can install its own update: the package is served before iOS
+		// closes NullSign to replace it, and if anything fails iOS keeps the
+		// installed version.
 
 		_statusObserver = viewModel.$status
 			.receive(on: DispatchQueue.main)
@@ -102,6 +109,11 @@ final class AppInstaller: ObservableObject {
 		defer { keepAlive.stop() }
 
 		do {
+			// Fail before packaging when no Apple TV is paired or reachable.
+			if _isAppleTV {
+				try AppleTVManager.shared.prepareForInstall()
+			}
+
 			let (packageUrl, exported) = try await _package()
 
 			guard !_isSharing else {
@@ -109,11 +121,18 @@ final class AppInstaller: ObservableObject {
 				return
 			}
 
-			switch _installationMethod {
-			case 1:
+			if _isAppleTV {
+				FileLogger.log("installing \(app.identifier ?? "?") on Apple TV \(AppleTVManager.shared.pairedDevice?.name ?? "?")", category: "install")
+				try await InstallationProxy(viewModel: viewModel).install(at: packageUrl, suspend: false)
+			} else if _installationMethod == 1 {
+				// An Apple TV install leaves the connection pointed at the TV.
+				if HeartbeatManager.shared.isAppleTVTarget {
+					HeartbeatManager.shared.usePhoneTarget()
+					HeartbeatManager.shared.start(true)
+				}
 				try await InstallationProxy(viewModel: viewModel)
 					.install(at: packageUrl, suspend: app.identifier == Bundle.main.bundleIdentifier!)
-			default:
+			} else {
 				await _serveForOTA(packageUrl)
 			}
 		} catch {
@@ -171,7 +190,7 @@ final class AppInstaller: ObservableObject {
 
 	private func _handle(_ status: InstallerStatusViewModel.InstallerStatus) {
 		switch status {
-		case .ready where _installationMethod == 0:
+		case .ready where _usesServer:
 			_armDeclineWatch()
 			_openInstall(_serverMethod == 0 ? _server?.iTunesLink : _server?.iTunesLinkExternal)
 		case .sendingManifest where _progressTask == nil:
@@ -179,7 +198,7 @@ final class AppInstaller: ObservableObject {
 		case .sendingPayload:
 			fallbackPage = nil
 			_disarmDeclineWatch()
-		case .installing where _installationMethod == 0:
+		case .installing where _usesServer:
 			_startProgressPolling()
 		case .completed(let result):
 			_progressTask?.cancel()
@@ -264,6 +283,10 @@ final class AppInstaller: ObservableObject {
 	private func _finish(_ result: Result<Outcome, Error>) {
 		guard !_hasFinished else { return }
 		_hasFinished = true
+		if _isAppleTV, HeartbeatManager.shared.isAppleTVTarget {
+			// Point the device connection back at this iPhone.
+			HeartbeatManager.shared.usePhoneTarget()
+		}
 		_disarmDeclineWatch()
 		_statusObserver = nil
 		fallbackPage = nil

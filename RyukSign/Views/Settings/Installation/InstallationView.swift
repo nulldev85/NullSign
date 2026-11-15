@@ -7,10 +7,12 @@
 
 import SwiftUI
 import NimbleViews
+import IDeviceSwift
 
 // MARK: - View
 struct InstallationView: View {
 	@AppStorage("Feather.installationMethod") private var _installationMethod: Int = 0
+	@ObservedObject private var _appleTV = AppleTVManager.shared
 	@State private var _showMethodChangedAlert = false
 
 	private let _installationMethods: [String] = [
@@ -29,6 +31,22 @@ struct InstallationView: View {
 				}
 			} footer: {
 				Text(.localized("Server (Recommended):\nUses a locally hosted server and itms-services:// to install applications.\n\nIDevice (advanced):\nUses a VPN and a pairing file. Writes to AFC and manually calls installd, while monitoring install progress by using a callback\nAdvantage: It is very reliable, does not need SSL certificates or a externally hosted server. Rather, works similarly to a computer."))
+			}
+			.listRowBackground(NullSignStyle.groupedSurface)
+
+			Section {
+				NavigationLink {
+					AppleTVPairingView()
+				} label: {
+					HStack {
+						Label(.localized("Apple TV"), systemImage: "appletv.fill")
+						Spacer()
+						Text(_appleTV.pairedDevice?.name ?? String.localized("Not Paired"))
+							.foregroundStyle(.secondary)
+					}
+				}
+			} footer: {
+				Text(.localized("tvOS apps always install on your paired Apple TV over Wi-Fi, whichever installation type iPhone apps use."))
 			}
 			.listRowBackground(NullSignStyle.groupedSurface)
 			
