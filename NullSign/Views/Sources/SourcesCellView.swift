@@ -108,12 +108,12 @@ extension SourcesCellView {
 					.controlSize(.mini)
 			} else {
 				Circle()
-					.fill(_repository == nil ? NullSignStyle.danger : NullSignStyle.success)
+					.fill(_repository == nil ? NullSignStyle.danger : (_isOutOfDate ? NullSignStyle.warning : NullSignStyle.success))
 					.frame(width: 6, height: 6)
 			}
 			Text(_statusText)
 				.font(.roundedUI(.caption))
-				.foregroundStyle(_repository == nil && _viewModel.isFinished ? NullSignStyle.danger : NullSignStyle.muted)
+				.foregroundStyle(_repository == nil && _viewModel.isFinished ? NullSignStyle.danger : (_isOutOfDate ? NullSignStyle.warning : NullSignStyle.muted))
 				.lineLimit(1)
 			if _isExcluded {
 				Text("· \(String.localized("Hidden from All"))")
@@ -124,9 +124,18 @@ extension SourcesCellView {
 		}
 	}
 
+	/// Showing a saved copy because the last refresh failed.
+	private var _isOutOfDate: Bool {
+		guard _repository != nil, let url = source.sourceURL?.absoluteString else { return false }
+		return _viewModel.refreshFailures.contains(url)
+	}
+
 	private var _statusText: String {
 		guard let repository = _repository else {
 			return _viewModel.isFinished ? "Couldn't load · pull to retry" : "Updating…"
+		}
+		if _isOutOfDate {
+			return String.localized("Couldn't refresh · showing saved copy")
 		}
 		return repository.apps.count == 1 ? "1 app" : "\(repository.apps.count.formatted()) apps"
 	}

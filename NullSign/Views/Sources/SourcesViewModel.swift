@@ -22,6 +22,9 @@ final class SourcesViewModel: ObservableObject {
 	/// `true` when no load is in progress (idle).
 	@Published var isFinished = true
 	@Published var sources: [AltSource: ASRepository] = [:]
+	/// Sources (by URL) whose last refresh failed. Their saved copy is still
+	/// shown, so the card says it's out of date.
+	@Published private(set) var refreshFailures: Set<String> = []
 
 	/// The single in-flight load. All loads are serialized through this.
 	private var currentFetchTask: Task<Void, Never>?
@@ -162,10 +165,13 @@ final class SourcesViewModel: ObservableObject {
 					let globalIndex = startIndex + offset
 					let url = item.url
 					let cacheURL = cacheEnabled ? url : nil
+					// A pull to refresh asks for a fresh file, past any server cache.
+					let requestURL = force ? SourceRefresh.freshURL(for: url) : url
+					let headers = force ? SourceRefresh.noCacheHeaders : [:]
 
 					group.addTask {
 						let repo: ASRepository? = await withCheckedContinuation { continuation in
-							service.fetch(from: url, onData: { data in
+							service.fetch(from: requestURL, headers: headers, onData: { data in
 								if let cacheURL { SourceCache.store(data, for: cacheURL) }
 							}) { (result: RepositoryDataHandler) in
 								switch result {
@@ -189,8 +195,12 @@ final class SourcesViewModel: ObservableObject {
 			}
 
 			for (idx, repo) in fetched {
+				let key = items[idx].url.absoluteString
 				if let repo {
 					working[items[idx].source] = repo
+					refreshFailures.remove(key)
+				} else {
+					refreshFailures.insert(key)
 				}
 			}
 
@@ -198,5 +208,29 @@ final class SourcesViewModel: ObservableObject {
 		}
 
 		Logger.misc.info("fetchSources DONE: \(working.count, privacy: .public)/\(items.count, privacy: .public) loaded")
+	}
+}
+
+// MARK: - Fresh refreshes
+/// Servers and CDNs can hand back a cached source for minutes after it
+/// changed. A pull to refresh asks past that.
+enum SourceRefresh {
+	static let noCacheHeaders = ["Cache-Control": "no-cache", "Pragma": "no-cache"]
+
+	/// GitHub's raw files, Gists and Pages are cached by their full address
+	/// and ignore a no-cache request, so a throwaway query gets a fresh copy.
+	/// Other hosts keep their address: some sign it, and a changed one fails.
+	static func freshURL(for url: URL) -> URL {
+		guard
+			let host = url.host?.lowercased(),
+			host == "raw.githubusercontent.com" || host == "gist.githubusercontent.com" || host.hasSuffix(".github.io"),
+			var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+		else {
+			return url
+		}
+		var items = components.queryItems ?? []
+		items.append(URLQueryItem(name: "nullsign-refresh", value: String(Int(Date().timeIntervalSince1970))))
+		components.queryItems = items
+		return components.url ?? url
 	}
 }
