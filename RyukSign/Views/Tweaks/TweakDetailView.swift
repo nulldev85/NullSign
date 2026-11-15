@@ -173,7 +173,7 @@ extension TweakDetailView {
 			} label: {
 				Label(.localized("Share"), systemImage: "square.and.arrow.up")
 			}
-			.tint(.blue)
+			.tint(NullSignStyle.accent)
 		}
 		.contextMenu {
 			Button {

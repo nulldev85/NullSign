@@ -453,7 +453,7 @@ extension SourceAppsTableRepresentableView {
             highlightState.currentCell = cell
             
             UIView.animate(withDuration: 0.3, animations: {
-                cell.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.3)
+                cell.backgroundColor = UIColor(NullSignStyle.accent).withAlphaComponent(0.3)
             }) { [weak self] _ in
                 self?.highlightState.timer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { _ in
                     self?.highlightState.clear()

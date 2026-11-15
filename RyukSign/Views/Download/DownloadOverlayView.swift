@@ -99,8 +99,8 @@ struct DownloadOverlaySheetContent: View {
                                 }
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(isPaused ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                                .foregroundStyle(isPaused ? .green : .orange)
+                                .background(isPaused ? NullSignStyle.success.opacity(0.15) : NullSignStyle.warning.opacity(0.15))
+                                .foregroundStyle(isPaused ? NullSignStyle.success : NullSignStyle.warning)
                                 .clipShape(Capsule())
                             }
                             .buttonStyle(.plain)
@@ -125,8 +125,8 @@ struct DownloadOverlaySheetContent: View {
                                 }
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(Color.red.opacity(0.15))
-                                .foregroundStyle(.red)
+                                .background(NullSignStyle.danger.opacity(0.15))
+                                .foregroundStyle(NullSignStyle.danger)
                                 .clipShape(Capsule())
                             }
                             .buttonStyle(.plain)

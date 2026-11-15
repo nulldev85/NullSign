@@ -69,7 +69,7 @@ struct DownloadBubbleView: View {
                                     if model.summary.phase == .paused {
                                         Image(systemName: "pause.fill")
                                             .font(.system(size: 14))
-                                            .foregroundColor(.orange)
+                                            .foregroundColor(NullSignStyle.warning)
                                     } else {
                                         VStack(spacing: 0) {
                                             Text(verbatim: "\(Int(model.summary.progress * 100))")
@@ -91,7 +91,7 @@ struct DownloadBubbleView: View {
                                         .foregroundColor(.white)
                                         .padding(.horizontal, 4)
                                         .padding(.vertical, 2)
-                                        .background(Color.accentColor)
+                                        .background(NullSignStyle.accent)
                                         .clipShape(Capsule())
                                         .offset(x: 16, y: -16)
                                 }

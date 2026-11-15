@@ -54,9 +54,9 @@ struct MergedDownloadsView: View {
                             } label: {
                                 HStack {
                                     Image(systemName: "stop.circle.fill")
-                                        .foregroundColor(.red)
+                                        .foregroundColor(NullSignStyle.danger)
                                     Text(.localized("Stop All Downloads"))
-                                        .foregroundColor(.red)
+                                        .foregroundColor(NullSignStyle.danger)
                                     Spacer()
                                 }
                                 .padding(.horizontal, 16)

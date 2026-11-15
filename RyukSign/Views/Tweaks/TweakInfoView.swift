@@ -69,7 +69,7 @@ struct TweakInfoView: View {
 	@ViewBuilder
 	private func _sections(_ a: TweakAnalysis) -> some View {
 		NBSection(title) {
-			_line(systemImage: a.fileType.systemImage, title: a.summary, tint: .accentColor)
+			_line(systemImage: a.fileType.systemImage, title: a.summary, tint: NullSignStyle.accent)
 			if !a.placement.isEmpty {
 				_line(systemImage: "mappin.and.ellipse", title: a.placement, tint: .secondary, small: true)
 			}
@@ -86,7 +86,7 @@ struct TweakInfoView: View {
 		if !a.warnings.isEmpty || !a.notes.isEmpty {
 			NBSection(.localized("Notes")) {
 				ForEach(a.warnings, id: \.self) { w in
-					_line(systemImage: "exclamationmark.triangle.fill", title: w, tint: .orange, small: true)
+					_line(systemImage: "exclamationmark.triangle.fill", title: w, tint: NullSignStyle.warning, small: true)
 				}
 				ForEach(a.notes, id: \.self) { n in
 					_line(systemImage: "info.circle", title: n, tint: .secondary, small: true)
@@ -149,8 +149,8 @@ struct TweakInfoView: View {
 	private func _dependencyRow(_ dep: TweakDependency) -> some View {
 		let (icon, tint): (String, Color) = {
 			switch dep.satisfiedByApp {
-			case .some(true): return ("checkmark.circle.fill", .green)
-			case .some(false): return (dep.critical ? "xmark.circle.fill" : "exclamationmark.circle", dep.critical ? .red : .orange)
+			case .some(true): return ("checkmark.circle.fill", NullSignStyle.success)
+			case .some(false): return (dep.critical ? "xmark.circle.fill" : "exclamationmark.circle", dep.critical ? NullSignStyle.danger : NullSignStyle.warning)
 			case .none: return ("link.circle", .secondary)
 			}
 		}()

@@ -11,7 +11,7 @@ unchanged so every NullSign change is its own diff.
 
 1. Identity and users' data (build A, 2.0.0 (53)).
 2. NullSign's look: design system, typography, screens, tab bar (build B,
-   2.0.0 (54)).
+   2.0.0 (55)).
 3. NullSign's app updates, self-update and source parsing.
 4. Apple TV signing, installing and pairing.
 
@@ -59,12 +59,14 @@ different format.
 - NullSign 1.5.2's design system is copied in unchanged
   (`Views/Common/NullSign`, `SourceDesign.swift`, rounded fonts, platform
   badges, version labels): charcoal canvas, NullSign blue `#0094FF`, cards
-  and SF Rounded. The app is always dark; the light/dark choice is gone from
-  Appearance. NullSign blue is the default accent and the first swatch;
-  RyukSign's lavender stays as an option.
+  and SF Rounded. As in NullSign 1.x the app is always dark and always
+  NullSign blue, so Appearance has no light/dark or accent color choice.
+- Colors: the app's accent color asset is NullSign blue, and RyukSign's
+  system reds, oranges, greens, blues and the expiration colors use
+  NullSign's danger, warning, success and accent instead.
 - NullSign's app icon and in-app glyph replace RyukSign's. RyukSign's
   alternate icons (Feather and RyukSign artwork) and its donation card are
-  removed from Settings.
+  removed, along with the alternate icons' artwork.
 - Tab bar: Apps, Signer and Settings, with NullSign's symbols. RyukSign's
   Tweaks tab is hidden by default and can be shown in Settings > Tab Bar.
   The update count badge sits on Signer, where updates are listed.
@@ -78,9 +80,8 @@ different format.
   hide-from-All, sorting, selection and delete.
 - Settings: NullSign's identity card and card sections (Signing, App, Files,
   Maintenance, About) over RyukSign's settings screens.
-- Install: NullSign's install card (pulsing icon, status, progress bar, Open,
-  failure details) on RyukSign's install queue, which keeps cancel and the
-  queued-apps row.
+- Install: RyukSign's install card (the pulsing icon filled by a pie wedge
+  as it installs, cancel, the queued-apps row) in NullSign's colors.
 - Every other screen gets the charcoal page, grouped rows on NullSign's
   surface colour and rounded type: NimbleKit's `NBList` and `NBSection` carry
   the theme, and RyukSign's own lists and forms use `nullSignPage()`.

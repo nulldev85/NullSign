@@ -106,7 +106,7 @@ extension CertificatesView {
 			.overlay(
 				RoundedRectangle(cornerRadius: cornerRadius)
 					.strokeBorder(
-						_selectedCertBinding.wrappedValue == index ? Color.accentColor : Color.clear,
+						_selectedCertBinding.wrappedValue == index ? NullSignStyle.accent : Color.clear,
 						lineWidth: 2
 					)
 			)

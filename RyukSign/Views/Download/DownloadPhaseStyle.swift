@@ -12,10 +12,10 @@ extension DownloadPhase {
 	var tint: Color {
 		switch self {
 		case .queued: return .secondary
-		case .downloading: return .accentColor
-		case .paused: return .orange
+		case .downloading: return NullSignStyle.accent
+		case .paused: return NullSignStyle.warning
 		case .importing, .signing: return .userTintDeep
-		case .completed: return .green
+		case .completed: return NullSignStyle.success
 		}
 	}
 

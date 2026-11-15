@@ -146,7 +146,7 @@ struct CollapsedDownloadHeader: View {
                 if model.summary.phase == .paused {
                     Image(systemName: "pause.fill")
                         .font(.system(size: 10))
-                        .foregroundColor(.orange)
+                        .foregroundColor(NullSignStyle.warning)
                 } else {
                     Text(verbatim: "\(Int(model.summary.progress * 100))")
                         .font(.system(size: 10, weight: .semibold))
@@ -256,7 +256,7 @@ struct ExpandedDownloadHeader: View {
 					} label: {
 						Image(systemName: isPaused ? "play.circle.fill" : "pause.circle.fill")
 							.font(.title3)
-							.foregroundStyle(isPaused ? .green : .orange)
+							.foregroundStyle(isPaused ? NullSignStyle.success : NullSignStyle.warning)
 					}
 					.buttonStyle(.borderless)
 
@@ -295,10 +295,10 @@ struct ExpandedDownloadHeader: View {
 									.font(.caption2)
 									.foregroundColor(.secondary)
 							}
-							.foregroundColor(.accentColor)
+							.foregroundColor(NullSignStyle.accent)
 							.padding(.vertical, 6)
 							.padding(.horizontal, 8)
-							.background(Color.accentColor.opacity(0.1))
+							.background(NullSignStyle.accent.opacity(0.1))
 							.clipShape(RoundedRectangle(cornerRadius: 6))
 						}
 						.buttonStyle(.plain)

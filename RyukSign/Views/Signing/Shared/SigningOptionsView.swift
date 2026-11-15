@@ -199,7 +199,7 @@ struct SigningOptionsView: View {
 
 					if _autoSign, !AutoSignManager.canSign {
 						Text(.localized("No certificate is selected. Import one in Settings, otherwise auto sign will fail."))
-							.foregroundStyle(.orange)
+							.foregroundStyle(NullSignStyle.warning)
 					}
 				}
 			}

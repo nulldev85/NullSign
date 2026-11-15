@@ -62,7 +62,7 @@ struct TweakRowLabel: View {
 	}
 
 	@ViewBuilder
-	private func _badge(_ text: String, systemImage: String, tint: Color = .accentColor) -> some View {
+	private func _badge(_ text: String, systemImage: String, tint: Color = NullSignStyle.accent) -> some View {
 		HStack(spacing: 3) {
 			Image(systemName: systemImage)
 				.foregroundStyle(tint)

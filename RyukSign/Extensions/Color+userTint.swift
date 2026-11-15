@@ -9,11 +9,12 @@ import SwiftUI
 import AltSourceKit
 
 extension Color {
-	/// NullSign blue (NullSignStyle.accent). The tint can still be changed in Appearance.
+	/// NullSign blue (NullSignStyle.accent). NullSign always uses it; the
+	/// saved tint is reset to it on launch, as NullSign 1.x did.
 	static let defaultUserTintHex = "#0094FF"
 
 	static var userTint: Color {
-		Color(hex: UserDefaults.standard.string(forKey: "Feather.userTintColor") ?? defaultUserTintHex)
+		Color(hex: defaultUserTintHex)
 	}
 
 	/// Darker sibling of the user's tint for secondary states.

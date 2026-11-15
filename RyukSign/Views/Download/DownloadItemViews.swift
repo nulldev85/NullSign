@@ -24,7 +24,7 @@ struct DetailedMiniDownloadItemView: View {
                     Text(download.fileName)
                         .font(.caption2)
                         .lineLimit(1)
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(NullSignStyle.accent)
                 }
                 .buttonStyle(.plain)
             } else {
@@ -77,7 +77,7 @@ struct DownloadItemView: View {
                             Text(download.fileName)
                                 .font(.callout.weight(.semibold))
                                 .lineLimit(1)
-                                .foregroundColor(.accentColor)
+                                .foregroundColor(NullSignStyle.accent)
                         }
                         .buttonStyle(.plain)
                     } else {

@@ -19,11 +19,11 @@ struct FRExpirationPillView: View {
 		: expiration?.formatted ?? title
 		
 		let textForeground = (expiration == nil)
-		? Color.accentColor
+		? NullSignStyle.accent
 		: .white
 		
 		let textBackground = revoked
-		? .red
+		? NullSignStyle.danger
 		: expiration?.color.opacity(0.85) ?? Color(uiColor: .quaternarySystemFill)
 		
 		Text(textLabel)

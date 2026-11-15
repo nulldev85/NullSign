@@ -47,7 +47,7 @@ struct AllVersionsView: View {
 			ForEach(_filtered) { release in
 				Button { _selected = release } label: { _row(release) }
 					.tint(.primary)
-					.listRowBackground(release.isInstalled ? Color.accentColor.opacity(0.12) : nil)
+					.listRowBackground(release.isInstalled ? NullSignStyle.accent.opacity(0.12) : nil)
 					.onAppear {
 						if release.id == _filtered.last?.id { Task { await _loadNextPage() } }
 					}
@@ -102,10 +102,10 @@ struct AllVersionsView: View {
 				HStack(spacing: 6) {
 					Text(release.version).font(.body.weight(.medium))
 					if release.id == _manager.latest?.id {
-						_pill(.localized("Latest"), color: .accentColor)
+						_pill(.localized("Latest"), color: NullSignStyle.accent)
 					}
 					if release.isPrerelease {
-						_pill(.localized("Beta"), color: .orange)
+						_pill(.localized("Beta"), color: NullSignStyle.warning)
 					}
 				}
 				if let date = release.publishedAt {
@@ -133,9 +133,9 @@ struct AllVersionsView: View {
 			Label(.localized("Installed"), systemImage: "checkmark.circle.fill")
 				.labelStyle(.titleAndIcon)
 				.font(.caption.bold())
-				.foregroundStyle(Color.accentColor)
+				.foregroundStyle(NullSignStyle.accent)
 		} else if cmp == .orderedDescending {
-			Image(systemName: "arrow.up.circle.fill").foregroundStyle(Color.accentColor)
+			Image(systemName: "arrow.up.circle.fill").foregroundStyle(NullSignStyle.accent)
 		} else {
 			Image(systemName: "arrow.down.circle").foregroundStyle(.secondary)
 		}

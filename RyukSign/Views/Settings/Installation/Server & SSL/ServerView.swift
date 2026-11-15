@@ -100,7 +100,7 @@ private extension ServerView {
 			if _useLocalCertificate {
 				LabeledContent(.localized("Status")) {
 					Text(_isTrusted ? .localized("Trusted") : .localized("Not Trusted"))
-						.foregroundStyle(_isTrusted ? .green : .orange)
+						.foregroundStyle(_isTrusted ? NullSignStyle.success : NullSignStyle.warning)
 				}
 				Button(.localized("Install Profile"), systemImage: "arrow.down.doc") {
 					do {

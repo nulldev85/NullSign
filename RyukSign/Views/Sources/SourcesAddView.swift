@@ -211,18 +211,18 @@ struct SourcesAddView: View {
 				} label: {
 					HStack {
 						Image(systemName: "crown.fill")
-							.foregroundColor(.yellow)
+							.foregroundColor(NullSignStyle.yellow)
 						VStack(alignment: .leading, spacing: 2) {
 							Text("Premium RyukSign")
 								.font(.headline)
 								.foregroundColor(.primary)
 							Text("Premium activated")
 								.font(.caption)
-								.foregroundColor(.green)
+								.foregroundColor(NullSignStyle.success)
 						}
 						Spacer()
 						Image(systemName: "checkmark.seal.fill")
-							.foregroundColor(.green)
+							.foregroundColor(NullSignStyle.success)
 					}
 				}
 				.swipeActions(edge: .trailing) {
@@ -241,7 +241,7 @@ struct SourcesAddView: View {
 				}) {
 					HStack {
 						Image(systemName: "crown.fill")
-							.foregroundColor(.yellow)
+							.foregroundColor(NullSignStyle.yellow)
 						VStack(alignment: .leading, spacing: 2) {
 							Text("Premium RyukSign")
 								.font(.headline)
@@ -271,7 +271,7 @@ struct SourcesAddView: View {
 			}) {
 				HStack {
 					Image(systemName: "paperplane.fill")
-						.foregroundColor(.blue)
+						.foregroundColor(NullSignStyle.accent)
 					VStack(alignment: .leading, spacing: 2) {
 						Text("Get a Key")
 							.font(.headline)
@@ -317,7 +317,7 @@ struct SourcesAddView: View {
 			}) {
 				HStack {
 					Image(systemName: "bolt.fill")
-						.foregroundColor(.orange)
+						.foregroundColor(NullSignStyle.warning)
 					VStack(alignment: .leading, spacing: 2) {
 						Text("Ryuk Repos")
 							.font(.headline)
@@ -329,7 +329,7 @@ struct SourcesAddView: View {
 						} else if ryukReposFetchError != nil {
 							Text("Tap to retry loading repositories")
 								.font(.caption)
-								.foregroundColor(.red)
+								.foregroundColor(NullSignStyle.danger)
 						} else {
 							Text("Loading repositories...")
 								.font(.caption)
@@ -342,7 +342,7 @@ struct SourcesAddView: View {
 							.scaleEffect(0.8)
 					} else if ryukReposFetchError != nil {
 						Image(systemName: "exclamationmark.triangle")
-							.foregroundColor(.red)
+							.foregroundColor(NullSignStyle.danger)
 							.font(.caption)
 					} else {
 						Image(systemName: "chevron.right")
@@ -360,7 +360,7 @@ struct SourcesAddView: View {
 				Text("Already included in your premium repositories.")
 			} else if let error = ryukReposFetchError {
 				Text(error)
-					.foregroundColor(.red)
+					.foregroundColor(NullSignStyle.danger)
 			} else {
 				Text("Add a collection of popular repositories crafted by Ryuk.")
 			}

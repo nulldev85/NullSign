@@ -42,7 +42,7 @@ struct AboutView: View {
 					Text(Bundle.main.name)
 						.font(.largeTitle)
 						.bold()
-						.foregroundStyle(Color.accentColor)
+						.foregroundStyle(NullSignStyle.accent)
 
 					HStack(spacing: 4) {
 						Text(.localized("Version"))

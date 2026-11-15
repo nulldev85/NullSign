@@ -141,7 +141,7 @@ struct UpdateCapsuleButton: View {
 				.foregroundStyle(.white)
 				.padding(.horizontal, 20)
 				.padding(.vertical, 6)
-				.background(Color.accentColor)
+				.background(NullSignStyle.accent)
 				.clipShape(Capsule())
 		}
 		.buttonStyle(.borderless)
@@ -287,7 +287,7 @@ struct UpdatePickerView: View {
 		}
 		.swipeActions(edge: .leading) {
 			PinSourceButton(candidate: candidate, key: key)
-				.tint(.accentColor)
+				.tint(NullSignStyle.accent)
 		}
 		.contextMenu {
 			PinSourceButton(candidate: candidate, key: key)

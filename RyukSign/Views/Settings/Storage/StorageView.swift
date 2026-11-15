@@ -42,15 +42,15 @@ extension StorageCategory {
 
 	var tint: Color {
 		switch self {
-		case .signed: .blue
-		case .imported: .indigo
-		case .archives: .teal
-		case .tweaks: .orange
-		case .certificates: .green
-		case .caches: .pink
-		case .logs: .brown
-		case .temporary: .yellow
-		case .leftovers: .red
+		case .signed: NullSignStyle.accent
+		case .imported: NullSignStyle.purple
+		case .archives: NullSignStyle.teal
+		case .tweaks: NullSignStyle.warning
+		case .certificates: NullSignStyle.success
+		case .caches: Color(red: 1, green: 0.42, blue: 0.62)
+		case .logs: Color(white: 0.75)
+		case .temporary: NullSignStyle.yellow
+		case .leftovers: NullSignStyle.danger
 		case .other: .gray
 		}
 	}

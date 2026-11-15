@@ -29,7 +29,7 @@ struct DownloadItemCardView: View {
                             Text(download.fileName)
                                 .font(.headline.weight(.semibold))
                                 .lineLimit(1)
-                                .foregroundColor(.accentColor)
+                                .foregroundColor(NullSignStyle.accent)
                         }
                         .buttonStyle(.plain)
                     } else {
@@ -62,9 +62,9 @@ struct DownloadItemCardView: View {
                         } label: {
                             Image(systemName: model.isPaused ? "play.fill" : "pause.fill")
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(model.isPaused ? .green : .orange)
+                                .foregroundStyle(model.isPaused ? NullSignStyle.success : NullSignStyle.warning)
                                 .frame(width: 28, height: 28)
-                                .background((model.isPaused ? Color.green : Color.orange).opacity(0.15))
+                                .background((model.isPaused ? NullSignStyle.success : NullSignStyle.warning).opacity(0.15))
                                 .clipShape(Circle())
                         }
                         .buttonStyle(.plain)
@@ -76,9 +76,9 @@ struct DownloadItemCardView: View {
                         } label: {
                             Image(systemName: "xmark")
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(.red)
+                                .foregroundStyle(NullSignStyle.danger)
                                 .frame(width: 28, height: 28)
-                                .background(Color.red.opacity(0.15))
+                                .background(NullSignStyle.danger.opacity(0.15))
                                 .clipShape(Circle())
                         }
                         .buttonStyle(.plain)

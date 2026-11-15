@@ -131,7 +131,7 @@ extension ResetView {
 			}
 		}
 		.listRowBackground(NullSignStyle.groupedSurface)
-		.foregroundStyle(.red)
+		.foregroundStyle(NullSignStyle.danger)
 	}
 }
 

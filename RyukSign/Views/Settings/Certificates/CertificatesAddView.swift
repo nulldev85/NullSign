@@ -80,7 +80,7 @@ extension CertificatesAddView {
 		Button(title) {
 			action()
 		}
-		.foregroundColor(file == nil ? .accentColor : .disabled())
+		.foregroundColor(file == nil ? NullSignStyle.accent : .disabled())
 		.disabled(file != nil)
 		.animation(.easeInOut(duration: 0.3), value: file != nil)
 	}

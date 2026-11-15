@@ -10,30 +10,29 @@ import NimbleViews
 import IDeviceSwift
 
 // MARK: - View: Card
-/// NullSign's install card on RyukSign's install queue: the app, its status
-/// and a progress bar, with the queue's cancel button and what's up next.
 struct InstallCardView: View {
 	@ObservedObject var installer: AppInstaller
 	var upcoming: [AnyApp] = []
 	var onCancel: () -> Void
 
 	var body: some View {
-		InstallStatusView(
-			app: installer.app,
-			viewModel: installer.viewModel,
-			upcoming: upcoming,
-			onCancel: onCancel
-		)
-		.padding(20)
+		ZStack {
+			InstallProgressView(app: installer.app, viewModel: installer.viewModel)
+			InstallStatusView(
+				app: installer.app,
+				viewModel: installer.viewModel,
+				upcoming: upcoming,
+				onCancel: onCancel
+			)
+		}
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-		.background(
-			NullSignStyle.groupedSurface,
-			in: RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous)
-		)
+		.background(NullSignStyle.groupedSurface)
+		.cornerRadius(NBRadius.large)
 		.padding([.top, .horizontal])
 		.padding(.bottom, 36)
 		.ignoresSafeArea(.container, edges: .bottom)
 		.preferredColorScheme(.dark)
+		.tint(NullSignStyle.accent)
 		.nullSignTypography()
 		.installFallbackSheet(installer)
 	}
@@ -49,67 +48,66 @@ private struct InstallStatusView: View {
 
 	@State private var _isShowingError = false
 
-	private var _succeeded: Bool { viewModel.isCompleted && !viewModel.isFailed }
-
 	var body: some View {
-		VStack(alignment: .leading, spacing: 14) {
-			HStack(spacing: 14) {
-				InstallProgressView(app: app, viewModel: viewModel)
-
-				VStack(alignment: .leading, spacing: 4) {
-					HStack(spacing: 6) {
-						Text(app.name ?? .localized("Unknown"))
-							.font(.roundedUI(.headline))
-							.foregroundStyle(.white)
-							.lineLimit(1)
-						PlatformBadge(platform: app.platform)
-					}
-
-					Label(viewModel.statusLabel, systemImage: viewModel.statusImage)
-						.font(.roundedUI(.footnote, weight: .bold))
-						.foregroundStyle(_statusColor)
-						.labelStyle(.titleAndIcon)
-						.lineLimit(2)
-						.animation(.smooth, value: viewModel.statusImage)
-				}
-
-				Spacer(minLength: 8)
-
-				_trailing()
-			}
-
-			if !viewModel.isCompleted && !viewModel.isFailed {
-				NullSignInstallProgressBar(progress: _progress)
-					.compatTransition()
-			}
+		ZStack {
+			_status()
+			_button()
+			_close()
 
 			if !upcoming.isEmpty {
 				_upNext()
 			}
 		}
-		.animation(.easeInOut(duration: 0.3), value: viewModel.isCompleted)
-		.animation(.easeInOut(duration: 0.3), value: viewModel.isFailed)
-	}
-
-	/// Indeterminate until the transfer reports progress.
-	private var _progress: Double? {
-		viewModel.overallProgress > 0 ? viewModel.overallProgress : nil
-	}
-
-	private var _statusColor: Color {
-		if viewModel.isFailed { return NullSignStyle.danger }
-		if _succeeded { return NullSignStyle.success }
-		return NullSignStyle.muted
 	}
 
 	@ViewBuilder
-	private func _trailing() -> some View {
+	private func _close() -> some View {
+		ZStack {
+			if !viewModel.isCompleted {
+				Button(action: onCancel) {
+					Image(systemName: "xmark.circle.fill")
+						.font(.roundedUI(.title3))
+						.symbolRenderingMode(.hierarchical)
+						.foregroundStyle(NullSignStyle.muted)
+						.contentShape(Circle())
+				}
+				.buttonStyle(.plain)
+				.padding()
+				.compatTransition()
+			}
+		}
+		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+		.animation(.easeInOut(duration: 0.3), value: viewModel.isCompleted)
+	}
+
+	/// NullSign's colors: red on failure, green once installed.
+	private var _statusColor: Color {
+		if viewModel.isFailed { return NullSignStyle.danger }
+		if viewModel.isCompleted { return NullSignStyle.success }
+		return .white
+	}
+
+	@ViewBuilder
+	private func _status() -> some View {
+		Label(viewModel.statusLabel, systemImage: viewModel.statusImage)
+			.foregroundStyle(_statusColor)
+			.font(.roundedUI(.body, weight: .semibold))
+			.padding()
+			.labelStyle(.titleAndIcon)
+			.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+			.animation(.smooth, value: viewModel.statusImage)
+	}
+
+	@ViewBuilder
+	private func _button() -> some View {
 		ZStack {
 			if let failure = viewModel.failure {
 				Button(.localized("Details")) {
 					_isShowingError = true
 				}
-				.buttonStyle(NullSignSecondaryButtonStyle(height: 34, tint: NullSignStyle.danger))
+				.font(.roundedUI(.subheadline, weight: .semibold))
+				.foregroundStyle(NullSignStyle.danger)
+				.padding()
 				.compatTransition()
 				.alert(.localized("Install Failed"), isPresented: $_isShowingError) {
 					Button(.localized("Copy")) { UIPasteboard.general.string = failure.message }
@@ -118,25 +116,19 @@ private struct InstallStatusView: View {
 					Text(failure.message)
 				}
 			} else if viewModel.isCompleted {
-				Button(.localized("Open")) {
+				Button {
 					UIApplication.openApp(with: app.identifier ?? "")
+				} label: {
+					NBButton("Open", systemImage: "", style: .text)
+						.foregroundStyle(NullSignStyle.accent)
 				}
-				.buttonStyle(NullSignPrimaryButtonStyle(height: 34))
-				.compatTransition()
-			} else {
-				Button(action: onCancel) {
-					Image(systemName: "xmark.circle.fill")
-						.font(.roundedUI(size: 24, weight: .semibold))
-						.symbolRenderingMode(.hierarchical)
-						.foregroundStyle(NullSignStyle.muted)
-						.frame(width: 44, height: 44)
-						.contentShape(Circle())
-				}
-				.buttonStyle(.plain)
-				.accessibilityLabel(.localized("Cancel"))
+				.padding()
 				.compatTransition()
 			}
 		}
+		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+		.animation(.easeInOut(duration: 0.3), value: viewModel.isCompleted)
+		.animation(.easeInOut(duration: 0.3), value: viewModel.isFailed)
 	}
 
 	@ViewBuilder
@@ -153,8 +145,10 @@ private struct InstallStatusView: View {
 			}
 
 			Text(String.localized("%lld queued", arguments: upcoming.count))
-				.font(.roundedUI(.caption, weight: .semibold))
+				.font(.roundedUI(.caption, weight: .medium))
 				.foregroundStyle(NullSignStyle.muted)
 		}
+		.padding()
+		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 	}
 }

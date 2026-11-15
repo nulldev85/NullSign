@@ -116,7 +116,8 @@ struct RyukSignApp: App {
                 }
             }
             .onAppear {
-                // NullSign's palette is built for dark only.
+                // NullSign's palette is built for dark only, in NullSign blue.
+                UserDefaults.standard.set(Color.defaultUserTintHex, forKey: "Feather.userTintColor")
                 UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = .dark
 
                 UIApplication.topViewController()?.view.window?.tintColor = UIColor(Color.userTint)

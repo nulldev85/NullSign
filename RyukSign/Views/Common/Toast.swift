@@ -70,7 +70,7 @@ final class ToastManager: ObservableObject {
 	func show(
 		_ message: String,
 		systemImage: String = "checkmark.circle.fill",
-		tint: Color = .accentColor,
+		tint: Color = NullSignStyle.accent,
 		haptic: ToastHaptic = .success,
 		duration: ToastDuration = .normal
 	) {
@@ -139,13 +139,13 @@ final class ToastManager: ObservableObject {
 
 enum Toast {
 	static func success(_ message: String, systemImage: String = "checkmark.circle.fill", duration: ToastDuration = .normal) {
-		ToastManager.shared.show(message, systemImage: systemImage, tint: .green, haptic: .success, duration: duration)
+		ToastManager.shared.show(message, systemImage: systemImage, tint: NullSignStyle.success, haptic: .success, duration: duration)
 	}
 	static func error(_ message: String, systemImage: String = "exclamationmark.triangle.fill", duration: ToastDuration = .long) {
-		ToastManager.shared.show(message, systemImage: systemImage, tint: .red, haptic: .error, duration: duration)
+		ToastManager.shared.show(message, systemImage: systemImage, tint: NullSignStyle.danger, haptic: .error, duration: duration)
 	}
 	static func info(_ message: String, systemImage: String = "info.circle.fill", duration: ToastDuration = .normal) {
-		ToastManager.shared.show(message, systemImage: systemImage, tint: .accentColor, haptic: .light, duration: duration)
+		ToastManager.shared.show(message, systemImage: systemImage, tint: NullSignStyle.accent, haptic: .light, duration: duration)
 	}
 }
 

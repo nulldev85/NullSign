@@ -92,7 +92,7 @@ struct SourceAppsDetailView: View {
 										Image(systemName: "bag")
 									}
 									.font(.headline.bold())
-									.foregroundStyle(Color.accentColor)
+									.foregroundStyle(NullSignStyle.accent)
 									.padding(.horizontal, 16)
 									.padding(.vertical, 6)
 									.background(Color(uiColor: .quaternarySystemFill))
@@ -156,7 +156,7 @@ struct SourceAppsDetailView: View {
 						} label: {
 							HStack {
 								Image(systemName: link.tag.symbol)
-									.foregroundColor(.accentColor)
+									.foregroundColor(NullSignStyle.accent)
 								Text(link.tag.title)
 									.foregroundColor(.primary)
 								Spacer()
@@ -223,7 +223,7 @@ struct SourceAppsDetailView: View {
 							} label: {
 								HStack {
 									Image(systemName: "bag")
-										.foregroundColor(.accentColor)
+										.foregroundColor(NullSignStyle.accent)
 									Text(.localized("View on App Store"))
 										.foregroundColor(.primary)
 									Spacer()
@@ -385,7 +385,7 @@ extension SourceAppsDetailView {
 		var pills: [NBPillItem] = []
 		
 		if let version = app.currentVersion {
-			pills.append(NBPillItem(title: version, icon: "tag", color: Color.accentColor))
+			pills.append(NBPillItem(title: version, icon: "tag", color: NullSignStyle.accent))
 		}
 		
 		if let size = app.size {

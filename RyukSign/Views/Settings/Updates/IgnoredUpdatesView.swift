@@ -69,7 +69,7 @@ struct IgnoredUpdatesView: View {
 			} label: {
 				Label(.localized("Resume Updates"), systemImage: "bell")
 			}
-			.tint(.accentColor)
+			.tint(NullSignStyle.accent)
 		}
 	}
 

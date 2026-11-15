@@ -45,7 +45,7 @@ struct SelectionActionBar: View {
 							.lineLimit(1)
 					}
 					.frame(maxWidth: .infinity)
-					.foregroundStyle(action.role == .destructive ? AnyShapeStyle(.red) : AnyShapeStyle(.tint))
+					.foregroundStyle(action.role == .destructive ? AnyShapeStyle(NullSignStyle.danger) : AnyShapeStyle(.tint))
 					.opacity(action.enabled ? 1 : 0.35)
 					.contentShape(Rectangle())
 				}

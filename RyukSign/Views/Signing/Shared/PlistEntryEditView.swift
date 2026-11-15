@@ -189,10 +189,10 @@ extension PlistEntryEditView {
 			switch _match {
 			case .missing:
 				Text(reference.missingNote)
-					.foregroundStyle(.orange)
+					.foregroundStyle(NullSignStyle.warning)
 			case .differs:
 				Text(reference.mismatchNote)
-					.foregroundStyle(.blue)
+					.foregroundStyle(NullSignStyle.accent)
 			case .matches, nil:
 				EmptyView()
 			}

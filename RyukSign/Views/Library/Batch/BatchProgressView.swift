@@ -112,8 +112,8 @@ struct BatchProgressView: View {
 	}
 
 	private var _accent: Color {
-		guard runner.isFinished else { return .accentColor }
-		return runner.failed > 0 ? .orange : .green
+		guard runner.isFinished else { return NullSignStyle.accent }
+		return runner.failed > 0 ? NullSignStyle.warning : NullSignStyle.success
 	}
 
 	private var _summaryIcon: String {
@@ -163,7 +163,7 @@ struct BatchProgressView: View {
 				} else {
 					Text(_subtitle(for: item))
 						.font(.subheadline)
-						.foregroundStyle(_isFailed(item) ? Color.red : .secondary)
+						.foregroundStyle(_isFailed(item) ? NullSignStyle.danger : .secondary)
 						.lineLimit(_expanded.contains(item.id) ? nil : 2)
 				}
 			}
@@ -215,16 +215,16 @@ struct BatchProgressView: View {
 			ProgressView()
 		case .signed:
 			Image(systemName: runner.mode.installs ? "signature" : "checkmark.circle.fill")
-				.foregroundStyle(runner.mode.installs ? Color.accentColor : .green)
+				.foregroundStyle(runner.mode.installs ? NullSignStyle.accent : NullSignStyle.success)
 		case .alreadySigned:
 			Image(systemName: "checkmark.seal.fill")
 				.foregroundStyle(.secondary)
 		case .installed:
 			Image(systemName: "checkmark.circle.fill")
-				.foregroundStyle(.green)
+				.foregroundStyle(NullSignStyle.success)
 		case .failed:
 			Image(systemName: "exclamationmark.triangle.fill")
-				.foregroundStyle(.red)
+				.foregroundStyle(NullSignStyle.danger)
 		case .skipped:
 			Image(systemName: "minus.circle")
 				.foregroundStyle(.secondary)

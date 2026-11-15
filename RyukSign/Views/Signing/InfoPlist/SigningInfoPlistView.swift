@@ -110,9 +110,9 @@ private extension MergedInfoPlist.Status {
 	var tint: Color {
 		switch self {
 		case .original: .secondary
-		case .managed: .orange
-		case .overridden: .blue
-		case .removed: .red
+		case .managed: NullSignStyle.warning
+		case .overridden: NullSignStyle.accent
+		case .removed: NullSignStyle.danger
 		}
 	}
 }
@@ -142,7 +142,7 @@ extension SigningInfoPlistView {
 					_changedOnly.toggle()
 				} label: {
 					Image(systemName: "line.3.horizontal.decrease")
-						.foregroundStyle(changedCount == 0 ? Color.secondary : (_changedOnly ? Color.accentColor : Color.primary))
+						.foregroundStyle(changedCount == 0 ? Color.secondary : (_changedOnly ? NullSignStyle.accent : Color.primary))
 				}
 				.disabled(changedCount == 0)
 			}
@@ -277,7 +277,7 @@ extension SigningInfoPlistView {
 				} label: {
 					Label(.localized("Reset"), systemImage: "arrow.uturn.backward")
 				}
-				.tint(.blue)
+				.tint(NullSignStyle.accent)
 			}
 		}
 	}
@@ -291,7 +291,7 @@ extension SigningInfoPlistView {
 		} label: {
 			HStack {
 				Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-					.foregroundStyle(isSelected ? Color.accentColor : .secondary)
+					.foregroundStyle(isSelected ? NullSignStyle.accent : .secondary)
 				_label(key: key, value: value, status: status)
 			}
 		}

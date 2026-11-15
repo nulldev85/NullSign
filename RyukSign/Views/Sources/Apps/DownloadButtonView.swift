@@ -145,7 +145,7 @@ struct DownloadButtonView: View {
 					} label: {
 						Image(systemName: "ellipsis.circle")
 							.font(.body.bold())
-							.foregroundStyle(Color.accentColor)
+							.foregroundStyle(NullSignStyle.accent)
 							.frame(width: 31, height: 31)
 							.background(Color(uiColor: .quaternarySystemFill))
 							.clipShape(Circle())
@@ -164,7 +164,7 @@ struct DownloadButtonView: View {
 							.lineLimit(1)
 							.font(.headline.bold())
 					}
-					.foregroundStyle(Color.accentColor)
+					.foregroundStyle(NullSignStyle.accent)
 					.padding(.horizontal, 20)
 					.padding(.vertical, 6)
 					.background(Color(uiColor: .quaternarySystemFill))

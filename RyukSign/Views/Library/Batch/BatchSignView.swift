@@ -213,7 +213,7 @@ struct BatchSignView: View {
 
 				Text(identifier ?? .localized("Unknown"))
 					.font(.caption)
-					.foregroundStyle(isRenamed ? Color.accentColor : .secondary)
+					.foregroundStyle(isRenamed ? NullSignStyle.accent : .secondary)
 					.lineLimit(1)
 			}
 			.frame(maxWidth: .infinity, alignment: .leading)

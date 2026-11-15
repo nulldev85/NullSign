@@ -81,7 +81,7 @@ struct SelfUpdateSheet: View {
 						Image(systemName: "arrow.right")
 							.font(.caption2)
 						Text(release.version)
-							.foregroundStyle(Color.accentColor)
+							.foregroundStyle(NullSignStyle.accent)
 					}
 					.font(.subheadline)
 					.foregroundStyle(.secondary)
@@ -123,7 +123,7 @@ struct SelfUpdateSheet: View {
 						.stroke(Color.secondary.opacity(0.2), lineWidth: 6)
 					Circle()
 						.trim(from: 0, to: value)
-						.stroke(Color.accentColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+						.stroke(NullSignStyle.accent, style: StrokeStyle(lineWidth: 6, lineCap: .round))
 						.rotationEffect(.degrees(-90))
 						.animation(.easeInOut(duration: 0.25), value: value)
 					Text("\(Int(value * 100))%")

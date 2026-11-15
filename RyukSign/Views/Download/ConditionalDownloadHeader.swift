@@ -92,7 +92,7 @@ struct MinimizedConditionalHeader: View {
 
             Text(verbatim: model.summary.phase == .paused ? .localized("Paused") : "\(Int(model.summary.progress * 100))%")
                 .font(.caption.weight(.medium))
-                .foregroundColor(model.summary.phase == .paused ? .orange : .primary)
+                .foregroundColor(model.summary.phase == .paused ? NullSignStyle.warning : .primary)
                 .contentTransition(.numericText())
             
             Spacer()
@@ -155,7 +155,7 @@ struct CollapsedConditionalHeader: View {
                 if model.summary.phase == .paused {
                     Image(systemName: "pause.fill")
                         .font(.system(size: 10))
-                        .foregroundColor(.orange)
+                        .foregroundColor(NullSignStyle.warning)
                 } else {
                     Text(verbatim: "\(Int(model.summary.progress * 100))")
                         .font(.system(size: 10, weight: .semibold))
@@ -170,7 +170,7 @@ struct CollapsedConditionalHeader: View {
                         Text(downloads[0].fileName)
                             .font(.caption.weight(.medium))
                             .lineLimit(1)
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(NullSignStyle.accent)
                     }
                     .buttonStyle(.plain)
                 } else {
@@ -270,7 +270,7 @@ struct ExpandedConditionalHeader: View {
                 } label: {
                     Image(systemName: isPaused ? "play.circle.fill" : "pause.circle.fill")
                         .font(.title3)
-                        .foregroundStyle(isPaused ? .green : .orange)
+                        .foregroundStyle(isPaused ? NullSignStyle.success : NullSignStyle.warning)
                 }
                 .buttonStyle(.borderless)
 

@@ -79,7 +79,7 @@ extension SigningEntitlementsView {
 				bindingValue = isSelected ? nil : _manager.fileURL(for: file)
 			} label: {
 				Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-					.foregroundStyle(isSelected ? Color.accentColor : .secondary)
+					.foregroundStyle(isSelected ? NullSignStyle.accent : .secondary)
 					.imageScale(.large)
 			}
 			.buttonStyle(.plain)
@@ -110,7 +110,7 @@ extension SigningEntitlementsView {
 			} label: {
 				Label(.localized("Rename"), systemImage: "pencil")
 			}
-			.tint(.blue)
+			.tint(NullSignStyle.accent)
 		}
 	}
 

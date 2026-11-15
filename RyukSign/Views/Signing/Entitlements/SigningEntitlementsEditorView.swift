@@ -149,7 +149,7 @@ extension SigningEntitlementsEditorView {
 					_flaggedOnly.toggle()
 				} label: {
 					Image(systemName: "line.3.horizontal.decrease")
-						.foregroundStyle(_flaggedCount == 0 ? Color.secondary : (_flaggedOnly ? Color.accentColor : Color.primary))
+						.foregroundStyle(_flaggedCount == 0 ? Color.secondary : (_flaggedOnly ? NullSignStyle.accent : Color.primary))
 				}
 				.disabled(_flaggedCount == 0)
 			}
@@ -310,7 +310,7 @@ extension SigningEntitlementsEditorView {
 		} label: {
 			HStack {
 				Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-					.foregroundStyle(isSelected ? Color.accentColor : .secondary)
+					.foregroundStyle(isSelected ? NullSignStyle.accent : .secondary)
 				PlistValueRow(key: key, value: value)
 			}
 		}
@@ -369,7 +369,7 @@ extension SigningEntitlementsEditorView {
 					_detailKey = key
 				} label: {
 					Image(systemName: match == .missing ? "exclamationmark.triangle.fill" : "arrow.triangle.2.circlepath.circle.fill")
-						.foregroundStyle(match == .missing ? .orange : .blue)
+						.foregroundStyle(match == .missing ? NullSignStyle.warning : NullSignStyle.accent)
 				}
 				.buttonStyle(.plain)
 			}

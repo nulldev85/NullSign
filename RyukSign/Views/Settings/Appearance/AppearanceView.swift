@@ -34,35 +34,11 @@ struct AppearanceView: View {
 	@AppStorage("Feather.shouldChangeIconsBasedOffStyle")
 	private var _shouldChangeIconsBasedOffStyle: Bool = false
 
-	@AppStorage("Feather.userTintColor")
-	private var _selectedColorHex: String = Color.defaultUserTintHex
-
-	private var _tintColorBinding: Binding<Color> {
-		Binding(
-			get: { Color(hex: _selectedColorHex) },
-			set: { _selectedColorHex = $0.toHex() }
-		)
-	}
-
 	// MARK: Body
 	var body: some View {
 		NBList(.localized("Appearance")) {
-			// NullSign is always dark, so there's no light/dark choice here.
-			NBSection(.localized("Accent Color")) {
-				AppearanceTintColorView()
-					.listRowInsets(EdgeInsets())
-					.listRowBackground(EmptyView())
-			}
-
-			Section {
-				ColorPicker(
-					.localized("Custom Theme Color"),
-					selection: _tintColorBinding,
-					supportsOpacity: false
-				)
-			}
-			.listRowBackground(NullSignStyle.groupedSurface)
-
+			// NullSign is always dark and always NullSign blue, so there's no
+			// light/dark or accent color choice here.
 			if #available(iOS 18.0, *) {
 				NBSection(.localized("Library")) {
 					Toggle(.localized("Dynamic Icons"), isOn: $_shouldChangeIconsBasedOffStyle)

@@ -51,7 +51,7 @@ struct UpdatesSettingsView: View {
 			if let available = _manager.available {
 				HStack {
 					Label(String.localized("Update available: %@", arguments: available.version), systemImage: "arrow.up.circle.fill")
-						.foregroundStyle(Color.accentColor)
+						.foregroundStyle(NullSignStyle.accent)
 					Spacer()
 					Button(.localized("View")) { _selected = available }
 						.font(.subheadline.bold())

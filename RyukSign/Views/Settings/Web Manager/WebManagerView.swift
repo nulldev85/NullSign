@@ -44,13 +44,13 @@ extension WebManagerView {
 
 			if let error = manager.lastError {
 				Label(error, systemImage: "exclamationmark.triangle")
-					.foregroundStyle(.red)
+					.foregroundStyle(NullSignStyle.danger)
 					.font(.footnote)
 			}
 
 			if manager.isRunning && !manager.authActive {
 				Label(.localized("No password set — anyone on this network can browse, upload and delete your apps and certificates."), systemImage: "lock.open")
-					.foregroundStyle(.orange)
+					.foregroundStyle(NullSignStyle.warning)
 					.font(.footnote)
 			}
 		} footer: {
@@ -153,7 +153,7 @@ extension WebManagerView {
 
 				if manager.password.isEmpty {
 					Label(.localized("Set a password — until you do, the server stays open to anyone on the network."), systemImage: "exclamationmark.triangle.fill")
-						.foregroundStyle(.orange)
+						.foregroundStyle(NullSignStyle.warning)
 						.font(.footnote)
 				}
 			}
