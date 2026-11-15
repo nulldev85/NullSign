@@ -1,78 +1,49 @@
-# RyukSign
+<div align="center">
+  <img src="RyukSign/Resources/Assets.xcassets/AppIcon.appiconset/nullsign.png" width="160" alt="NullSign app icon">
+  <h1>NullSign</h1>
+  <p>An on-device IPA signer with a small footprint and no certificate uploads.</p>
+</div>
 
-[![GitHub Release](https://img.shields.io/github/v/release/faroukbmiled/RyukSign?include_prereleases)](https://github.com/faroukbmiled/RyukSign/releases)
-[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/faroukbmiled/RyukSign/total)](https://github.com/faroukbmiled/RyukSign/releases)
-[![GitHub License](https://img.shields.io/github/license/faroukbmiled/RyukSign?color=%23C96FAD)](https://github.com/faroukbmiled/RyukSign/blob/main/LICENSE)
+NullSign is for people who already have an Apple developer certificate and want a simple way to use it on their own device. Import an IPA, choose a saved certificate, sign it, and install it without sending the app or your credentials to a signing website.
 
-RyukSign signs and installs iOS apps on device using your own certificate. It is a fork of [Feather](https://github.com/claration/Feather) by [claration](https://github.com/claration), with a Tweak Manager, a file transfer server, a better download manager and curated repositories added on top. Upstream attribution is kept, see [Acknowledgements](#acknowledgements).
+The interface is deliberately small: **Signer** handles local IPA files, **Apps** browses AltStore-compatible repositories, and **Settings** holds certificates and installation options.
 
-<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/images/Image-dark.png"><source media="(prefers-color-scheme: light)" srcset=".github/images/Image-light.png"><img alt="RyukSign" src=".github/images/Image-light.png"></picture></p>
+## What it does
 
-## Features
+- Imports IPA files from Files or a URL
+- Signs apps directly on the device
+- Saves multiple `.p12` and `.mobileprovision` pairs
+- Lets you name, inspect, select, check, and remove saved certificates
+- Browses apps from repositories you add
+- Imports optional `.deb` and `.dylib` tweaks, with ElleKit support when needed
+- Uses a true OLED-black monochrome interface
 
-From Feather:
+## Installing NullSign
 
-- Sign and install apps with a `.p12` and `.mobileprovision` pair (Zsign)
-- [AltStore](https://faq.altstore.io/distribute-your-apps/make-a-source#apps) repository support
-- Detailed app and certificate info
-- Signing options for appearance, Files app support, compatibility patching and Liquid Glass
-- No tracking or analytics
+The IPA produced by this repository is unsigned. That is intentional: the public build never needs access to anyone's certificate.
 
-Added in RyukSign:
+1. Open the **Actions** tab and select **Build NullSign IPA**.
+2. Run the workflow from the `main` branch.
+3. Download the `NullSign-unsigned-IPA` artifact when the build finishes.
+4. Sign that first IPA with a signer you already use, then install it on your phone.
+5. In NullSign, open **Settings → Import & Manage Certificates** and add your `.p12`, password, and matching `.mobileprovision` file.
 
-- **Tweak Manager:** import, organize and inject `.dylib`, `.deb`, `.framework`, `.bundle` and `.appex` files, with per file settings and a dependency inspector
-- **Downloads:** background downloads with Live Activities, Dynamic Island and an in-app overlay
-- **File Transfer:** upload IPAs and tweaks from a browser or mount over WebDAV, with optional password
-- **Updates:** see which Library apps have a newer version in your sources, pick or pin the source, or ignore an app
-- **Sources:** offline copies that open instantly, favorites, sorting and combined news
-- Curated repositories and a configurable tab bar
+That first sign is the bootstrap step. Once NullSign is installed, it can handle the IPAs you import afterward.
 
-## How it works
+## Building from source
 
-Apps are signed on device with Zsign using your certificate pair, then installed one of two ways.
+The included GitHub Actions workflow builds on a hosted Mac, so you do not need to own one. It checks out the submodules, builds the iPhone target with Xcode, packages the app as `NullSign-unsigned.ipa`, and stores it as a workflow artifact.
 
-**Local server.** RyukSign hosts the IPA on a local HTTPS server (certificates from [backloop.dev](https://backloop.dev/)) and opens `itms-services://?action=download-manifest&url=<PLIST_URL>`. On iOS 18 this needs the `Associated Domains`, `Custom Network Protocol`, `MDM Managed Associated Domains` and `Network Extensions` entitlements. Without them, the manifest can be served by an external server such as [plistserver](https://github.com/nekohaxx/plistserver) while the IPA stays local.
+No repository secrets are required for the unsigned build.
 
-**Pairing.** With a [pairing file](https://github.com/jkcoxson/idevice_pair) and a VPN, RyukSign connects to `10.7.0.1` over AFC, uploads the IPA to `/PublicStaging/` and installs it directly, like `ideviceinstaller` but on device. A computer is needed once to create the pairing file.
+## A note about certificates
 
-## Download
+Use certificates and provisioning profiles that belong to you or that you are authorized to use. Your profile must support the device and app you are trying to install. NullSign cannot repair an expired or revoked certificate.
 
-Get the latest `.ipa` from [Releases](https://github.com/faroukbmiled/RyukSign/releases).
+## Credits
 
-## Building
-
-Requires Xcode 27. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for details.
-
-```bash
-git clone --recursive https://github.com/faroukbmiled/RyukSign.git
-cd RyukSign
-make deps
-open RyukSign.xcworkspace
-```
-
-`make deps` fetches the SSL pack for the local install server. Set your own team in Xcode to sign.
-
-## Contributing
-
-Read the [contribution guide](.github/CONTRIBUTING.md).
-
-## Acknowledgements
-
-- [claration](https://github.com/claration), author of [Feather](https://github.com/claration/Feather)
-- [idevice](https://github.com/jkcoxson/idevice), used to talk to `installd`
-- [backloop.dev](https://backloop.dev/), localhost with a public SSL certificate
-- [Vapor](https://github.com/vapor/vapor), HTTP server
-- [Zsign](https://github.com/zhlynn/zsign), on-device signing
-- [ElleKit](https://github.com/tealbathingsuit/ellekit), tweak injection
-- [LiveContainer](https://github.com/LiveContainer/LiveContainer), fixes and help
-- [Nuke](https://github.com/kean/Nuke), image caching
-- [Asspp](https://github.com/Lakr233/Asspp), HTTP server reference
-- [plistserver](https://github.com/nekohaxx/plistserver), hosted at https://api.palera.in
+NullSign is based on [Feather](https://github.com/claration/Feather), including its on-device signing and installation work. It also relies on [Zsign](https://github.com/zhlynn/zsign) for code signing. The people behind those projects did the difficult groundwork that makes this app possible.
 
 ## License
 
-[GPL-3.0](./LICENSE), the same license as Feather. The full source for every release is this repository. Contributions are licensed under GPL-3.0.
-
-## Disclaimer
-
-RyukSign is only distributed on this GitHub page. Copies hosted elsewhere may be malicious.
+NullSign is free software under the [GNU General Public License v3.0](LICENSE). Because it is derived from Feather, redistributed versions must keep the same license and make their corresponding source available.
