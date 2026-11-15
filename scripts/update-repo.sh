@@ -7,7 +7,7 @@ handle_error() {
 }
 
 echo "Fetching latest release data from GitHub..."
-RELEASE_REPO="${RELEASE_REPO:-faroukbmiled/RyukSign}"
+RELEASE_REPO="${RELEASE_REPO:-nulldev85/NullSign}"
 release_info=$(curl -s "https://api.github.com/repos/${RELEASE_REPO}/releases/latest")
 clean_release_info=$(echo "$release_info" | tr -d '\000-\037')
 

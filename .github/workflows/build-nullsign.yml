@@ -26,14 +26,14 @@ jobs:
         with:
           xcode-version: '27.1'
 
-      # NullSign 2.0 is built on RyukSign's project (RyukSign.xcodeproj); the
+      # NullSign 2.0 is built from NullSign.xcodeproj; the
       # app it produces is NullSign: com.elmat.NullSign, named NullSign.
       - name: Build unsigned NullSign IPA
         shell: bash
         run: |
           set -euo pipefail
           make
-          cp packages/RyukSign.ipa packages/NullSign-unsigned.ipa
+          cp packages/NullSign.ipa packages/NullSign-unsigned.ipa
 
       - name: Verify IPA structure
         id: verify

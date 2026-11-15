@@ -1,6 +1,6 @@
-NAME := RyukSign
+NAME := NullSign
 PLATFORM := iphoneos
-SCHEMES := RyukSign
+SCHEMES := NullSign
 TMP := $(TMPDIR)/$(NAME)
 STAGE := $(TMP)/stage
 APP := $(TMP)/Build/Products/Release-$(PLATFORM)
@@ -16,13 +16,13 @@ clean:
 
 deps:
 	rm -rf deps || true
-	# NullSign doesn't fetch RyukSign's server-hosted install certificate; the
+	# NullSign doesn't fetch NullSign's server-hosted install certificate; the
 	# app creates its own local install certificate on the device.
 	mkdir -p deps
 
 $(SCHEMES): deps
 	xcodebuild \
-	    -project RyukSign.xcodeproj \
+	    -project NullSign.xcodeproj \
 	    -scheme "$@" \
 	    -configuration Release \
 	    -arch arm64 \
