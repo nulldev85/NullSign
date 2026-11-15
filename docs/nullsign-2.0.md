@@ -112,9 +112,10 @@ different format.
   pairing-only path are gone. NullSign checks on launch and again when it
   comes back, at most every six hours. Updates, All Versions and the update
   sheet show builds; ignored versions are kept per build.
-- Add Source is NullSign's layout: a URL with Paste, importing and copying
-  source lists, and NullSign's featured sources (its own source, then the
-  ones NullSign 1.x featured). RyukSign's curated "Ryuk Repos" list is gone.
+- Add Source is NullSign's layout: a URL with Paste, and importing and
+  copying source lists. The only featured source is NullSign's own, shown
+  only after someone removes it so it can be added back. RyukSign's curated
+  "Ryuk Repos" list and the third-party featured sources are gone.
 - Premium is deleted: RyukSign's premium manager, key redemption, device
   identity vault, filters, auth headers and the premium-only settings.
   Hiding a source from All Apps moved to `SourceExclusions`.

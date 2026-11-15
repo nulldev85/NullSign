@@ -122,20 +122,26 @@ extension Storage {
 	/// NullSign comes with its own source, added once on first launch. If it's
 	/// already there (NullSign 1.x saved it under its URL, lowercased) nothing
 	/// is added, and once someone removes it, it isn't added again.
-	func addNullSignSourceIfNeeded() {
-		let key = "nullsign.didAddDefaultSource"
-		guard !UserDefaults.standard.bool(forKey: key) else { return }
-		UserDefaults.standard.set(true, forKey: key)
-
-		let url = Self.nullSignSourceURL
-		let target = url.absoluteString.lowercased()
-		let alreadyAdded = getSources().contains { source in
+	/// Whether Null's Apps is in the library, under its URL or the lowercased
+	/// identifier NullSign 1.x saved it with.
+	func hasNullSignSource() -> Bool {
+		let target = Self.nullSignSourceURL.absoluteString.lowercased()
+		return getSources().contains { source in
 			let identifier = source.identifier?.lowercased()
 			let sourceURL = source.sourceURL?.absoluteString.lowercased()
 				.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
 			return identifier == target || sourceURL == target
 		}
-		guard !alreadyAdded else { return }
+	}
+
+	func addNullSignSourceIfNeeded() {
+		let key = "nullsign.didAddDefaultSource"
+		guard !UserDefaults.standard.bool(forKey: key) else { return }
+		UserDefaults.standard.set(true, forKey: key)
+
+		guard !hasNullSignSource() else { return }
+
+		let url = Self.nullSignSourceURL
 
 		addSource(
 			url,

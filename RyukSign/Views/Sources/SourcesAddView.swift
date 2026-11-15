@@ -22,23 +22,9 @@ struct SourcesAddView: View {
 	@State private var _isSaving = false
 	@State private var _sourceURL = ""
 
-	/// NullSign's featured sources: its own, then the sources NullSign 1.x featured.
-	static let featuredSources: [URL] = [
-		"https://raw.githubusercontent.com/nulldev85/AppSource/main/apps.json",
-		"https://raw.githubusercontent.com/Aidoku/Aidoku/altstore/apps.json",
-		"https://github.com/chachillie/Flycast-iOS/raw/main/flycast-ios.json",
-		"https://xitrix.github.io/iTorrent/AltStore.json",
-		"https://altstore.oatmealdome.me/",
-		"https://raw.githubusercontent.com/LiveContainer/LiveContainer/refs/heads/main/apps.json",
-		"https://pokemmo.com/altstore",
-		"https://provenance-emu.com/apps.json",
-		"https://community-apps.sidestore.io/sidecommunity.json",
-		"https://alt.getutm.app",
-		"https://raw.githubusercontent.com/paigely/Navic/refs/heads/master/app-repo.json",
-		"https://stikdebug.xyz/index.json",
-		"https://apps.manicemu.site/altstore",
-		"https://alt.crystall1ne.dev"
-	].map { URL(string: $0)! }
+	/// NullSign features only its own source, Null's Apps, so it can be added
+	/// back after being removed.
+	static let featuredSources: [URL] = [Storage.nullSignSourceURL]
 
 	private var _isBusy: Bool { _isImporting || _isSaving }
 	private var _trimmedURL: String { _sourceURL.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -51,7 +37,7 @@ struct SourcesAddView: View {
 					NullSignSettingsIntro(
 						systemImage: "externaldrive.connected.to.line.below",
 						title: .localized("Add Source"),
-						detail: .localized("Add a repository by URL, move a source list, or choose a featured source.")
+						detail: .localized("Add a repository by URL or move a source list.")
 					)
 					_urlSection
 					_transferSection
@@ -160,31 +146,13 @@ extension SourcesAddView {
 		}
 	}
 
+	/// Shown only while Null's Apps isn't in the library.
 	@ViewBuilder
 	private var _featuredSection: some View {
-		VStack(alignment: .leading, spacing: 10) {
-			SourceSectionLabel(
-				title: .localized("Featured"),
-				count: _isLoadingFeatured ? nil : _featured.count
-			)
+		if !_isLoadingFeatured && !_featured.isEmpty {
+			VStack(alignment: .leading, spacing: 10) {
+				SourceSectionLabel(title: .localized("Featured"))
 
-			if _isLoadingFeatured {
-				SourceLoadingState(label: .localized("Checking featured sources"))
-					.frame(maxWidth: .infinity)
-					.padding(16)
-					.nullSignSurface(fill: NullSignStyle.groupedSurface)
-			} else if _featured.isEmpty {
-				HStack(spacing: 11) {
-					Image(systemName: "checkmark.circle")
-						.foregroundStyle(NullSignStyle.accent)
-					Text(.localized("You already have all available featured sources."))
-						.font(.roundedUI(.subheadline))
-						.foregroundStyle(.secondary)
-				}
-				.frame(maxWidth: .infinity, alignment: .leading)
-				.padding(16)
-				.nullSignSurface(fill: NullSignStyle.groupedSurface)
-			} else {
 				VStack(spacing: 0) {
 					ForEach(_featured.indices, id: \.self) { index in
 						let item = _featured[index]
@@ -327,7 +295,11 @@ extension SourcesAddView {
 
 	private func _refreshFeatured() {
 		_featured = _allFeatured
-			.filter { url, data in !Storage.shared.sourceExists(data.id ?? url.absoluteString) }
+			.filter { url, data in
+				url == Storage.nullSignSourceURL
+					? !Storage.shared.hasNullSignSource()
+					: !Storage.shared.sourceExists(data.id ?? url.absoluteString)
+			}
 			.sorted {
 				($0.data.name ?? "").localizedCaseInsensitiveCompare($1.data.name ?? "") == .orderedAscending
 			}
