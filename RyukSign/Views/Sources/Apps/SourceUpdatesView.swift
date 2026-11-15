@@ -100,7 +100,7 @@ struct AppUpdateRow: View {
 
 	private var _subtitle: String {
 		let sources = String.localized("%lld Sources", arguments: Set(update.candidates.map(\.sourceID)).count)
-		return "\(update.installedVersion) → \(update.best.version) • \(sources)"
+		return "\(update.installedVersionLabel) → \(update.best.versionLabel) • \(sources)"
 	}
 
 	var body: some View {
@@ -236,7 +236,7 @@ struct UpdatePickerView: View {
 				}
 				NBTitleWithSubtitleView(
 					title: update.name,
-					subtitle: .localized("Installed %@", arguments: update.installedVersion)
+					subtitle: .localized("Installed %@", arguments: update.installedVersionLabel)
 				)
 			}
 			.listRowSeparator(.hidden, edges: .top)
@@ -316,7 +316,7 @@ extension AppUpdate.Candidate {
 	var date: Date? { app.currentDate?.date }
 
 	var subtitle: String {
-		[version, sourceName, app.currentDescription]
+		[versionLabel, sourceName, app.currentDescription]
 			.compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
 			.filter { !$0.isEmpty }
 			.joined(separator: " • ")

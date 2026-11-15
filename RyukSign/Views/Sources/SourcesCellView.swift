@@ -73,7 +73,7 @@ struct SourcesCellView: View {
 		.padding(16)
 		.nullSignSurface()
 		.contentShape(RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous))
-		.onAppear { _isExcluded = RyukSignAPI.isSourceExcluded(_sourceIdentifier) }
+		.onAppear { _isExcluded = SourceExclusions.isExcluded(_sourceIdentifier) }
 
 		if isEditMode {
 			card
@@ -170,7 +170,7 @@ extension SourcesCellView {
 	private func _excludeAction() -> some View {
 		Button {
 			let newValue = !_isExcluded
-			RyukSignAPI.setSourceExcluded(_sourceIdentifier, excluded: newValue)
+			SourceExclusions.setExcluded(_sourceIdentifier, excluded: newValue)
 			_isExcluded = newValue
 		} label: {
 			Label(

@@ -292,29 +292,25 @@ enum FR {
 		}
 	}
 
-	/// Applies premium auth and catalog filtering to the sources that need it.
+	/// Fetches several sources at once, keeping the ones that load.
 	static func fetchRepositories(from urls: [URL]) async -> [(url: URL, data: ASRepository)] {
-		let requests: [(url: URL, request: URL, headers: [String: String])] = await MainActor.run {
-			urls.map { ($0, RyukSignAPI.catalogURL(for: $0), RyukSignAPI.authHeaders(for: $0)) }
-		}
-
 		let service = NBFetchService()
 
 		return await withTaskGroup(of: (URL, ASRepository?).self) { group in
-			for item in requests {
+			for url in urls {
 				group.addTask {
 					let repository: ASRepository? = await withCheckedContinuation { continuation in
-						service.fetch(from: item.request, headers: item.headers) { (result: Result<ASRepository, Error>) in
+						service.fetch(from: url) { (result: Result<ASRepository, Error>) in
 							switch result {
 							case .success(let repository):
 								continuation.resume(returning: repository)
 							case .failure(let error):
-								Logger.misc.error("Failed to fetch \(item.url.absoluteString, privacy: .public): \(error.localizedDescription, privacy: .public)")
+								Logger.misc.error("Failed to fetch \(url.absoluteString, privacy: .public): \(error.localizedDescription, privacy: .public)")
 								continuation.resume(returning: nil)
 							}
 						}
 					}
-					return (item.url, repository)
+					return (url, repository)
 				}
 			}
 

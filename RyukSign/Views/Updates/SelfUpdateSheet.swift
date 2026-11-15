@@ -18,7 +18,7 @@ struct SelfUpdateSheet: View {
 
 	private var _isWorking: Bool {
 		switch _manager.phase {
-		case .downloading, .importing, .signing, .installing, .done: return true
+		case .downloading, .importing, .signing, .done: return true
 		default: return false
 		}
 	}
@@ -60,6 +60,10 @@ struct SelfUpdateSheet: View {
 				}
 			}
 			.interactiveDismissDisabled(_locksDismiss)
+			.onChange(of: _manager.phase) { phase in
+				// The install queue's card takes over once the update is signed.
+				if phase == .done { dismiss() }
+			}
 			.onDisappear { _manager.endFlow() }
 		}
 	}
@@ -77,10 +81,10 @@ struct SelfUpdateSheet: View {
 					Text(release.title)
 						.font(.title3.bold())
 					HStack(spacing: 6) {
-						Text(Bundle.main.version)
+						Text(SelfUpdateManager.installedLabel)
 						Image(systemName: "arrow.right")
 							.font(.caption2)
-						Text(release.version)
+						Text(release.label)
 							.foregroundStyle(NullSignStyle.accent)
 					}
 					.font(.subheadline)
@@ -143,12 +147,6 @@ struct SelfUpdateSheet: View {
 				Text(_statusText)
 					.font(.headline)
 					.contentTransition(.opacity)
-				if case .installing = _manager.phase {
-					Text(.localized("Installing on the Home Screen. You can close this."))
-						.font(.caption)
-						.foregroundStyle(.secondary)
-						.multilineTextAlignment(.center)
-				}
 			}
 			.animation(.smooth(duration: 0.25), value: _statusText)
 
@@ -192,7 +190,7 @@ struct SelfUpdateSheet: View {
 			Button {
 				_manager.beginUpdate(to: release)
 			} label: {
-				Text(verbatim: release.isInstalled ? .localized("Reinstall %@", arguments: release.version) : .localized("Update Now"))
+				Text(verbatim: release.isInstalled ? .localized("Reinstall %@", arguments: release.label) : .localized("Update Now"))
 					.frame(maxWidth: .infinity)
 			}
 			.buttonStyle(.borderedProminent)
@@ -204,7 +202,7 @@ struct SelfUpdateSheet: View {
 						Text(.localized("Remind Me Later")).frame(maxWidth: .infinity)
 					}
 					Button(role: .destructive) {
-						_manager.ignore(release.version)
+						_manager.ignore(release.label)
 						dismiss()
 					} label: {
 						Text(.localized("Ignore This Version")).frame(maxWidth: .infinity)
@@ -219,7 +217,6 @@ struct SelfUpdateSheet: View {
 	private var _determinateValue: Double? {
 		switch _manager.phase {
 		case .downloading(let value): return value
-		case .installing where _manager.installProgress > 0: return _manager.installProgress
 		default: return nil
 		}
 	}
@@ -230,16 +227,6 @@ struct SelfUpdateSheet: View {
 				.font(.footnote)
 				.foregroundStyle(.secondary)
 				.frame(maxWidth: .infinity, alignment: .leading)
-			if _manager.method == .idevice {
-				Button {
-					UIApplication.open("localdevvpn://enable?scheme=feather")
-				} label: {
-					Label(.localized("Connect to LocalDevVPN"), systemImage: "link")
-						.frame(maxWidth: .infinity)
-				}
-				.buttonStyle(.borderedProminent)
-				.controlSize(.large)
-			}
 			HStack(spacing: 10) {
 				Button {
 					_manager.phase = .idle
@@ -263,8 +250,7 @@ struct SelfUpdateSheet: View {
 		case .downloading: return .localized("Downloading")
 		case .importing: return .localized("Preparing")
 		case .signing: return .localized("Signing")
-		case .installing: return .localized("Installing")
-		case .done: return .localized("Finishing")
+		case .done: return .localized("Installing")
 		default: return ""
 		}
 	}

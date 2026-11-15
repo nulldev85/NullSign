@@ -205,7 +205,7 @@ extension SourceAppsTableRepresentableView.Coordinator {
             if let versions = app.versions, !versions.isEmpty {
                 return versions.map { version in
                     UIAction(
-                        title: version.version,
+                        title: version.label,
                         image: image
                     ) { _ in
                         action(version)
@@ -214,7 +214,7 @@ extension SourceAppsTableRepresentableView.Coordinator {
             } else {
                 return [
                     UIAction(
-                        title: app.currentVersion ?? "",
+                        title: app.currentVersionLabel ?? "",
                         image: image
                     ) { _ in
                         action(nil)

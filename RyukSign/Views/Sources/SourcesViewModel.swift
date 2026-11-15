@@ -94,8 +94,6 @@ final class SourcesViewModel: ObservableObject {
 		struct FetchItem {
 			let source: AltSource
 			let url: URL
-			let headers: [String: String]
-			let isPremium: Bool
 			var cachedAt: Date?
 		}
 
@@ -104,12 +102,7 @@ final class SourcesViewModel: ObservableObject {
 				Logger.misc.error("Source has no URL: \(source.name ?? "Unknown", privacy: .public)")
 				return nil
 			}
-			return FetchItem(
-				source: source,
-				url: RyukSignAPI.catalogURL(for: url),
-				headers: RyukSignAPI.authHeaders(for: url),
-				isPremium: RyukSignAPI.isPremiumSource(url)
-			)
+			return FetchItem(source: source, url: url)
 		}
 
 		Logger.misc.info("fetchSources START: \(items.count, privacy: .public) sources")
@@ -168,20 +161,18 @@ final class SourcesViewModel: ObservableObject {
 				for (offset, item) in batch.enumerated() {
 					let globalIndex = startIndex + offset
 					let url = item.url
-					let headers = item.headers
-					let isPremium = item.isPremium
 					let cacheURL = cacheEnabled ? url : nil
 
 					group.addTask {
 						let repo: ASRepository? = await withCheckedContinuation { continuation in
-							service.fetch(from: url, headers: headers, onData: { data in
+							service.fetch(from: url, onData: { data in
 								if let cacheURL { SourceCache.store(data, for: cacheURL) }
 							}) { (result: RepositoryDataHandler) in
 								switch result {
 								case .success(let repo):
 									continuation.resume(returning: repo)
 								case .failure(let error):
-									Logger.misc.error("Source fetch FAILED\(isPremium ? " [PREMIUM]" : "", privacy: .public) \(url.absoluteString, privacy: .public): \(error.localizedDescription, privacy: .public)")
+									Logger.misc.error("Source fetch FAILED \(url.absoluteString, privacy: .public): \(error.localizedDescription, privacy: .public)")
 									continuation.resume(returning: nil)
 								}
 							}

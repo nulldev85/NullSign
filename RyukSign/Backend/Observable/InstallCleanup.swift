@@ -112,7 +112,11 @@ enum InstallCleanup {
 				let sameApp = app.isSigned
 					? app.identifier != nil && app.identifier == new.identifier
 					: app.originalIdentifier != nil && app.originalIdentifier == new.originalIdentifier
-				return sameApp && AppUpdateChecker.isNewerVersion(new.version ?? "", than: version)
+				// An older build of the same version counts as older too.
+				return sameApp && AppUpdateChecker.isNewerRelease(
+					new.version ?? "", build: new.bundleBuild,
+					than: version, installedBuild: app.bundleBuild
+				)
 			}
 		}
 	}

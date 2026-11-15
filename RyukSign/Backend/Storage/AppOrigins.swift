@@ -12,6 +12,9 @@ struct AppOrigin: Codable, Hashable, Sendable {
 	let appID: String?
 	let name: String?
 	let version: String?
+	/// The source's build for that version, so builds that share a version
+	/// can be told apart. Missing from origins saved before NullSign 2.0.
+	var build: String? = nil
 }
 
 final class AppOrigins: @unchecked Sendable {

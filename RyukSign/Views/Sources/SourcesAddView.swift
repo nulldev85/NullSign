@@ -8,33 +8,23 @@
 import SwiftUI
 import NimbleViews
 import AltSourceKit
-import NimbleJSON
-import OSLog
-import UIKit.UIImpactFeedbackGenerator
 
 // MARK: - View
+/// NullSign's Add Source: a repository by URL, moving a source list in or out,
+/// and NullSign's featured sources.
 struct SourcesAddView: View {
 	@Environment(\.dismiss) var dismiss
 
-	@State private var _filteredRecommendedSourcesData: [(url: URL, data: ASRepository)] = []
-	func _refreshFilteredRecommendedSourcesData() {
-		let filtered = recommendedSourcesData
-			.filter { (url, data) in
-				let id = data.id ?? url.absoluteString
-				return !Storage.shared.sourceExists(id)
-			}
-			.sorted { lhs, rhs in
-				let lhsName = lhs.data.name ?? ""
-				let rhsName = rhs.data.name ?? ""
-				return lhsName.localizedCaseInsensitiveCompare(rhsName) == .orderedAscending
-			}
-		_filteredRecommendedSourcesData = filtered
-	}
+	@State private var _featured: [(url: URL, data: ASRepository)] = []
+	@State private var _allFeatured: [(url: URL, data: ASRepository)] = []
+	@State private var _isLoadingFeatured = true
+	@State private var _isImporting = false
+	@State private var _isSaving = false
+	@State private var _sourceURL = ""
 
-	@State var recommendedSourcesData: [(url: URL, data: ASRepository)] = []
-	let recommendedSources: [URL] = [
+	/// NullSign's featured sources: its own, then the sources NullSign 1.x featured.
+	static let featuredSources: [URL] = [
 		"https://raw.githubusercontent.com/nulldev85/AppSource/main/apps.json",
-		"https://raw.githubusercontent.com/claration/Feather/refs/heads/main/app-repo.json",
 		"https://raw.githubusercontent.com/Aidoku/Aidoku/altstore/apps.json",
 		"https://github.com/chachillie/Flycast-iOS/raw/main/flycast-ios.json",
 		"https://xitrix.github.io/iTorrent/AltStore.json",
@@ -50,400 +40,305 @@ struct SourcesAddView: View {
 		"https://alt.crystall1ne.dev"
 	].map { URL(string: $0)! }
 
-	// MARK: - Ryuk Repos Collection
-	@State var ryukRepos: [URL] = []
-	@State var ryukReposCount: Int = 0
-	@State var ryukReposFetchError: String? = nil
-
-	// MARK: - Premium RyukSign API
-	@State var _showPremiumKeyPrompt = false
-	@State var _premiumAPIKey = ""
-	@State var _isValidatingAPIKey = false
-	@State var _showPremiumError = false
-	@State var _premiumErrorMessage = ""
-	@State private var _showResetConfirmation = false
-	@State private var _showRestorePrompt = false
-	@ObservedObject var _premium = PremiumManager.shared
-
-	@State private var _isImporting = false
-	@State var _isAddingRyukRepos = false
-	@State private var _isSavingSource = false
-	@State private var _sourceURL = ""
-	@State private var _showRyukErrorAlert = false
+	private var _isBusy: Bool { _isImporting || _isSaving }
+	private var _trimmedURL: String { _sourceURL.trimmingCharacters(in: .whitespacesAndNewlines) }
 
 	// MARK: Body
 	var body: some View {
 		NBNavigationView(.localized("Add Source"), displayMode: .inline) {
-			formContent
-				.toolbar { toolbarContent }
-				.animation(.default, value: _filteredRecommendedSourcesData.map { $0.data.id ?? "" })
-				.alert("Failed to Load Ryuk Repos", isPresented: $_showRyukErrorAlert) {
-					Button("OK", role: .cancel) { }
-					Button("Retry") {
-						Task {
-							await _fetchRyukReposList()
-						}
-					}
-				} message: {
-					Text(ryukReposFetchError ?? "An unknown error occurred")
+			ScrollView {
+				LazyVStack(alignment: .leading, spacing: 24) {
+					NullSignSettingsIntro(
+						systemImage: "externaldrive.connected.to.line.below",
+						title: .localized("Add Source"),
+						detail: .localized("Add a repository by URL, move a source list, or choose a featured source.")
+					)
+					_urlSection
+					_transferSection
+					_featuredSection
 				}
-				.alert("Premium Access", isPresented: $_showPremiumKeyPrompt) {
-					TextField("RYK-XXXX-XXXX-XXXX", text: $_premiumAPIKey)
-						.textInputAutocapitalization(.characters)
+				.padding(.horizontal, 20)
+				.padding(.top, 12)
+				.padding(.bottom, 32)
+			}
+			.scrollDismissesKeyboard(.interactively)
+			.nullSignPage()
+			.toolbar {
+				NBToolbarButton(role: .cancel)
+			}
+			.tint(NullSignStyle.accent)
+			.task {
+				await _fetchFeatured()
+			}
+		}
+		.nullSignTypography()
+		.preferredColorScheme(.dark)
+		.modifier(NullSignSheetChrome())
+	}
+}
+
+// MARK: - Sections
+extension SourcesAddView {
+	private var _urlSection: some View {
+		VStack(alignment: .leading, spacing: 10) {
+			SourceSectionLabel(title: .localized("Repository URL"))
+
+			VStack(alignment: .leading, spacing: 12) {
+				Text(.localized("Paste an AltStore-compatible source URL. NullSign checks it before adding anything."))
+					.font(.roundedUI(.subheadline))
+					.foregroundStyle(NullSignStyle.muted)
+					.fixedSize(horizontal: false, vertical: true)
+
+				HStack(spacing: 8) {
+					TextField(.localized("https://example.com/apps.json"), text: $_sourceURL)
+						.keyboardType(.URL)
+						.textInputAutocapitalization(.never)
 						.autocorrectionDisabled()
-						.font(.system(.body, design: .monospaced))
+						.submitLabel(.done)
+						.onSubmit(_saveSource)
+					Button {
+						_sourceURL = UIPasteboard.general.string ?? _sourceURL
+					} label: {
+						Text(.localized("Paste"))
+							.font(.roundedUI(.subheadline, weight: .bold))
+							.foregroundStyle(NullSignStyle.accent)
+					}
+					.buttonStyle(.plain)
+				}
+				.padding(.horizontal, 12)
+				.frame(minHeight: 50)
+				.background(NullSignStyle.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-					Button("Redeem Key") {
-						_validatePremiumAPIKey()
+				Button(action: _saveSource) {
+					HStack(spacing: 8) {
+						if _isSaving {
+							ProgressView().tint(.white)
+						}
+						Text(_isSaving ? String.localized("Checking Source…") : String.localized("Add Source"))
 					}
-					.disabled(_premiumAPIKey.isEmpty || _isValidatingAPIKey)
+					.frame(maxWidth: .infinity)
+				}
+				.buttonStyle(NullSignPrimaryButtonStyle(height: 46))
+				.disabled(_trimmedURL.isEmpty || _isBusy)
 
-					Button("Cancel", role: .cancel) {
-						_premiumAPIKey = ""
-					}
-				} message: {
-					Text("Enter your RyukSign API key to unlock premium repositories.")
+				Link(destination: URL(string: "https://faq.altstore.io/developers/make-a-source")!) {
+					Text(.localized("How to make a source"))
+						.font(.roundedUI(.footnote, weight: .semibold))
+						.foregroundStyle(NullSignStyle.accent)
 				}
-				.alert("Error", isPresented: $_showPremiumError) {
-					Button("Contact \(RyukSignAPI.telegramUsername)") {
-						RyukSignAPI.openTelegram()
-					}
-					Button("OK", role: .cancel) { }
-				} message: {
-					Text(_premiumErrorMessage)
-				}
-				.alert("Reset Premium?", isPresented: $_showResetConfirmation) {
-					Button("Reset", role: .destructive) {
-						_resetPremium()
-					}
-					Button("Cancel", role: .cancel) { }
-				} message: {
-					Text("This will remove all RyukSign premium repositories and clear your activation. You will need a new key to reactivate.")
-				}
-				.alert("Premium Found", isPresented: $_showRestorePrompt) {
-					Button("Restore") {
-						_restorePremium()
-					}
-					Button("No Thanks", role: .destructive) {
-						RyukSignAPI.clearPremiumIdentity()
-					}
-				} message: {
-					Text("A previous RyukSign premium activation was found on this device. Would you like to restore your premium repositories?")
-				}
-				.task {
-					RyukSignAPI.migrateIfNeeded()
-					_premium.refresh()
-					await _fetchRecommendedRepositories()
-					await _fetchRyukReposList()
-				}
+			}
+			.padding(16)
+			.nullSignSurface(fill: NullSignStyle.groupedSurface)
 		}
 	}
 
-	@AppStorage("Feather.sourcesTabShowAllReposDirectly")
-	var _sourcesTabShowAllReposDirectly: Bool = false
+	private var _transferSection: some View {
+		VStack(alignment: .leading, spacing: 10) {
+			SourceSectionLabel(title: .localized("Move Sources"))
 
-	@ViewBuilder
-	var formContent: some View {
-		Form {
-			sourceURLSection
-			importExportSection
-			// NullSign removes RyukSign's premium sources (activated through
-			// RyukSign's server with a device ID); the section is never shown.
-			ryukReposSection
-			displaySection
-			featuredSection
-		}
-		.scrollContentBackground(.hidden)
-		.nullSignPage()
-		.dismissableKeyboard()
-	}
+			VStack(spacing: 0) {
+				_transferButton(
+					title: _isImporting ? .localized("Importing…") : .localized("Import from Clipboard"),
+					subtitle: .localized("Reads KravaSign, MapleSign, or ESign source lists"),
+					icon: "square.and.arrow.down",
+					disabled: _isBusy,
+					action: _importFromClipboard
+				)
 
-	@ViewBuilder
-	var sourceURLSection: some View {
-		NBSection(.localized("Source URL")) {
-			TextField(.localized("Enter Source URL"), text: $_sourceURL)
-				.keyboardType(.URL)
-				.textInputAutocapitalization(.never)
-		} footer: {
-			Text(.localized("The only supported repositories are AltStore repositories."))
-			Text(verbatim: "[\(String.localized("Learn more about how to setup a repository..."))](https://faq.altstore.io/developers/make-a-source)")
+				Divider().overlay(NullSignStyle.hairline).padding(.leading, 46)
+
+				_transferButton(
+					title: .localized("Copy My Source List"),
+					subtitle: .localized("Copies every saved URL to the clipboard"),
+					icon: "doc.on.doc",
+					disabled: _isBusy,
+					action: _exportSources
+				)
+			}
+			.padding(8)
+			.nullSignSurface(fill: NullSignStyle.groupedSurface)
 		}
 	}
 
 	@ViewBuilder
-	var importExportSection: some View {
-		Section {
-			Button(.localized("Import"), systemImage: "square.and.arrow.down") {
-				_isImporting = true
-				_fetchImportedRepositories(UIPasteboard.general.string) { success, count in
+	private var _featuredSection: some View {
+		VStack(alignment: .leading, spacing: 10) {
+			SourceSectionLabel(
+				title: .localized("Featured"),
+				count: _isLoadingFeatured ? nil : _featured.count
+			)
+
+			if _isLoadingFeatured {
+				SourceLoadingState(label: .localized("Checking featured sources"))
+					.frame(maxWidth: .infinity)
+					.padding(16)
+					.nullSignSurface(fill: NullSignStyle.groupedSurface)
+			} else if _featured.isEmpty {
+				HStack(spacing: 11) {
+					Image(systemName: "checkmark.circle")
+						.foregroundStyle(NullSignStyle.accent)
+					Text(.localized("You already have all available featured sources."))
+						.font(.roundedUI(.subheadline))
+						.foregroundStyle(.secondary)
+				}
+				.frame(maxWidth: .infinity, alignment: .leading)
+				.padding(16)
+				.nullSignSurface(fill: NullSignStyle.groupedSurface)
+			} else {
+				VStack(spacing: 0) {
+					ForEach(_featured.indices, id: \.self) { index in
+						let item = _featured[index]
+						_featuredRow(url: item.url, source: item.data)
+						if index < _featured.count - 1 {
+							Divider().overlay(NullSignStyle.hairline).padding(.leading, 70)
+						}
+					}
+				}
+				.nullSignSurface(fill: NullSignStyle.groupedSurface)
+			}
+		}
+	}
+
+	private func _transferButton(
+		title: String,
+		subtitle: String,
+		icon: String,
+		disabled: Bool,
+		action: @escaping () -> Void
+	) -> some View {
+		Button(action: action) {
+			HStack(spacing: 12) {
+				NullSignIconTile(systemImage: icon, tint: NullSignStyle.categoryColor(for: icon), size: 32, filled: true)
+				VStack(alignment: .leading, spacing: 2) {
+					Text(title)
+						.font(.roundedUI(size: 15, weight: .bold))
+					Text(subtitle)
+						.font(.roundedUI(.caption))
+						.foregroundStyle(NullSignStyle.muted)
+						.lineLimit(2)
+				}
+				Spacer()
+				Image(systemName: "chevron.right")
+					.font(.roundedUI(size: 12, weight: .bold))
+					.foregroundStyle(NullSignStyle.faint)
+			}
+			.padding(.horizontal, 10)
+			.padding(.vertical, 10)
+			.contentShape(Rectangle())
+		}
+		.buttonStyle(.plain)
+		.disabled(disabled)
+	}
+
+	private func _featuredRow(url: URL, source: ASRepository) -> some View {
+		HStack(spacing: 12) {
+			SourceRemoteIcon(
+				url: source.currentIconURL,
+				relativeTo: url,
+				size: 46,
+				fallbackAssetName: SourceBundledIcon.assetName(for: source)
+			)
+			VStack(alignment: .leading, spacing: 2) {
+				Text(source.name ?? .localized("Unknown"))
+					.font(.roundedUI(.headline))
+					.lineLimit(1)
+				Text(url.host?.replacingOccurrences(of: "www.", with: "") ?? url.absoluteString)
+					.font(.roundedUI(.subheadline))
+					.foregroundStyle(NullSignStyle.muted)
+					.lineLimit(1)
+				Text(verbatim: .localized("%lld Apps", arguments: source.apps.count))
+					.font(.roundedUI(.caption))
+					.foregroundStyle(NullSignStyle.faint)
+			}
+			Spacer(minLength: 8)
+			Button {
+				Storage.shared.addSource(url, repository: source) { error in
+					_refreshFeatured()
+					if let error {
+						Toast.error(error.localizedDescription, duration: .sticky)
+					} else {
+						Toast.success(.localized("Added %@", arguments: source.name ?? url.host ?? url.absoluteString))
+					}
+				}
+			} label: {
+				Text(.localized("Add"))
+			}
+			.buttonStyle(NullSignSecondaryButtonStyle(height: 30))
+		}
+		.padding(12)
+	}
+}
+
+// MARK: - Actions
+extension SourcesAddView {
+	private func _saveSource() {
+		guard !_trimmedURL.isEmpty, !_isBusy else { return }
+		_isSaving = true
+		FR.handleSource(_trimmedURL, showAlerts: false) { result in
+			_isSaving = false
+			switch result {
+			case .success(let sourceName):
+				Toast.success(.localized("Added %@", arguments: sourceName))
+				dismiss()
+			case .failure(let error):
+				Toast.error(error.localizedDescription, duration: .sticky)
+			}
+		}
+	}
+
+	private func _importFromClipboard() {
+		let urls = ASDeobfuscator(with: UIPasteboard.general.string ?? "")
+			.decode()
+			.compactMap(URL.init(string:))
+		guard !urls.isEmpty else {
+			Toast.error(.localized("Copy a supported source list, then try again."), duration: .sticky)
+			return
+		}
+
+		_isImporting = true
+		Task {
+			let fetched = await FR.fetchRepositories(from: urls)
+			let repositories = Dictionary(fetched, uniquingKeysWith: { first, _ in first })
+
+			await MainActor.run {
+				guard !repositories.isEmpty else {
 					_isImporting = false
-					if success {
-						Toast.success("Successfully imported \(count) source\(count == 1 ? "" : "s")")
-					} else {
-						Toast.error("No valid sources found in clipboard", duration: .sticky)
-					}
-				}
-			}
-
-			Button(.localized("Export"), systemImage: "doc.on.doc") {
-				let sources = Storage.shared.getSources()
-				if sources.isEmpty {
-					Toast.error("No sources to export", duration: .sticky)
-				} else {
-					UIPasteboard.general.string = sources.map {
-						$0.sourceURL!.absoluteString
-					}.joined(separator: "\n")
-					Toast.success("Successfully exported \(sources.count) source\(sources.count == 1 ? "" : "s") to clipboard")
-				}
-			}
-		} footer: {
-			Text(.localized("Supports importing from KravaSign/MapleSign and ESign."))
-		}
-		.listRowBackground(NullSignStyle.groupedSurface)
-	}
-
-	@ViewBuilder
-	var premiumRyukSignSection: some View {
-		Section {
-			if _premium.isActive {
-				NavigationLink {
-					PremiumSettingsView()
-				} label: {
-					HStack {
-						Image(systemName: "crown.fill")
-							.foregroundColor(NullSignStyle.yellow)
-						VStack(alignment: .leading, spacing: 2) {
-							Text("Premium RyukSign")
-								.font(.headline)
-								.foregroundColor(.primary)
-							Text("Premium activated")
-								.font(.caption)
-								.foregroundColor(NullSignStyle.success)
-						}
-						Spacer()
-						Image(systemName: "checkmark.seal.fill")
-							.foregroundColor(NullSignStyle.success)
-					}
-				}
-				.swipeActions(edge: .trailing) {
-					Button("Reset", role: .destructive) {
-						_showResetConfirmation = true
-					}
-				}
-			} else {
-				Button(action: {
-					if RyukSignAPI.hasStoredPremiumButNotLocal {
-						_showRestorePrompt = true
-					} else {
-						_premiumAPIKey = ""
-						_showPremiumKeyPrompt = true
-					}
-				}) {
-					HStack {
-						Image(systemName: "crown.fill")
-							.foregroundColor(NullSignStyle.yellow)
-						VStack(alignment: .leading, spacing: 2) {
-							Text("Premium RyukSign")
-								.font(.headline)
-								.foregroundColor(.primary)
-							Text("Redeem API key for premium repos")
-								.font(.caption)
-								.foregroundColor(.secondary)
-						}
-						Spacer()
-						if _isValidatingAPIKey {
-							ProgressView()
-								.scaleEffect(0.8)
-						} else {
-							Image(systemName: "key.fill")
-								.foregroundColor(.secondary)
-								.font(.caption)
-						}
-					}
-					.contentShape(Rectangle())
-				}
-				.buttonStyle(PlainButtonStyle())
-				.disabled(_isValidatingAPIKey)
-			}
-
-			Button(action: {
-				RyukSignAPI.openTelegram()
-			}) {
-				HStack {
-					Image(systemName: "paperplane.fill")
-						.foregroundColor(NullSignStyle.accent)
-					VStack(alignment: .leading, spacing: 2) {
-						Text("Get a Key")
-							.font(.headline)
-							.foregroundColor(.primary)
-						Text("\(RyukSignAPI.contactSuffix)")
-							.font(.caption)
-							.foregroundColor(.secondary)
-					}
-					Spacer()
-					Image(systemName: "arrow.up.right")
-						.foregroundColor(.secondary)
-						.font(.caption)
-				}
-				.contentShape(Rectangle())
-			}
-			.buttonStyle(PlainButtonStyle())
-		} footer: {
-			if _premium.isActive {
-				Text("Tap to manage premium options, or swipe left to reset.")
-			} else {
-				Text("API keys are single-use.")
-			}
-		}
-		.listRowBackground(NullSignStyle.groupedSurface)
-	}
-
-	@ViewBuilder
-	var ryukReposSection: some View {
-		Section {
-			Button(action: {
-				if ryukRepos.isEmpty {
-					Task {
-						await _fetchRyukReposList()
-						if !ryukRepos.isEmpty {
-							_isAddingRyukRepos = true
-							_addRyukRepos()
-						}
-					}
-				} else {
-					_isAddingRyukRepos = true
-					_addRyukRepos()
-				}
-			}) {
-				HStack {
-					Image(systemName: "bolt.fill")
-						.foregroundColor(NullSignStyle.warning)
-					VStack(alignment: .leading, spacing: 2) {
-						Text("Ryuk Repos")
-							.font(.headline)
-							.foregroundColor(.primary)
-						if ryukReposCount > 0 {
-							Text("Add \(ryukReposCount) Ryuk crafted repositories")
-								.font(.caption)
-								.foregroundColor(.secondary)
-						} else if ryukReposFetchError != nil {
-							Text("Tap to retry loading repositories")
-								.font(.caption)
-								.foregroundColor(NullSignStyle.danger)
-						} else {
-							Text("Loading repositories...")
-								.font(.caption)
-								.foregroundColor(.secondary)
-						}
-					}
-					Spacer()
-					if _isAddingRyukRepos || (ryukReposCount == 0 && ryukReposFetchError == nil) {
-						ProgressView()
-							.scaleEffect(0.8)
-					} else if ryukReposFetchError != nil {
-						Image(systemName: "exclamationmark.triangle")
-							.foregroundColor(NullSignStyle.danger)
-							.font(.caption)
-					} else {
-						Image(systemName: "chevron.right")
-							.foregroundColor(.secondary)
-							.font(.caption)
-					}
-				}
-				.contentShape(Rectangle())
-			}
-			.buttonStyle(PlainButtonStyle())
-			.disabled(_premium.isActive || _isAddingRyukRepos || (ryukReposCount == 0 && ryukReposFetchError == nil))
-			.opacity(_premium.isActive ? 0.4 : 1.0)
-		} footer: {
-			if _premium.isActive {
-				Text("Already included in your premium repositories.")
-			} else if let error = ryukReposFetchError {
-				Text(error)
-					.foregroundColor(NullSignStyle.danger)
-			} else {
-				Text("Add a collection of popular repositories crafted by Ryuk.")
-			}
-		}
-		.listRowBackground(NullSignStyle.groupedSurface)
-	}
-
-	@ViewBuilder
-	var displaySection: some View {
-		Section {
-			Toggle(isOn: $_sourcesTabShowAllReposDirectly) {
-				Label(.localized("Show All Repos by Default"), systemImage: "square.stack")
-			}
-		} footer: {
-			Text(.localized("When enabled, the Sources tab shows all apps directly. Toggle off to manage sources."))
-		}
-		.listRowBackground(NullSignStyle.groupedSurface)
-	}
-
-	@ViewBuilder
-	var featuredSection: some View {
-		if !_filteredRecommendedSourcesData.isEmpty {
-			NBSection(.localized("Featured")) {
-				ForEach(_filteredRecommendedSourcesData, id: \.url) { (url, source) in
-					HStack(spacing: 2) {
-						FRIconCellView(
-							title: source.name ?? .localized("Unknown"),
-							subtitle: url.absoluteString,
-							iconUrl: source.currentIconURL
-						)
-						Button {
-							Storage.shared.addSource(url, repository: source) { error in
-								_refreshFilteredRecommendedSourcesData()
-								if let error = error {
-									Toast.error(error.localizedDescription, duration: .sticky)
-								} else {
-									let sourceName = source.name ?? "Repository"
-									Toast.success("Successfully added \(sourceName)")
-								}
-							}
-						} label: {
-							NBButton(.localized("Add"), systemImage: "arrow.down", style: .text)
-						}
-					}
-				}
-			} footer: {
-				Text(.localized("Open an [issue](https://github.com/claration/Feather/issues) on GitHub if you want your source to be featured."))
-			}
-		}
-	}
-
-	@ToolbarContentBuilder
-	var toolbarContent: some ToolbarContent {
-		NBToolbarButton(role: .cancel)
-
-		if !_isImporting && !_isAddingRyukRepos && !_isSavingSource {
-			NBToolbarButton(
-				.localized("Save"),
-				style: .text,
-				placement: .confirmationAction
-			) {
-				if _sourceURL.isEmpty {
-					dismiss()
+					Toast.error(.localized("None of the copied sources could be loaded."), duration: .sticky)
 					return
 				}
-
-				_isSavingSource = true
-				FR.handleSource(_sourceURL, showAlerts: false) { result in
-					_isSavingSource = false
-					switch result {
-					case .success(let sourceName):
-						Toast.success("Successfully added \(sourceName)")
-						dismiss()
-					case .failure(let error):
-						Toast.error(error.localizedDescription, duration: .sticky)
-					}
+				Storage.shared.addSources(repos: repositories) { _ in
+					_isImporting = false
+					Toast.success(.localized("Imported %lld sources", arguments: repositories.count))
+					dismiss()
 				}
-			}
-		} else {
-			ToolbarItem(placement: .confirmationAction) {
-				ProgressView()
 			}
 		}
 	}
 
+	private func _exportSources() {
+		let urls = Storage.shared.getSources().compactMap(\.sourceURL)
+		guard !urls.isEmpty else {
+			Toast.error(.localized("No sources to export"), duration: .sticky)
+			return
+		}
+		UIPasteboard.general.string = urls.map(\.absoluteString).joined(separator: "\n")
+		Toast.success(.localized("Copied %lld sources to the clipboard", arguments: urls.count))
+	}
+
+	private func _refreshFeatured() {
+		_featured = _allFeatured
+			.filter { url, data in !Storage.shared.sourceExists(data.id ?? url.absoluteString) }
+			.sorted {
+				($0.data.name ?? "").localizedCaseInsensitiveCompare($1.data.name ?? "") == .orderedAscending
+			}
+	}
+
+	private func _fetchFeatured() async {
+		let fetched = await FR.fetchRepositories(from: Self.featuredSources)
+		await MainActor.run {
+			_allFeatured = fetched
+			_refreshFeatured()
+			_isLoadingFeatured = false
+		}
+	}
 }

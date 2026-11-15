@@ -9,11 +9,12 @@ import SwiftUI
 import NimbleViews
 import UIKit
 
+/// NullSign's own updates: what's installed, what NullSign's app source
+/// offers, and how updates are signed.
 struct UpdatesSettingsView: View {
 	@ObservedObject private var _manager = SelfUpdateManager.shared
 	@AppStorage("Feather.selfUpdateAutoCheck") private var _autoCheck: Bool = true
 	@AppStorage("Feather.selfUpdateCertIndex") private var _certIndex: Int = -1
-	@AppStorage("Feather.selfUpdateMethod") private var _method: Int = 0
 
 	@State private var _selected: SelfUpdateRelease?
 
@@ -46,11 +47,11 @@ struct UpdatesSettingsView: View {
 			HStack {
 				Text(.localized("Installed"))
 				Spacer()
-				Text(Bundle.main.version).foregroundStyle(.secondary)
+				Text(SelfUpdateManager.installedLabel).foregroundStyle(.secondary)
 			}
 			if let available = _manager.available {
 				HStack {
-					Label(String.localized("Update available: %@", arguments: available.version), systemImage: "arrow.up.circle.fill")
+					Label(String.localized("Update available: %@", arguments: available.label), systemImage: "arrow.up.circle.fill")
 						.foregroundStyle(NullSignStyle.accent)
 					Spacer()
 					Button(.localized("View")) { _selected = available }
@@ -60,12 +61,16 @@ struct UpdatesSettingsView: View {
 				HStack {
 					VStack(alignment: .leading, spacing: 2) {
 						Text(.localized("Latest Release"))
-						Text(latest.title).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+						Text(latest.label).font(.caption).foregroundStyle(.secondary).lineLimit(1)
 					}
 					Spacer()
 					Button(latest.isInstalled ? .localized("Reinstall") : .localized("Install")) { _selected = latest }
 						.font(.subheadline.bold())
 				}
+			} else if let error = _manager.lastError, !_manager.isChecking {
+				Label(error, systemImage: "exclamationmark.triangle.fill")
+					.font(.footnote)
+					.foregroundStyle(NullSignStyle.warning)
 			}
 			Button {
 				Task { await _manager.check() }
@@ -83,56 +88,18 @@ struct UpdatesSettingsView: View {
 	// MARK: Options
 
 	private var _optionsSection: some View {
-		Group {
-			NBSection(.localized("Options")) {
-				Toggle(.localized("Automatic Update Checks"), isOn: $_autoCheck)
-				Picker(.localized("Install Method"), selection: $_method) {
-					Text(.localized("Server")).tag(0)
-					Text(.localized("IDevice")).tag(1)
-				}
-				Picker(.localized("Signing Certificate"), selection: $_certIndex) {
-					Text(.localized("Selected Certificate")).tag(-1)
-					ForEach(Array(_certificates.enumerated()), id: \.offset) { index, cert in
-						Text(_certName(cert)).tag(index)
-					}
-				}
-			} footer: {
-				VStack(alignment: .leading, spacing: 6) {
-					Text(_method == 0
-						 ? .localized("Server: your certificate is sent over HTTPS, the update is signed remotely, and iOS installs it. No pairing file needed.")
-						 : .localized("IDevice: the update is signed on-device and installed over a pairing file."))
-					Text(.localized("Sign with the certificate you first installed NullSign with, or iOS won't update it in place."))
+		NBSection(.localized("Options")) {
+			Toggle(.localized("Automatic Update Checks"), isOn: $_autoCheck)
+			Picker(.localized("Signing Certificate"), selection: $_certIndex) {
+				Text(.localized("Selected Certificate")).tag(-1)
+				ForEach(Array(_certificates.enumerated()), id: \.offset) { index, cert in
+					Text(_certName(cert)).tag(index)
 				}
 			}
-
-			if _method == 1 {
-				Section {
-					Button {
-						UIApplication.open("localdevvpn://enable?scheme=feather")
-					} label: {
-						Label(.localized("Connect to LocalDevVPN"), systemImage: "link")
-					}
-					Button {
-						UIApplication.open("https://apps.apple.com/us/app/localdevvpn/id6755608044")
-					} label: {
-						Label(.localized("Download LocalDevVPN"), systemImage: "arrow.down.app")
-					}
-					if !_manager.hasPairing {
-						Label(.localized("IDevice updates need a pairing file. Set it up in Installation settings, or switch to Server."), systemImage: "exclamationmark.triangle.fill")
-							.font(.footnote)
-							.foregroundStyle(.secondary)
-					}
-				} footer: {
-					Text(.localized("IDevice updates need the loopback VPN connected. Enable LocalDevVPN, then update."))
-				}
-				.listRowBackground(NullSignStyle.groupedSurface)
-			} else if !_manager.isServerConfigured {
-				Section {
-					Label(.localized("The updater server isn't available in this build."), systemImage: "exclamationmark.triangle.fill")
-						.font(.footnote)
-						.foregroundStyle(.secondary)
-				}
-				.listRowBackground(NullSignStyle.groupedSurface)
+		} footer: {
+			VStack(alignment: .leading, spacing: 6) {
+				Text(.localized("Updates come from NullSign's app source. NullSign signs the update on this device and installs it with the installation method in Settings."))
+				Text(.localized("Sign with the certificate you first installed NullSign with, or iOS won't update it in place."))
 			}
 		}
 	}
@@ -141,7 +108,7 @@ struct UpdatesSettingsView: View {
 
 	private var _ignoredSection: some View {
 		NBSection(.localized("Ignored Versions")) {
-			ForEach(Array(_manager.ignoredVersions).sorted { SelfUpdateManager.compare($0, $1) == .orderedDescending }, id: \.self) { version in
+			ForEach(Array(_manager.ignoredVersions).sorted { SelfUpdateManager.isNewerLabel($0, than: $1) }, id: \.self) { version in
 				HStack {
 					Text(version)
 					Spacer()

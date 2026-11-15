@@ -37,12 +37,11 @@ struct SourcesView: View {
 	private var _nonExcludedSources: [AltSource] {
 		_sources.filter { source in
 			let id = source.identifier ?? source.sourceURL?.absoluteString ?? ""
-			return !RyukSignAPI.isSourceExcluded(id)
+			return !SourceExclusions.isExcluded(id)
 		}
 	}
 
 	@ObservedObject var appNavigationManager = AppNavigationManager.shared
-	@ObservedObject private var _premiumFilter = PremiumFilterPreferences.shared
 
 	private var _filteredSources: [AltSource] {
 		_sources.filter { source in
@@ -84,11 +83,6 @@ struct SourcesView: View {
 		.onChange(of: _isEditMode) { isEditing in
 			if !isEditing {
 				_selectedSources.removeAll()
-			}
-		}
-		.onChange(of: _premiumFilter.stamp) { _ in
-			Task {
-				await viewModel.fetchSources(_sources, refresh: true)
 			}
 		}
 		.onChange(of: scenePhase) { newPhase in
@@ -451,15 +445,10 @@ struct SourcesView: View {
 
 	// MARK: - Selection Methods
 	private var _deletableSources: [AltSource] {
-		_filteredSources.filter { source in
-			guard let url = source.sourceURL else { return true }
-			return !RyukSignAPI.isPremiumSource(url)
-		}
+		_filteredSources
 	}
 
 	private func toggleSelection(for source: AltSource) {
-		// Don't allow selecting premium sources
-		if let url = source.sourceURL, RyukSignAPI.isPremiumSource(url) { return }
 		NBHaptic.selection()
 		if _selectedSources.contains(source) {
 			_selectedSources.remove(source)
@@ -484,10 +473,6 @@ struct SourcesView: View {
 	private func deleteSelectedSources() {
 		withAnimation {
 			for source in _selectedSources {
-				// Skip premium sources — they can only be removed via Reset Premium
-				if let url = source.sourceURL, RyukSignAPI.isPremiumSource(url) {
-					continue
-				}
 				Storage.shared.deleteSource(for: source)
 			}
 			_selectedSources.removeAll()

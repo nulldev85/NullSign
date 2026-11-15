@@ -119,7 +119,7 @@ struct SourceAppsDetailView: View {
                 }
 				
 				if
-					let currentVer = app.currentVersion,
+					let currentVer = app.currentVersionLabel,
 					let whatsNewDesc = app.currentAppVersion?.localizedDescription
 				{
 					NBSection(.localized("What's New")) {
@@ -189,7 +189,7 @@ struct SourceAppsDetailView: View {
                             _infoRow(title: .localized("Category"), value: category.capitalized)
 						}
 
-						if let version = app.currentVersion {
+						if let version = app.currentVersionLabel {
 							_infoRow(title: .localized("Version"), value: version)
 						}
 
@@ -291,7 +291,7 @@ struct SourceAppsDetailView: View {
 				placement: .topBarTrailing
 			) {
 				let sharedString = """
-				\(app.currentName) - \(app.currentVersion ?? "0")
+				\(app.currentName) - \(app.currentVersionLabel ?? "0")
 				\(app.currentDescription ?? .localized("An awesome application"))
 				---
 				\(source.website?.absoluteString ?? source.name ?? "")
@@ -384,7 +384,7 @@ extension SourceAppsDetailView {
 	private func _buildPills(from app: ASRepository.App) -> [NBPillItem] {
 		var pills: [NBPillItem] = []
 		
-		if let version = app.currentVersion {
+		if let version = app.currentVersionLabel {
 			pills.append(NBPillItem(title: version, icon: "tag", color: NullSignStyle.accent))
 		}
 		

@@ -153,7 +153,6 @@ final class BackupManager {
 	private static let _settingPrefixes = ["Feather.", "feather.", "RyukSign.", "signing_options"]
 	private static let _settingDenylist: Set<String> = [
 		"feather.selectedCert",              // restored by uuid remap, not by raw index
-		"RyukSign.premiumSourceHosts",       // premium activation is install-bound
 		"RyukSign.defaultImportFolderName",
 		"RyukSign.defaultImportFolderBookmark", // security-scoped, dead on another install
 		"Feather.downloadBubblePositionX",
@@ -221,7 +220,6 @@ final class BackupManager {
 		if components.contains(.sources) {
 			sources = Storage.shared.getSources().compactMap { source in
 				guard let url = source.sourceURL, let identifier = source.identifier else { return nil }
-				guard !RyukSignAPI.isPremiumSource(url) else { return nil }
 				return .init(identifier: identifier, name: source.name, url: url, iconURL: source.iconURL)
 			}
 			if !sources.isEmpty { written.insert(.sources) }

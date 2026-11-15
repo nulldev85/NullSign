@@ -534,9 +534,6 @@ class DownloadManager: NSObject, ObservableObject {
 		request.allowsConstrainedNetworkAccess = true
 		request.setValue("gzip, deflate, br", forHTTPHeaderField: "Accept-Encoding")
 
-		// Auth headers for premium sources.
-		RyukSignAPI.applyAuthHeaders(to: &request)
-
 		let task = session.downloadTask(with: request)
 		download.task = task
 		task.priority = 1.0
@@ -624,8 +621,7 @@ class DownloadManager: NSObject, ObservableObject {
 			download.isPaused = false
 		} else {
 			let url = download.task?.originalRequest?.url ?? download.url
-			var request = URLRequest(url: url)
-			RyukSignAPI.applyAuthHeaders(to: &request)
+			let request = URLRequest(url: url)
 			let task = session!.downloadTask(with: request)
 			download.task = task
 			task.resume()
@@ -851,7 +847,7 @@ extension DownloadManager {
 		guard let url = version.map(\.downloadURL) ?? app.currentDownloadUrl else { return nil }
 
 		let download = startDownload(from: url, id: app.currentUniqueId, appName: app.currentName, appDescription: app.localizedDescription)
-		download.origin = AppUpdateChecker.shared.origin(for: app, version: version?.version)
+		download.origin = AppUpdateChecker.shared.origin(for: app, version: version)
 		return download
 	}
 }

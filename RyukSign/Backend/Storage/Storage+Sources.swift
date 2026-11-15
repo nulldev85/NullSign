@@ -96,12 +96,6 @@ extension Storage {
 	}
 
 	func deleteSource(for source: AltSource) {
-		if let url = source.sourceURL {
-			let remainingURLs = getSources()
-				.filter { $0 != source }
-				.compactMap { $0.sourceURL }
-			RyukSignAPI.unregisterPremiumSourceIfNeeded(url, remainingSourceURLs: remainingURLs)
-		}
 		context.delete(source)
 		saveContext()
 	}

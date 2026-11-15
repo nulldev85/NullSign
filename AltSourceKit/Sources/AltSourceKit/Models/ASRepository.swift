@@ -12,6 +12,65 @@ import SwiftUI
 // only altstore repo (ofc) has the correct format.
 // we're going to use a defensive approach and try to parse many repos.
 
+// MARK: - Lossy Arrays
+
+/// Wraps one array element so a failure is captured instead of thrown,
+/// which also keeps the unkeyed container moving to the next element.
+private struct LossyElement<Element: Decodable>: Decodable {
+	let result: Result<Element, Error>
+
+	init(from decoder: any Decoder) throws {
+		result = Result { try Element(from: decoder) }
+	}
+}
+
+private extension KeyedDecodingContainer {
+	/// Decodes an array, dropping elements that fail instead of failing the
+	/// whole source. `firstError` says why the first dropped element failed.
+	func decodeLossyArrayIfPresent<Element: Decodable>(
+		_ type: Element.Type,
+		forKey key: Key
+	) throws -> (elements: [Element], firstError: Error?)? {
+		guard let wrapped = try decodeIfPresent([LossyElement<Element>].self, forKey: key) else {
+			return nil
+		}
+
+		var elements: [Element] = []
+		var firstError: Error?
+		for element in wrapped {
+			switch element.result {
+			case .success(let value): elements.append(value)
+			case .failure(let error): firstError = firstError ?? error
+			}
+		}
+		return (elements, firstError)
+	}
+
+	/// Several source generators use `icon`, `image`, or differently-cased URL
+	/// keys instead of AltStore's `iconURL`. Decode those without making the
+	/// whole app entry fail, and repair ordinary unescaped spaces while here.
+	func decodeFlexibleURL(forKeys keys: [Key]) -> URL? {
+		for key in keys where contains(key) {
+			if let url = try? decode(URL.self, forKey: key) {
+				return url
+			}
+
+			guard let value = try? decode(String.self, forKey: key) else { continue }
+			let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+			guard !trimmed.isEmpty else { continue }
+
+			if let url = URL(string: trimmed) {
+				return url
+			}
+			if let escaped = trimmed.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed),
+			   let url = URL(string: escaped) {
+				return url
+			}
+		}
+		return nil
+	}
+}
+
 // MARK: - Repository
 
 public struct ASRepository: Sendable, Decodable, Hashable, Identifiable {
@@ -50,10 +109,10 @@ public struct ASRepository: Sendable, Decodable, Hashable, Identifiable {
 			forKey: .description
 		)
 		self.website = try container.decodeIfPresent(URL.self, forKey: .website)
-		self.iconURL = try container.decodeIfPresent(
-			URL.self,
-			forKey: .iconURL
-		)
+		self.iconURL = container.decodeFlexibleURL(forKeys: [
+			.iconURL, .iconUrl, .iconSnake, .icon, .imageURL, .imageUrl, .imageSnake, .image,
+			.logoURL, .logoUrl, .logoSnake, .logo
+		])
 		self.headerURL = try container.decodeIfPresent(
 			URL.self,
 			forKey: .headerURL
@@ -79,11 +138,16 @@ public struct ASRepository: Sendable, Decodable, Hashable, Identifiable {
 			forKey: .userInfo
 		)
 
-		let decodedApps = try container.decodeIfPresent([App].self, forKey: .apps)
+		// One malformed app shouldn't hide the rest of the source. If none
+		// decode, report the first failure (e.g. an AltStore PAL app) instead.
+		let decodedApps = try container.decodeLossyArrayIfPresent(App.self, forKey: .apps)
 		guard
-			let apps = decodedApps,
+			let apps = decodedApps?.elements,
 			!apps.isEmpty
 		else {
+			if let firstError = decodedApps?.firstError {
+				throw firstError
+			}
 			throw NSError(
 				domain: "FeatherSources",
 				code: 44521,
@@ -96,23 +160,25 @@ public struct ASRepository: Sendable, Decodable, Hashable, Identifiable {
 		self.apps = apps
 		self.featuredApps =
 			try container.decodeIfPresent([App.ID].self, forKey: .featuredApps) ?? []
-		self.news = try container.decodeIfPresent([News].self, forKey: .news) ?? []
+		self.news = (try? container.decodeLossyArrayIfPresent(News.self, forKey: .news))?.elements ?? []
 	}
 
 	public enum CodingKeys: String, CodingKey {
 		case id = "identifier"
 		case name,
-			 subtitle,
-			 description,
-			 website,
-			 patreonURL,
-			 userInfo,
-			 iconURL,
-			 headerURL,
-			 tintColor,
-			 apps,
-			 featuredApps,
-			 news
+		     subtitle,
+		     description,
+		     website,
+		     patreonURL,
+		     userInfo,
+		     iconURL,
+		     headerURL,
+		     tintColor,
+		     apps,
+		     featuredApps,
+		     news
+		case iconUrl, icon, imageURL, imageUrl, image, logoURL, logoUrl, logo
+		case iconSnake = "icon_url", imageSnake = "image_url", logoSnake = "logo_url"
 	}
 	
 	public var currentIconURL: URL? {
@@ -225,10 +291,10 @@ extension ASRepository {
 
 			self.developer = try container.decodeIfPresent(String.self, forKey: .developer)
 
-			self.versions = try container.decodeIfPresent(
-				[Version].self,
+			self.versions = try container.decodeLossyArrayIfPresent(
+				Version.self,
 				forKey: .versions
-			)
+			)?.elements
 
 			self.version = try container.decodeIfPresent(
 				String.self,
@@ -258,15 +324,19 @@ extension ASRepository {
 					forKey: .localizedDescription
 				)
 
-			self.iconURL = try container.decode(URL.self, forKey: .iconURL)
+			self.iconURL = container.decodeFlexibleURL(forKeys: [
+				.iconURL, .iconUrl, .iconSnake, .icon, .imageURL, .imageUrl, .imageSnake, .image,
+				.artworkURL, .artworkUrl, .artworkSnake, .artwork,
+				.logoURL, .logoUrl, .logoSnake, .logo
+			])
 
 			self.tintColor =
 				try container.decodeIfPresent(Color.self, forKey: .tintColor)
 
 			self.size =
 				(try? container.decodeIfPresent(Int64.self, forKey: .size))
-				?? (try? container.decodeIfPresent(String.self, forKey: .size))
-				.flatMap { Int64($0) }
+					?? (try? container.decodeIfPresent(String.self, forKey: .size))
+					.flatMap { Int64($0) }
 
 			self.category = try container.decodeIfPresent(
 				String.self,
@@ -276,10 +346,10 @@ extension ASRepository {
 			self.beta =
 				(try? container.decodeIfPresent(Bool.self, forKey: .beta)) ?? false
 
-			self.permissions = try container.decodeIfPresent(
-				[Permission].self,
+			self.permissions = (try? container.decodeLossyArrayIfPresent(
+				Permission.self,
 				forKey: .permissions
-			)
+			))?.elements
 			self.appPermissions = try container.decodeIfPresent(
 				AppPermissions.self,
 				forKey: .appPermissions
@@ -348,10 +418,14 @@ extension ASRepository {
 			case name, subtitle, description
 			case developer = "developerName"
 			case versions, version, versionDate, date, versionDescription, downloadURL,
-				localizedDescription, iconURL, tintColor, size, category, beta
+			     localizedDescription, iconURL, tintColor, size, category, beta
 			case permissions, appPermissions
 			case screenshots, screenshotURLs
 			case marketplaceID
+			case iconUrl, icon, imageURL, imageUrl, image
+			case artworkURL, artworkUrl, artwork, logoURL, logoUrl, logo
+			case iconSnake = "icon_url", imageSnake = "image_url"
+			case artworkSnake = "artwork_url", logoSnake = "logo_url"
 		}
 		
 		public var currentAppVersion: Version? {
@@ -359,6 +433,7 @@ extension ASRepository {
 		}
 		
 		public var currentName: String {
+			// The name, else the identifier, so a blank name still reads as something.
 			var name = [name, id]
 				.compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
 				.first { !$0.isEmpty } ?? "Unknown"
@@ -372,6 +447,12 @@ extension ASRepository {
 		
 		public var currentVersion: String? {
 			currentAppVersion?.version ?? version
+		}
+
+		/// The current version with its build, "0.19.0 (956)", so two builds
+		/// of the same version can be told apart.
+		public var currentVersionLabel: String? {
+			currentAppVersion?.label ?? version
 		}
 		
 		public var currentDownloadUrl: URL? {
@@ -401,6 +482,12 @@ extension ASRepository {
 			public var size: UInt?
 			public var minOSVersion: OSVersion?
 
+			/// "0.19.0 (956)", or the version alone when it has no separate build.
+			public var label: String {
+				guard let build, !build.isEmpty, build != version, !version.isEmpty else { return version }
+				return "\(version) (\(build))"
+			}
+
 			public init(from decoder: any Decoder) throws {
 				let container = try decoder.container(keyedBy: CodingKeys.self)
 				self.version = try container.decode(String.self, forKey: .version)
@@ -423,8 +510,8 @@ extension ASRepository {
 				)
 				self.size =
 					(try? container.decodeIfPresent(UInt.self, forKey: .size))
-					?? (try? container.decodeIfPresent(String.self, forKey: .size))
-					.flatMap { UInt($0) }
+						?? (try? container.decodeIfPresent(String.self, forKey: .size))
+						.flatMap { UInt($0) }
 				self.minOSVersion = try container.decodeIfPresent(
 					OSVersion.self,
 					forKey: .minOSVersion
@@ -594,7 +681,7 @@ public struct DateParsed: Codable, Equatable, Hashable, Comparable, Sendable {
 			"yyyy-MM-dd'T'HH:mm:ss.SSSZ",
 			"yyyy-MM-dd'T'HH:mm:ssZ",
 			"yyyy-MM-dd'T'HH:mm:ss",
-			"yyyy-MM-dd'T'HH:mm",
+			"yyyy-MM-dd'T'HH:mm",            // AltStudio
 			"yyyy-MM-dd",
 			"EEE, dd MMM yyyy HH:mm:ss zzz", // RFC1123
 			"EEE MMM dd HH:mm:ss Z yyyy",    // Twitter

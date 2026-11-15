@@ -62,7 +62,7 @@ struct LibraryAppMenu: View {
 		}
 
 		if let update = _updateChecker.update(for: app), let onUpdate {
-			Button(String.localized("Update to %@", arguments: update.best.version), systemImage: "arrow.up.circle") {
+			Button(String.localized("Update to %@", arguments: update.best.versionLabel), systemImage: "arrow.up.circle") {
 				Presentation.afterDismiss { onUpdate(update) }
 			}
 		}

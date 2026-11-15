@@ -155,7 +155,7 @@ extension LibraryCellView {
 	@ViewBuilder
 	private var _status: some View {
 		if let update {
-			Text(String.localized("Update to %@", arguments: update.best.version))
+			Text(String.localized("Update to %@", arguments: update.best.versionLabel))
 				.font(.roundedUI(.caption, weight: .regular))
 				.foregroundStyle(NullSignStyle.accent)
 				.lineLimit(1)

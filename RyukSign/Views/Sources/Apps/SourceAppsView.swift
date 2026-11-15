@@ -126,7 +126,7 @@ struct SourceAppsView: View {
                 NBSkeletonList()
                     .padding(.top, 16)
             } else {
-                // Load finished and genuinely empty (e.g. premium auth rejected) — actionable empty state, not an infinite spinner.
+                // Load finished and genuinely empty (the source failed to load) — actionable empty state, not an infinite spinner.
                 _emptyStateView
             }
 
@@ -401,7 +401,7 @@ struct SourceAppsView: View {
                 .foregroundStyle(.secondary)
             Text(.localized("Couldn't load apps"))
                 .font(.headline)
-            Text(.localized("The source returned no data. If this is a premium source, your access may have expired or failed to authenticate."))
+            Text(.localized("The source returned no data. Check your connection, or that the source is still online, then try again."))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

@@ -126,6 +126,9 @@ struct RyukSignApp: App {
                 if newPhase == .active, UserDefaults.standard.object(forKey: AppUpdateChecker.launchCheckKey) as? Bool ?? true {
                     Task { await SourcesViewModel.shared.refreshStale(Storage.shared.getSources()) }
                 }
+                if newPhase == .active {
+                    Task { await selfUpdate.checkIfNeeded() }
+                }
             }
             .onGeometryChange(for: CGSize.self) { $0.size } action: { _ in
                 DuoDisplay.refreshSupportedOrientations()
@@ -415,9 +418,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, DownloadManager.ErrorDelegat
 		Storage.shared.addNullSignSourceIfNeeded()
 		FR.refreshSSLCertificatesIfStale()
 		_registerBackgroundTasks()
-
-		// Idempotent, no-op after first run.
-		RyukSignAPI.migrateIfNeeded()
 
 		DownloadManager.shared.errorDelegate = self
 

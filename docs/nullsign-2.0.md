@@ -12,7 +12,8 @@ unchanged so every NullSign change is its own diff.
 1. Identity and users' data (build A, 2.0.0 (53)).
 2. NullSign's look: design system, typography, screens, tab bar (build B,
    2.0.0 (55)).
-3. NullSign's app updates, self-update and source parsing.
+3. NullSign's app updates, self-update and source parsing (build C,
+   2.0.0 (56)).
 4. Apple TV signing, installing and pairing.
 
 ## Build A: identity and users' data
@@ -47,9 +48,9 @@ unchanged so every NullSign change is its own diff.
   numeric build and extension IDs, and publishes as before. The build no
   longer downloads RyukSign's install certificate; the app fetches it itself.
 
-Kept from RyukSign for now: its install manifest service (falls back to
-`api.palera.in`) and install certificate pack are RyukSign-hosted; its
-curated repository list loads from RyukSign's GitHub.
+Kept from RyukSign: its install manifest service (falls back to
+`api.palera.in`) and install certificate pack are RyukSign-hosted. Its
+curated repository list was used until build C.
 
 Saved signing preferences reset to defaults: RyukSign stores them in a
 different format.
@@ -87,3 +88,36 @@ different format.
   the theme, and RyukSign's own lists and forms use `nullSignPage()`.
 - User-facing text says NullSign where it named RyukSign. Settings keys, the
   backup file type and the RyukSign-hosted SSL option keep their names.
+
+## Build C: updates, self-update and sources
+
+- Source parsing: AltSourceKit's repository parser is NullSign 1.x's. One
+  malformed app, version or news item no longer hides a whole source, icons
+  under other common keys (`icon`, `image`, `logo`, snake case) are found,
+  and versions read with their build, "2.0.0 (56)". RyukSign's fallback to an
+  app's identifier when its name is blank is kept. RyukSign's fetcher stays
+  (gzip, timeouts, logging) with NullSign's messages: a 404 explains a source
+  that's still uploading, and a parsing failure names the field that broke.
+- App updates keep RyukSign's checker (grouping copies of an app, picking a
+  source, pins, skipped updates, auto-update) with NullSign's rule: when two
+  releases share a version, the newer build is the update. Downloads now
+  record the source's build with the version. Update labels, source app
+  details and version history show builds, and Install Cleanup treats an
+  older build of the same version as older.
+- Self-update is NullSign's: releases come from NullSign's own app source
+  (`nulldev85/AppSource`), compared by version and build. Updating
+  downloads the release, signs it on this device with the certificate chosen
+  in Settings > Updates and hands it to the install queue, which uses the
+  installation method in Settings. RyukSign's remote signing server and its
+  pairing-only path are gone. NullSign checks on launch and again when it
+  comes back, at most every six hours. Updates, All Versions and the update
+  sheet show builds; ignored versions are kept per build.
+- Add Source is NullSign's layout: a URL with Paste, importing and copying
+  source lists, and NullSign's featured sources (its own source, then the
+  ones NullSign 1.x featured). RyukSign's curated "Ryuk Repos" list is gone.
+- Premium is deleted: RyukSign's premium manager, key redemption, device
+  identity vault, filters, auth headers and the premium-only settings.
+  Hiding a source from All Apps moved to `SourceExclusions`.
+- About is NullSign 1.x's: version and build, NullSign's own updates,
+  Feather's credits (claration and contributors, Nyasami, llsc12) and the
+  GPL v3 license with a link to NullSign's source.

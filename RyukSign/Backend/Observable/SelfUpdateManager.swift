@@ -8,26 +8,45 @@
 import Foundation
 import CoreData
 import UIKit
-import IDeviceSwift
+import AltSourceKit
+import NimbleJSON
 import OSLog
 
-enum SelfUpdateMethod: Int {
-	case server = 0
-	case idevice = 1
-}
-
+/// One NullSign release as NullSign's app source lists it.
 struct SelfUpdateRelease: Identifiable, Equatable {
-	let id: Int
-	let tag: String
 	let version: String
-	let title: String
+	/// CFBundleVersion. Test builds share a version, so the build tells them apart.
+	let build: String?
 	let notes: String
 	let publishedAt: Date?
 	let downloadURL: URL?
-	let isPrerelease: Bool
-	let isSemver: Bool
+	let size: UInt?
 
-	var isInstalled: Bool { SelfUpdateManager.compare(version, Bundle.main.version) == .orderedSame }
+	var id: String { label }
+
+	/// "2.0.0 (55)", or the version alone when the source gives no build.
+	var label: String {
+		guard let build, !build.isEmpty, build != version else { return version }
+		return "\(version) (\(build))"
+	}
+
+	var title: String { "NullSign \(label)" }
+
+	/// How this release sits against the running NullSign: descending means
+	/// it's newer.
+	var orderAgainstInstalled: ComparisonResult {
+		let installed = Bundle.main.version
+		let installedBuild = SelfUpdateManager.installedBuild
+		if AppUpdateChecker.isNewerRelease(version, build: build, than: installed, installedBuild: installedBuild) {
+			return .orderedDescending
+		}
+		if AppUpdateChecker.isNewerRelease(installed, build: installedBuild, than: version, installedBuild: build) {
+			return .orderedAscending
+		}
+		return .orderedSame
+	}
+
+	var isInstalled: Bool { orderAgainstInstalled == .orderedSame }
 }
 
 enum SelfUpdatePhase: Equatable {
@@ -35,35 +54,48 @@ enum SelfUpdatePhase: Equatable {
 	case downloading(Double)
 	case importing
 	case signing
-	case installing
+	/// Signed and handed to the install queue, which takes it from here.
 	case done
 	case failed(String)
 }
 
+/// NullSign updating itself. It reads NullSign's releases from the app source
+/// testers install it from, and to update, downloads the release, signs it on
+/// this device with the chosen certificate and hands it to the installer,
+/// which uses the installation method set in Settings. iOS asks before
+/// installing, then closes NullSign while the new version replaces it.
 final class SelfUpdateManager: NSObject, ObservableObject {
 	static let shared = SelfUpdateManager()
 
+	/// NullSign's app source, which lists every release.
+	static let sourceURL = URL(string: "https://raw.githubusercontent.com/nulldev85/AppSource/main/apps.json")!
+	/// NullSign's identifier in that source, whatever this copy was signed as.
+	static let sourceBundleIdentifier = "com.elmat.NullSign"
+
+	static var installedBuild: String? {
+		Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+	}
+
+	/// The running NullSign, "2.0.0 (55)".
+	static var installedLabel: String {
+		let version = Bundle.main.version
+		guard let build = installedBuild, !build.isEmpty, build != version else { return version }
+		return "\(version) (\(build))"
+	}
+
+	@Published private(set) var releases: [SelfUpdateRelease] = []
 	@Published private(set) var latest: SelfUpdateRelease?
-	@Published private(set) var latestSemver: SelfUpdateRelease?
 	@Published private(set) var available: SelfUpdateRelease?
 	@Published private(set) var isChecking = false
+	@Published private(set) var lastError: String?
 	@Published var phase: SelfUpdatePhase = .idle
-	@Published var installProgress: Double = 0
 	@Published var presentUpdatePrompt = false
-
-	// NullSign 2.0 build A: NullSign's own self-update (from its AppSource
-	// feed) replaces this in a later build. Until then this checks NullSign's
-	// releases, whose source-<run> tags never parse as a version, so it never
-	// offers RyukSign (or anything) as an update.
-	private let _repo = "nulldev85/NullSign"
-	private let _perPage = 30
 
 	private enum Keys {
 		static let autoCheck = "Feather.selfUpdateAutoCheck"
 		static let ignored = "Feather.selfUpdateIgnored"
 		static let certIndex = "Feather.selfUpdateCertIndex"
 		static let lastCheck = "Feather.selfUpdateLastCheck"
-		static let method = "Feather.selfUpdateMethod"
 	}
 
 	private var _downloadContinuation: CheckedContinuation<URL, Error>?
@@ -87,55 +119,35 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 		set { UserDefaults.standard.set(newValue, forKey: Keys.certIndex); objectWillChange.send() }
 	}
 
+	/// Releases the update prompt skips, by label ("2.0.0 (55)").
 	var ignoredVersions: Set<String> {
 		Set(UserDefaults.standard.stringArray(forKey: Keys.ignored) ?? [])
 	}
 
+	/// The certificate updates are signed with: the one chosen in Updates, else
+	/// the signer's selected certificate.
 	func resolvedCertificate() -> CertificatePair? {
 		let idx = certIndex >= 0 ? certIndex : UserDefaults.standard.integer(forKey: "feather.selectedCert")
 		return Storage.shared.getCertificate(for: idx)
 	}
 
-	var method: SelfUpdateMethod {
-		get { SelfUpdateMethod(rawValue: UserDefaults.standard.integer(forKey: Keys.method)) ?? .server }
-		set { UserDefaults.standard.set(newValue.rawValue, forKey: Keys.method); objectWillChange.send() }
-	}
-
-	var serverBaseURL: URL? {
-		guard
-			let url = Bundle.main.url(forResource: "SelfUpdateConfig", withExtension: "plist"),
-			let dict = NSDictionary(contentsOf: url),
-			let base = (dict["ServerBaseURL"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
-			!base.isEmpty
-		else { return nil }
-		return URL(string: base)
-	}
-
-	var isServerConfigured: Bool { serverBaseURL != nil }
-
-	var hasPairing: Bool {
-		FileManager.default.fileExists(atPath: HeartbeatManager.pairingFile())
-	}
-
-	var canSelfInstall: Bool {
-		switch method {
-		case .server: return isServerConfigured
-		case .idevice: return hasPairing
-		}
-	}
-
-	func ignore(_ version: String) {
+	func ignore(_ label: String) {
 		var set = ignoredVersions
-		set.insert(version)
+		set.insert(label)
 		UserDefaults.standard.set(Array(set), forKey: Keys.ignored)
-		recomputeAvailable()
+		_recomputeAvailable()
 	}
 
-	func unignore(_ version: String) {
+	func unignore(_ label: String) {
 		var set = ignoredVersions
-		set.remove(version)
+		set.remove(label)
 		UserDefaults.standard.set(Array(set), forKey: Keys.ignored)
-		recomputeAvailable()
+		_recomputeAvailable()
+	}
+
+	/// Orders release labels newest first, builds included.
+	static func isNewerLabel(_ lhs: String, than rhs: String) -> Bool {
+		lhs.compare(rhs, options: [.numeric, .caseInsensitive]) == .orderedDescending
 	}
 
 	// MARK: - Check
@@ -147,6 +159,17 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 		if available != nil { presentUpdatePrompt = true }
 	}
 
+	/// Looks again when NullSign comes back, at most every six hours.
+	@MainActor
+	func checkIfNeeded() async {
+		guard isAutoCheckEnabled else { return }
+		if let last = UserDefaults.standard.object(forKey: Keys.lastCheck) as? Date,
+		   Date().timeIntervalSince(last) < 6 * 60 * 60 {
+			return
+		}
+		await check()
+	}
+
 	@MainActor
 	func check() async {
 		guard !isChecking else { return }
@@ -154,96 +177,73 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 		defer { isChecking = false }
 
 		do {
-			let releases = try await fetchReleases(page: 1)
-			latest = releases.first { !$0.isPrerelease } ?? releases.first
-			latestSemver = releases.first { $0.isSemver && !$0.isPrerelease }
+			releases = try await Self._fetchReleases()
+			latest = releases.first
+			lastError = nil
 			UserDefaults.standard.set(Date(), forKey: Keys.lastCheck)
-			recomputeAvailable()
+			_recomputeAvailable()
 		} catch {
+			lastError = error.localizedDescription
 			Logger.misc.error("Self-update check failed: \(error.localizedDescription)")
 		}
 	}
 
-	private func recomputeAvailable() {
-		guard let candidate = latestSemver, Self.isSemver(Bundle.main.version) else { available = nil; return }
-		let isNewer = SelfUpdateManager.compare(candidate.version, Bundle.main.version) == .orderedDescending
-		available = (isNewer && !ignoredVersions.contains(candidate.version)) ? candidate : nil
+	private func _recomputeAvailable() {
+		guard let candidate = latest, candidate.orderAgainstInstalled == .orderedDescending else {
+			available = nil
+			return
+		}
+		available = ignoredVersions.contains(candidate.label) ? nil : candidate
 	}
 
-	// MARK: - Releases fetch (paginated)
-
-	func fetchReleases(page: Int) async throws -> [SelfUpdateRelease] {
-		var comps = URLComponents(string: "https://api.github.com/repos/\(_repo)/releases")!
-		comps.queryItems = [
-			URLQueryItem(name: "per_page", value: String(_perPage)),
-			URLQueryItem(name: "page", value: String(page))
-		]
-		var request = URLRequest(url: comps.url!)
-		request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-
-		let (data, response) = try await URLSession.shared.data(for: request)
-		guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-			throw NSError(domain: "SelfUpdate", code: (response as? HTTPURLResponse)?.statusCode ?? -1,
-						  userInfo: [NSLocalizedDescriptionKey: String.localized("Couldn't reach GitHub releases.")])
+	/// Every NullSign release in the app source, newest first.
+	private static func _fetchReleases() async throws -> [SelfUpdateRelease] {
+		let repository: ASRepository = try await withCheckedThrowingContinuation { continuation in
+			NBFetchService().fetch(from: sourceURL) { (result: Result<ASRepository, Error>) in
+				continuation.resume(with: result)
+			}
 		}
 
-		let raw = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] ?? []
-		return raw.compactMap(Self.parse)
-	}
-
-	private static func parse(_ json: [String: Any]) -> SelfUpdateRelease? {
-		guard
-			let id = json["id"] as? Int,
-			let tag = json["tag_name"] as? String
-		else { return nil }
-
-		let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
-		guard version.first?.isNumber == true else { return nil }
-
-		let assets = json["assets"] as? [[String: Any]] ?? []
-		let ipa = assets.first { ($0["name"] as? String)?.lowercased().hasSuffix(".ipa") == true }
-		let downloadURL = (ipa?["browser_download_url"] as? String).flatMap(URL.init)
-
-		var published: Date?
-		if let str = json["published_at"] as? String {
-			published = ISO8601DateFormatter().date(from: str)
+		let running = Bundle.main.bundleIdentifier ?? sourceBundleIdentifier
+		guard let app = repository.apps.first(where: { $0.id == running })
+			?? repository.apps.first(where: { $0.id == sourceBundleIdentifier })
+		else {
+			throw NSError(domain: "SelfUpdate", code: -1, userInfo: [
+				NSLocalizedDescriptionKey: String.localized("NullSign isn't listed in its app source.")
+			])
 		}
 
-		return SelfUpdateRelease(
-			id: id,
-			tag: tag,
-			version: version,
-			title: (json["name"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? tag,
-			notes: (json["body"] as? String) ?? "",
-			publishedAt: published,
-			downloadURL: downloadURL,
-			isPrerelease: (json["prerelease"] as? Bool) ?? false,
-			isSemver: Self.isSemver(version)
-		)
-	}
-
-	static func isSemver(_ version: String) -> Bool {
-		version.range(of: #"^\d+(\.\d+)+$"#, options: .regularExpression) != nil
-	}
-
-	// MARK: - Version compare
-
-	static func compare(_ a: String, _ b: String) -> ComparisonResult {
-		func parts(_ s: String) -> [Int] {
-			s.split(whereSeparator: { $0 == "." || $0 == "-" }).map { Int($0) ?? 0 }
+		let versions: [SelfUpdateRelease] = (app.versions ?? []).map {
+			SelfUpdateRelease(
+				version: $0.version,
+				build: $0.build,
+				notes: $0.localizedDescription ?? "",
+				publishedAt: $0.date?.date,
+				downloadURL: $0.downloadURL,
+				size: $0.size
+			)
 		}
-		let l = parts(a), r = parts(b)
-		for i in 0..<max(l.count, r.count) {
-			let lv = i < l.count ? l[i] : 0
-			let rv = i < r.count ? r[i] : 0
-			if lv != rv { return lv < rv ? .orderedAscending : .orderedDescending }
-		}
-		return .orderedSame
+		let list = versions.isEmpty
+			? [SelfUpdateRelease(
+				version: app.currentVersion ?? "",
+				build: nil,
+				notes: "",
+				publishedAt: app.currentDate?.date,
+				downloadURL: app.currentDownloadUrl,
+				size: nil
+			)]
+			: versions
+
+		return list
+			.filter { !$0.version.isEmpty }
+			.sorted {
+				AppUpdateChecker.isNewerRelease($0.version, build: $0.build, than: $1.version, installedBuild: $1.build)
+			}
 	}
 
 	// MARK: - Install
 
-	/// One cancellable task per run, cancelling on sheet dismiss stops the poll republishing
+	/// One cancellable task per run; closing the sheet cancels it.
 	@MainActor
 	func beginUpdate(to release: SelfUpdateRelease) {
 		_flow?.cancel()
@@ -256,26 +256,21 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 		_flow = nil
 		if case .failed = phase {} else {
 			phase = .idle
-			installProgress = 0
 		}
 	}
 
 	@MainActor
 	func performUpdate(to release: SelfUpdateRelease) async {
-		guard canSelfInstall else {
-			let message: String = method == .server
-				? .localized("The updater server isn't available in this build.")
-				: .localized("IDevice updates need a pairing file. Set it up in Installation settings, or switch to Server.")
-			phase = .failed(message)
+		guard let certificate = resolvedCertificate() else {
+			phase = .failed(.localized("Add a certificate first, or choose one in Settings > Updates."))
 			return
 		}
-		guard let certificate = resolvedCertificate() else {
-			phase = .failed(.localized("No signing certificate selected. Choose one in Update settings."))
+		guard let url = release.downloadURL else {
+			phase = .failed(.localized("This release has no download."))
 			return
 		}
 
-		installProgress = 0
-		FileLogger.log("Update \(release.version) [\(method == .server ? "server" : "idevice")] cert=\(certificate.nickname ?? Storage.shared.getProvisionFileDecoded(for: certificate)?.Name ?? "?")", category: "update")
+		FileLogger.log("Update \(release.label) cert=\(certificate.nickname ?? Storage.shared.getProvisionFileDecoded(for: certificate)?.Name ?? "?")", category: "update")
 
 		let keepAlive = BackgroundTaskManager(
 			taskName: "SelfUpdate",
@@ -285,225 +280,83 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 		keepAlive.start()
 		defer { keepAlive.stop() }
 
+		var imported: AppInfoPresentable?
 		do {
-			switch method {
-			case .server:
-				let installed = try await installViaServer(release: release, certificate: certificate)
-				phase = installed ? .done : .idle
-			case .idevice:
-				try await installViaIDevice(release: release, certificate: certificate)
-				phase = .done
+			phase = .downloading(0)
+			let ipa = try await _download(from: url)
+			defer { try? FileManager.default.removeItem(at: ipa) }
+			try Task.checkCancellation()
+
+			phase = .importing
+			let app = try await withCheckedThrowingContinuation { (c: CheckedContinuation<AppInfoPresentable, Error>) in
+				FR.handlePackageFile(ipa) { c.resume(with: $0) }
 			}
+			imported = app
+			try Task.checkCancellation()
+
+			phase = .signing
+			let signed = try await withCheckedThrowingContinuation { (c: CheckedContinuation<Signed, Error>) in
+				FR.signPackageFile(app, using: Self._updateOptions(), icon: nil, certificate: certificate) { result in
+					c.resume(with: result)
+				}
+			}
+
+			// The signed copy is what installs; the download isn't kept.
+			Storage.shared.deleteApp(for: app)
+			imported = nil
+
+			phase = .done
+			InstallQueue.shared.enqueue(signed)
 		} catch is CancellationError {
 			phase = .idle
 		} catch let error as URLError where error.code == .cancelled {
 			phase = .idle
 		} catch {
-			let reason = Self.describe(error)
-			Logger.misc.error("Self-update failed: \(reason)")
-			FileLogger.error("Failed: version=\(release.version) — \(reason)", category: "update")
-			phase = .failed(reason)
+			Logger.misc.error("Self-update failed: \(error.localizedDescription)")
+			FileLogger.error("Failed: \(release.label) — \(error.localizedDescription)", category: "update")
+			phase = .failed(error.localizedDescription)
+		}
+
+		if let imported {
+			Storage.shared.deleteApp(for: imported)
 		}
 	}
 
-	/// IDeviceSwift errors hide their text behind no LocalizedError, so reflect out the real message.
-	static func describe(_ error: Error) -> String {
-		var message: String?
-		var code: Int?
-		for child in Mirror(reflecting: error).children {
-			if child.label == "_message", let value = child.value as? String, !value.isEmpty { message = value }
-			if child.label == "_code", let value = child.value as? Int32 { code = Int(value) }
-		}
-		guard let message else { return error.localizedDescription }
-		if let code, code != 0, code != -7001 { return "\(message) (\(code))" }
-		return message
-	}
-
-	@MainActor
-	private func installViaServer(release: SelfUpdateRelease, certificate: CertificatePair) async throws -> Bool {
-		phase = .signing
-		let installURL = try await requestServerSign(version: release.version, certificate: certificate)
-		phase = .installing
-		guard await UIApplication.shared.open(installURL) else { return false }
-		return await pollInstallProgress()
-	}
-
-	/// True once the OTA install begins; false if it never starts (prompt dismissed) so the UI can reset.
-	@MainActor
-	private func pollInstallProgress() async -> Bool {
-		guard let bundleId = Bundle.main.bundleIdentifier else { return false }
-		var started = false
-		var ticks = 0
-		while ticks < 2400 && !Task.isCancelled {
-			let raw = await UIApplication.installProgress(for: bundleId) ?? 0
-			if raw > 0 { started = true }
-			_setInstallProgress(started ? min(1, max(0, (raw - 0.6) / 0.3)) : 0)
-			if started && raw == 0 {
-				_setInstallProgress(1)
-				return true
-			}
-			if !started && ticks > 160 { return false }
-			ticks += 1
-			try? await Task.sleep(nanoseconds: 250_000_000)
-		}
-		return started
-	}
-
-	private func _setInstallProgress(_ value: Double) {
-		if installProgress != value { installProgress = value }
-	}
-
-	@MainActor
-	private func installViaIDevice(release: SelfUpdateRelease, certificate: CertificatePair) async throws {
-		guard let url = release.downloadURL else {
-			throw NSError(domain: "SelfUpdate", code: -1,
-						  userInfo: [NSLocalizedDescriptionKey: String.localized("This release has no downloadable IPA.")])
-		}
-
-		phase = .downloading(0)
-		let ipa = try await download(from: url)
-
-		phase = .importing
-		let imported = try await withCheckedThrowingContinuation { (c: CheckedContinuation<AppInfoPresentable, Error>) in
-			FR.handlePackageFile(ipa) { c.resume(with: $0) }
-		}
-		try? FileManager.default.removeItem(at: ipa)
-
-		// A self-update must not leave its temp import/signed entries in the Library, whatever the outcome.
-		var scratch: [AppInfoPresentable] = [imported]
-		defer { scratch.forEach { Storage.shared.deleteApp(for: $0) } }
-
-		phase = .signing
+	/// Replace this NullSign in place: its own identifier, the release's name
+	/// and version, nothing injected or removed.
+	private static func _updateOptions() -> Options {
 		var options = OptionsManager.shared.options
 		options.appIdentifier = Bundle.main.bundleIdentifier
-		options.appVersion = release.version
-		let signed = try await withCheckedThrowingContinuation { (c: CheckedContinuation<Signed, Error>) in
-			FR.signPackageFile(imported, using: options, icon: nil, certificate: certificate) { result in
-				c.resume(with: result)
-			}
-		}
-		scratch.append(signed)
-
-		phase = .installing
-		let viewModel = InstallerStatusViewModel(isIdevice: true)
-		let handler = ArchiveHandler(app: signed, viewModel: viewModel)
-		try await handler.move()
-		let package = try await handler.archive()
-
-		scratch.forEach { Storage.shared.deleteApp(for: $0) }
-		scratch.removeAll()
-
-		let proxy = InstallationProxy(viewModel: viewModel)
-		try await proxy.install(at: package, suspend: true)
-	}
-
-	// MARK: - Server signing
-
-	private func requestServerSign(version: String, certificate: CertificatePair) async throws -> URL {
-		guard let base = serverBaseURL else {
-			throw NSError(domain: "SelfUpdate", code: -4,
-						  userInfo: [NSLocalizedDescriptionKey: String.localized("The updater server isn't available in this build.")])
-		}
-		guard
-			let p12URL = Storage.shared.getFile(.certificate, from: certificate),
-			let provisionURL = Storage.shared.getFile(.provision, from: certificate),
-			let p12Data = try? Data(contentsOf: p12URL),
-			let provisionData = try? Data(contentsOf: provisionURL)
-		else {
-			throw NSError(domain: "SelfUpdate", code: -5,
-						  userInfo: [NSLocalizedDescriptionKey: String.localized("Selected certificate files are missing.")])
-		}
-
-		let boundary = "RyukSign-\(UUID().uuidString)"
-		var body = Data()
-		func field(_ name: String, _ value: String) {
-			body.append("--\(boundary)\r\n")
-			body.append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n")
-			body.append("\(value)\r\n")
-		}
-		func file(_ name: String, _ filename: String, _ data: Data) {
-			body.append("--\(boundary)\r\n")
-			body.append("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n")
-			body.append("Content-Type: application/octet-stream\r\n\r\n")
-			body.append(data)
-			body.append("\r\n")
-		}
-
-		field("version", version)
-		field("bundleId", Bundle.main.bundleIdentifier ?? "")
-		field("p12password", certificate.password ?? "")
-		file("p12", "certificate.p12", p12Data)
-		file("provision", "profile.mobileprovision", provisionData)
-		body.append("--\(boundary)--\r\n")
-
-		var request = URLRequest(url: base.appendingPathComponent("ryuksign/sign"))
-		request.httpMethod = "POST"
-		request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-
-		var lastError: Error = NSError(domain: "SelfUpdate", code: -6,
-									   userInfo: [NSLocalizedDescriptionKey: String.localized("The updater server returned no install link.")])
-
-		for attempt in 0..<2 {
-			let data: Data, response: URLResponse
-			do {
-				(data, response) = try await URLSession.shared.upload(for: request, from: body)
-			} catch {
-				lastError = error
-				if attempt == 0 { try? await Task.sleep(nanoseconds: 2_000_000_000); continue }
-				throw error
-			}
-
-			let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-			let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-
-			if (200..<300).contains(status) {
-				guard let install = json?["install"] as? String, let url = URL(string: install) else {
-					throw NSError(domain: "SelfUpdate", code: -6,
-								  userInfo: [NSLocalizedDescriptionKey: String.localized("The updater server returned no install link.")])
-				}
-				return url
-			}
-
-			let rawBody = String(data: data, encoding: .utf8)?.prefix(300) ?? ""
-			FileLogger.error("sign HTTP \(status): \(rawBody)", category: "update")
-			let code = json?["error"] as? String
-			lastError = NSError(domain: "SelfUpdate", code: status,
-								userInfo: [NSLocalizedDescriptionKey: Self.serverErrorMessage(status: status, code: code)])
-
-			let transient = [500, 502, 503].contains(status)
-			if transient && attempt == 0 {
-				try? await Task.sleep(nanoseconds: 2_000_000_000)
-				continue
-			}
-			throw lastError
-		}
-		throw lastError
-	}
-
-	private static func serverErrorMessage(status: Int, code: String?) -> String {
-		switch code {
-		case "unknown_version", "bad_version": return .localized("That version isn't a published release.")
-		case "bad_cert": return .localized("Couldn't read your certificate. Check the certificate and its password.")
-		case "bad_provision", "missing_provision": return .localized("Couldn't read your provisioning profile.")
-		case "missing_p12": return .localized("Selected certificate files are missing.")
-		case "bundle_not_allowed": return .localized("This build isn't permitted by the updater server.")
-		case "rate_limited": return .localized("The updater is busy. Try again in a moment.")
-		default:
-			if status == 429 { return .localized("The updater is busy. Try again in a moment.") }
-			return .localized("The update couldn't be prepared. Please try again.")
-		}
+		options.appName = nil
+		options.appVersion = nil
+		options.appEntitlementsFile = nil
+		options.signingOption = .default
+		options.injectionFiles = []
+		options.disInjectionFiles = []
+		options.removeFiles = []
+		options.tweakInjections = nil
+		options.infoPlistOverrides = nil
+		options.infoPlistRemovals = nil
+		options.experiment_replaceSubstrateWithEllekit = false
+		options.post_installAppAfterSigned = false
+		options.post_deleteAppAfterSigned = false
+		return options
 	}
 
 	// MARK: - Download
 
-	private func download(from url: URL) async throws -> URL {
+	private func _download(from url: URL) async throws -> URL {
 		let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
 		_progressHandler = { [weak self] progress in
 			Task { @MainActor in self?.phase = .downloading(progress) }
 		}
-		return try await withCheckedThrowingContinuation { continuation in
-			_downloadContinuation = continuation
-			session.downloadTask(with: url).resume()
+		return try await withTaskCancellationHandler {
+			try await withCheckedThrowingContinuation { continuation in
+				_downloadContinuation = continuation
+				session.downloadTask(with: url).resume()
+			}
+		} onCancel: {
+			session.invalidateAndCancel()
 		}
 	}
 }
@@ -526,7 +379,7 @@ extension SelfUpdateManager: URLSessionDownloadDelegate {
 			_downloadContinuation?.resume(throwing: error)
 		}
 		_downloadContinuation = nil
-		session.invalidateAndCancel()
+		session.finishTasksAndInvalidate()
 	}
 
 	func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
@@ -534,11 +387,5 @@ extension SelfUpdateManager: URLSessionDownloadDelegate {
 		_downloadContinuation?.resume(throwing: error)
 		_downloadContinuation = nil
 		session.invalidateAndCancel()
-	}
-}
-
-private extension Data {
-	mutating func append(_ string: String) {
-		append(Data(string.utf8))
 	}
 }

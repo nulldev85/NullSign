@@ -17,6 +17,10 @@ struct AppUpdate: Identifiable, Sendable {
 
 		var id: String { sourceID + "/" + app.currentUniqueId }
 		var version: String { app.currentVersion ?? "" }
+		/// The source's build for its current version.
+		var build: String? { app.currentAppVersion?.build }
+		/// "2.0.0 (55)", or the version alone when the source gives no build.
+		var versionLabel: String { app.currentVersionLabel ?? version }
 
 		func matches(_ pin: AppOrigin) -> Bool {
 			sourceID == pin.source && app.name == pin.name
@@ -26,6 +30,8 @@ struct AppUpdate: Identifiable, Sendable {
 	let id: String
 	let name: String
 	let installedVersion: String
+	/// The installed version with its build, "2.0.0 (53)".
+	let installedVersionLabel: String
 	let libraryUUID: String
 	let libraryUUIDs: [String]
 	let candidates: [Candidate]
@@ -40,6 +46,7 @@ struct AppUpdate: Identifiable, Sendable {
 			id: id,
 			name: name,
 			installedVersion: installedVersion,
+			installedVersionLabel: installedVersionLabel,
 			libraryUUID: libraryUUID,
 			libraryUUIDs: libraryUUIDs,
 			candidates: scoped,
@@ -106,9 +113,18 @@ final class AppUpdateChecker: ObservableObject {
 		Storage.shared.app(withUuid: update.libraryUUID)
 	}
 
-	func origin(for app: ASRepository.App, version: String? = nil) -> AppOrigin? {
-		_sourceIDs[app.currentUniqueId].map {
-			AppOrigin(source: $0, appID: app.id, name: app.name, version: version ?? app.currentVersion)
+	/// Where a download came from: its source, app and release. With no
+	/// version given, the app's current release.
+	func origin(for app: ASRepository.App, version: ASRepository.App.Version? = nil) -> AppOrigin? {
+		let release = version ?? app.currentAppVersion
+		return _sourceIDs[app.currentUniqueId].map {
+			AppOrigin(
+				source: $0,
+				appID: app.id,
+				name: app.name,
+				version: release?.version ?? app.currentVersion,
+				build: release?.build
+			)
 		}
 	}
 
@@ -148,6 +164,8 @@ final class AppUpdateChecker: ObservableObject {
 			source.identifier.map { SourceSnapshot(id: $0, name: source.name ?? repo.name ?? "", repository: repo) }
 		}
 		let origins = AppOrigins.shared.all
+		// Builds are read from each bundle here, on the main actor, before the
+		// compute runs detached.
 		let library = Storage.shared.getAllApps().compactMap { LibraryEntry($0, origins: origins) }
 
 		if !_didPrune, !library.isEmpty {
@@ -193,10 +211,28 @@ final class AppUpdateChecker: ObservableObject {
 		let key: String
 		let name: String
 		let version: String
+		/// CFBundleVersion from the app's own Info.plist.
+		let bundleBuild: String?
 		let origin: AppOrigin?
 
 		// Tweaked builds misreport their bundle version.
 		var installedVersion: String { origin?.version ?? version }
+
+		/// The build of the installed release: the source's, when the download
+		/// recorded it, else the bundle's. A version typed in when signing
+		/// replaces the build as well, so the bundle's build only counts while
+		/// its version is the release's.
+		var installedBuild: String? {
+			if let origin, let build = origin.build, !build.isEmpty, origin.version == installedVersion {
+				return build
+			}
+			return version == installedVersion ? bundleBuild : nil
+		}
+
+		var installedVersionLabel: String {
+			guard let build = installedBuild, !build.isEmpty, build != installedVersion else { return installedVersion }
+			return "\(installedVersion) (\(build))"
+		}
 
 		init?(_ app: AppInfoPresentable, origins: [String: AppOrigin]) {
 			guard
@@ -210,6 +246,7 @@ final class AppUpdateChecker: ObservableObject {
 			self.key = key
 			self.name = app.name ?? key
 			self.version = version
+			self.bundleBuild = app.bundleBuild
 			self.origin = origins[uuid]
 		}
 	}
@@ -236,7 +273,9 @@ final class AppUpdateChecker: ObservableObject {
 
 	nonisolated private static func _compute(_ input: Input) -> Output {
 		var groups: [String: Group] = Dictionary(grouping: input.library, by: \.key).mapValues { entries in
-			let top = entries.max { isNewerVersion($1.installedVersion, than: $0.installedVersion) }!
+			let top = entries.max {
+				isNewerRelease($1.installedVersion, build: $1.installedBuild, than: $0.installedVersion, installedBuild: $0.installedBuild)
+			}!
 			return Group(key: top.key, entries: entries, top: top)
 		}
 
@@ -265,7 +304,10 @@ final class AppUpdateChecker: ObservableObject {
 
 			var seen: Set<String> = []
 			var candidates = group.candidates
-				.filter { isNewerVersion($0.version, than: group.top.installedVersion) && seen.insert($0.id).inserted }
+				.filter {
+					isNewerRelease($0.version, build: $0.build, than: group.top.installedVersion, installedBuild: group.top.installedBuild)
+						&& seen.insert($0.id).inserted
+				}
 				.sorted(by: _isPreferred)
 
 			let pin = input.pins[group.key]
@@ -281,6 +323,7 @@ final class AppUpdateChecker: ObservableObject {
 				id: group.key,
 				name: group.top.name,
 				installedVersion: group.top.installedVersion,
+				installedVersionLabel: group.top.installedVersionLabel,
 				libraryUUID: group.top.uuid,
 				libraryUUIDs: group.entries.map(\.uuid),
 				candidates: candidates,
@@ -293,12 +336,28 @@ final class AppUpdateChecker: ObservableObject {
 	}
 
 	nonisolated private static func _isPreferred(_ lhs: AppUpdate.Candidate, _ rhs: AppUpdate.Candidate) -> Bool {
-		if isNewerVersion(lhs.version, than: rhs.version) { return true }
-		if isNewerVersion(rhs.version, than: lhs.version) { return false }
+		if isNewerRelease(lhs.version, build: lhs.build, than: rhs.version, installedBuild: rhs.build) { return true }
+		if isNewerRelease(rhs.version, build: rhs.build, than: lhs.version, installedBuild: lhs.build) { return false }
 		return (lhs.app.currentDate?.date ?? .distantPast) > (rhs.app.currentDate?.date ?? .distantPast)
 	}
 
 	// MARK: Versions
+
+	/// Whether a release is newer, NullSign's way: the version decides, and
+	/// when the versions match the build does, since every build of an app can
+	/// share a version and each still counts as an update. With either build
+	/// unknown, matching versions are the same release.
+	nonisolated static func isNewerRelease(_ version: String, build: String?, than installed: String, installedBuild: String?) -> Bool {
+		if isNewerVersion(version, than: installed) { return true }
+		if isNewerVersion(installed, than: version) { return false }
+		guard
+			let build, !build.isEmpty, build != version,
+			let installedBuild, !installedBuild.isEmpty, installedBuild != installed
+		else {
+			return false
+		}
+		return build.compare(installedBuild, options: [.numeric, .caseInsensitive]) == .orderedDescending
+	}
 
 	// "1.2 (tweak 3.0)" reads as 1.2.
 	nonisolated static func isNewerVersion(_ new: String, than old: String) -> Bool {

@@ -25,8 +25,43 @@ public class NBFetchService {
 			case .invalidURL: "The URL is invalid."
 			case .networkError(let error): "Network error: \(error.localizedDescription)"
 			case .noData: "No data received."
-			case .httpError(let code): "Server returned HTTP \(code)."
-			case .parsingError(let error): "Failed to parse data: \(error.localizedDescription)"
+			case .httpError(404): "The server has no file at this address (HTTP 404). If the source is on GitHub Releases, its newest release may still be uploading. Try again in a few minutes."
+			case .httpError(let code): "The server returned HTTP \(code) instead of the source."
+			case .parsingError(let error): "Failed to parse data: \(Self._describe(error))"
+			}
+		}
+
+		/// Names the field that failed, e.g. "“caption” is missing in news[0].",
+		/// so a source's author can find it.
+		private static func _describe(_ error: any Error) -> String {
+			guard let error = error as? DecodingError else {
+				return error.localizedDescription
+			}
+
+			switch error {
+			case .keyNotFound(let key, let context):
+				return "“\(key.stringValue)” is missing in \(_path(context.codingPath))."
+			case .valueNotFound(_, let context):
+				return "\(_path(context.codingPath)) is empty or null."
+			case .typeMismatch(_, let context):
+				return "\(_path(context.codingPath)) has the wrong type."
+			case .dataCorrupted(let context):
+				return context.codingPath.isEmpty
+					? "The response isn't valid JSON. Make sure the link points straight to the file, not a download page."
+					: "\(_path(context.codingPath)) is invalid."
+			@unknown default:
+				return error.localizedDescription
+			}
+		}
+
+		private static func _path(_ codingPath: [any CodingKey]) -> String {
+			guard !codingPath.isEmpty else { return "the response" }
+			return codingPath.reduce(into: "") { path, key in
+				if let index = key.intValue {
+					path += "[\(index)]"
+				} else {
+					path += path.isEmpty ? key.stringValue : ".\(key.stringValue)"
+				}
 			}
 		}
 	}
@@ -83,7 +118,7 @@ extension NBFetchService {
 				}
 
 				// Non-2xx responses are logged with a body snippet so auth/server
-				// rejections (e.g. premium 401/403/422) are visible instead of
+				// rejections (e.g. 401/403/422) are visible instead of
 				// silently failing to decode and looking like an infinite load.
 				if !(200..<300).contains(statusCode) {
 					let snippet = String(data: data.prefix(512), encoding: .utf8) ?? "<non-utf8 \(data.count) bytes>"

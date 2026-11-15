@@ -20,7 +20,7 @@ struct VersionHistoryView: View {
             LazyVStack(spacing: 12) {
                 ForEach(versions) { version in
                     AppVersionInfo(
-                        version: version.version,
+                        version: version.label,
                         date: version.date?.date,
                         description: version.localizedDescription ?? .localized("No release notes available")
                     )
