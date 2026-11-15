@@ -56,6 +56,8 @@ jobs:
           # Installs over NullSign 1.x, and updates compare numeric builds.
           test "$bundle_id" = "com.elmat.NullSign"
           test "$name" = "NullSign"
+          # "Open in" on files shows the bundle name, not the display name.
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleName' "$plist")" = "NullSign"
           [[ "$version" =~ ^[0-9]+(\.[0-9]+)*$ ]]
           [[ "$build" =~ ^[0-9]+$ ]]
 
