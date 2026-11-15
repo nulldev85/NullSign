@@ -55,13 +55,23 @@ final class ZsignHandler {
 			p12Path: Storage.shared.getFile(.certificate, from: cert)?.path ?? "",
 			p12Password: cert.password ?? "",
 			entitlementsPath: _options.appEntitlementsFile?.path ?? "",
-			removeProvision: !_options.removeProvisioning,
+			// Zsign's flag is inverted: true embeds the profile.
+			removeProvision: _embedsProvisioningProfile,
 			completion: { success in
 				if !success {
 					self.hadError = SigningFileHandlerError.signFailed
 				}
 			}
 		)
+	}
+
+	/// The profile goes inside the app unless Remove Provisioning is on. Apple
+	/// TV apps always carry it: an Apple TV has no profile installed until an
+	/// app brings one, and without it tvOS refuses the app.
+	private var _embedsProvisioningProfile: Bool {
+		guard _options.removeProvisioning else { return true }
+		let info = NSDictionary(contentsOf: _appUrl.appendingPathComponent("Info.plist")) as? [String: Any] ?? [:]
+		return TVIconSelection.isTVApp(info)
 	}
 	
 	func adhocSign() async throws {

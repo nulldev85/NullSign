@@ -25,6 +25,18 @@ class OptionsManager: ObservableObject {
 			self.options = Options.defaultOptions
 			self.saveOptions()
 		}
+
+		// 2.0.0 (58) and (59) left the provisioning profile out of signed apps
+		// by default, so they only installed where that profile already was.
+		// Embed it again, once.
+		let resetKey = "nullsign.didResetRemoveProvisioning"
+		if !UserDefaults.standard.bool(forKey: resetKey) {
+			UserDefaults.standard.set(true, forKey: resetKey)
+			if options.removeProvisioning {
+				options.removeProvisioning = false
+				saveOptions()
+			}
+		}
 	}
 	
 	/// Saves options
@@ -161,7 +173,7 @@ struct Options: Codable, Equatable {
 		gameMode: false,
 		ipadFullscreen: false,
 		removeURLScheme: false,
-		removeProvisioning: true,
+		removeProvisioning: false,
 		changeLanguageFilesForCustomDisplayName: false,
 		injectIntoExtensions: false,
 		keychainIsolation: false,

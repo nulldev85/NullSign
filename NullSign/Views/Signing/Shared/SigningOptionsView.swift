@@ -171,7 +171,7 @@ struct SigningOptionsView: View {
 				temporaryValue: temporaryOptions?.removeProvisioning
 			)
 		} footer: {
-			Text(.localized("Removing the provisioning file will exclude the mobileprovision file from being embedded inside of the application when signing, to help prevent any detection."))
+			Text(.localized("Leaves the provisioning profile out of the signed app. The app then only installs on devices that already have that profile, so keep this off unless you need it. Apple TV apps always include it."))
 		}
 		
 		Section {
