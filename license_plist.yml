@@ -3,7 +3,7 @@ options:
     - LICENSE
   packagePaths:
     - Package.swift
-  prefix: thewonderofyou.Feather
+  prefix: thewonderofyou.RyukSign
   xcworkspacePath: "*.xcworkspace"
   addVersionNumbers: false
   singlePage: false
@@ -17,9 +17,12 @@ manual:
       MIT
   - name: "Zsign"
     file: "Zsign/LICENSE"
+    
+  - name: "ElleKit"
+    file: "licenses/LICENSE_ELLEKIT"
 
   - name: "LiveContainer"
-    file: "Zsign/LICENSE_LC"
+    file: "licenses/LICENSE_LC"
 
 exclude:
   - swift-html-entities

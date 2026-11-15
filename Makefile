@@ -1,13 +1,14 @@
-NAME := Feather
-SCHEME := Feather
-PLATFORMS := iphoneos maccatalyst
-
+NAME := RyukSign
+PLATFORM := iphoneos
+SCHEMES := RyukSign
 TMP := $(TMPDIR)/$(NAME)
-CERT_JSON_URL := https://backloop.dev/public/pack.json
+STAGE := $(TMP)/stage
+APP := $(TMP)/Build/Products/Release-$(PLATFORM)
+CERT_JSON_URL := https://ryuksign-install.ryuksign.workers.dev/pack.json
 
-.PHONY: all clean deps prepare-zsign $(PLATFORMS)
+.PHONY: all deps clean $(SCHEMES)
 
-all: $(PLATFORMS)
+all: $(SCHEMES)
 
 clean:
 	rm -rf $(TMP)
@@ -18,44 +19,39 @@ deps:
 	rm -rf deps || true
 	mkdir -p deps
 
-	curl -fsSL "$(CERT_JSON_URL)" -o cert.json
-	jq -r '.cert' cert.json > deps/server.crt
-	jq -r '.key1, .key2' cert.json > deps/server.pem
-	jq -r '.info.domains.commonName' cert.json > deps/commonName.txt
-
-
-prepare-zsign:
-	python3 Tools/prepare-zsign.py
-
-$(PLATFORMS): prepare-zsign deps
-	rm -rf _build
-
-	@if [ "$@" = "iphoneos" ]; then \
-		DEST="generic/platform=iOS"; \
+	@if curl -fsSL "$(CERT_JSON_URL)" -o cert.json; then \
+	    jq -r '.cert, .ca' cert.json > deps/server.crt; \
+	    jq -rj '.key1, .key2' cert.json > deps/server.pem; \
+	    jq -r '.info.domains.commonName' cert.json > deps/commonName.txt; \
 	else \
-		DEST="generic/platform=macOS,variant=Mac Catalyst"; \
-	fi; \
-	xcodebuild \
-		-project Feather.xcodeproj \
-		-scheme $(SCHEME) \
-		-configuration Release \
-		-destination "$$DEST" \
-		-derivedDataPath $(TMP)/$@ \
-		-skipPackagePluginValidation \
-		CODE_SIGNING_ALLOWED=NO \
-		ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES=NO
-
-	mkdir -p _build/Payload
-	cp -R _build/Applications/*.app _build/Payload/NullSign.app
-	cmp Feather/Resources/ellekit.deb _build/Payload/NullSign.app/ellekit.deb
-	chmod -R 0755 _build/Payload/NullSign.app
-	codesign --force --sign - --timestamp=none _build/Payload/NullSign.app
-	cp deps/* _build/Payload/NullSign.app/ || true
-
-	mkdir -p packages
-
-	@if [ "$@" = "iphoneos" ]; then \
-		ditto -c -k --sequesterRsrc --keepParent _build/Payload "packages/NullSign-unsigned.ipa"; \
-	else \
-		ditto -c -k --sequesterRsrc --keepParent _build/Payload/NullSign.app "packages/NullSign_Catalyst.zip"; \
+	    echo "warning: $(CERT_JSON_URL) unavailable, building without a bundled certificate"; \
 	fi
+
+$(SCHEMES): deps
+	xcodebuild \
+	    -project RyukSign.xcodeproj \
+	    -scheme "$@" \
+	    -configuration Release \
+	    -arch arm64 \
+	    -sdk $(PLATFORM) \
+	    -derivedDataPath $(TMP) \
+	    -skipPackagePluginValidation \
+	    CODE_SIGNING_ALLOWED=NO \
+	    ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES=NO
+
+	rm -rf Payload
+	rm -rf $(STAGE)/
+	mkdir -p $(STAGE)/Payload
+
+	mv "$(APP)/$@.app" "$(STAGE)/Payload/$@.app"
+
+	chmod -R 0755 "$(STAGE)/Payload/$@.app"
+	codesign --force --sign - --timestamp=none "$(STAGE)/Payload/$@.app"
+
+	cp deps/* "$(STAGE)/Payload/$@.app/" || true
+
+	rm -rf "$(STAGE)/Payload/$@.app/_CodeSignature"
+	ln -sf "$(STAGE)/Payload" Payload
+	
+	mkdir -p packages
+	zip -r9 "packages/$@.ipa" Payload

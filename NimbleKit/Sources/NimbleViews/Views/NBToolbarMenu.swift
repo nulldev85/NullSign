@@ -39,7 +39,6 @@ public struct NBToolbarMenu<Content>: ToolbarContent where Content: View {
 					Label(_title, systemImage: _icon).labelStyle(.titleOnly)
 				}
 			}
-			.font(.roundedUI(.body, weight: .bold))
 		}
 	}
 }

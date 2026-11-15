@@ -34,10 +34,10 @@ public struct NBPillView: View {
 		
 		HStack(spacing: 4) {
 			Image(systemName: icon)
-				.font(.roundedUI(.caption, weight: .regular))
+				.font(.caption)
 				.foregroundStyle(color.opacity(0.9))
 			Text(title)
-				.font(.roundedUI(.caption, weight: .bold))
+				.font(.caption.bold())
 		}
 		.frame(maxWidth: .infinity)
 		.padding(.vertical, 10)
@@ -70,8 +70,7 @@ public struct NBPillView: View {
 		public var cornerRadii: (topLeading: CGFloat, bottomLeading: CGFloat, bottomTrailing: CGFloat, topTrailing: CGFloat) {
 			if #available(iOS 26.0, *) {
 				return (16, 16, 16, 16)
-			}
-			else {
+			} else {
 				switch self {
 				case .single:
 					return (10, 10, 10, 10)

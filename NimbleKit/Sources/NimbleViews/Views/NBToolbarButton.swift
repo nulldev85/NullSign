@@ -10,7 +10,7 @@ import NimbleExtensions
 
 public struct NBToolbarButton: ToolbarContent {
 	@Environment(\.dismiss) private var dismiss
-	
+
 	private var _title: String
 	private var _icon: String
 	private var _style: NBToolbarMenuStyle
@@ -77,7 +77,6 @@ public struct NBToolbarButton: ToolbarContent {
 					Label(_title, systemImage: _icon).labelStyle(.titleOnly)
 				}
 			}
-			.font(.roundedUI(.body, weight: .bold))
 			.disabled(_isDisabled)
 		}
 	}

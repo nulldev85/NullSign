@@ -56,7 +56,7 @@ public struct NBSheetButton: View {
 		.foregroundColor(foregroundColor)
 		.clipShape(RoundedRectangle(cornerRadius: _cornerRadius, style: .continuous))
 		.contentShape(RoundedRectangle(cornerRadius: _cornerRadius, style: .continuous))
-		.font(.roundedUI(.body, weight: .bold))
+		.fontWeight(.semibold)
 		.frame(height: 50)
 	}
 	
@@ -86,14 +86,8 @@ public struct NBSheetButton: View {
 		case .standard: 	.accentColor
 		}
 	}
-	
-	private var _cornerRadius: CGFloat {
-		if #available(iOS 26.0, *) {
-			return 28.0
-		} else {
-			return 12.0
-		}
-	}
+
+	private var _cornerRadius: CGFloat { NBRadius.large }
 }
 
 private extension View {

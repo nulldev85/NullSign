@@ -6,8 +6,36 @@
 //
 
 import UIKit.UIAlertController
+import UIKit.UIPasteboard
 
 extension UIAlertController {
+	/// Presents an error alert with an OK button and a "Copy Error" button.
+	/// The Copy button places the full message on the pasteboard so the user can
+	/// paste it into a chat and send it for support.
+	/// - Parameters:
+	///   - presenter: View where it is presenting
+	///   - title: Alert title
+	///   - message: Alert message (this exact text is what gets copied)
+	static public func showErrorWithCopy(
+		_ presenter: UIViewController = UIApplication.topViewController()!,
+		title: String?,
+		message: String
+	) {
+		let copyAction = UIAlertAction(title: .localized("Copy Error"), style: .default) { _ in
+			UIPasteboard.general.string = message
+		}
+		let okAction = UIAlertAction(title: "OK", style: .cancel, handler: nil)
+
+		showAlert(
+			presenter,
+			nil,
+			title: title,
+			message: message,
+			style: .alert,
+			actions: [copyAction, okAction]
+		)
+	}
+
 	/// Presents an alert
 	/// - Parameters:
 	///   - presenter: View where its presenting
@@ -15,7 +43,7 @@ extension UIAlertController {
 	///   - message: Alert message
 	///   - actions: Alert actions
 	static public func showAlertWithCancel(
-		_ presenter: UIViewController? = UIApplication.topViewController(),
+		_ presenter: UIViewController = UIApplication.topViewController()!,
 		_ popoverFromView: UIView? = nil,
 		title: String?,
 		message: String?,
@@ -45,7 +73,7 @@ extension UIAlertController {
 	///   - isCancel: If true, sets action style to cancel and no handler
 	///   - action: Closure to run when OK is tapped (ignored if isCancel is true)
 	static public func showAlertWithOk(
-		_ presenter: UIViewController? = UIApplication.topViewController(),
+		_ presenter: UIViewController = UIApplication.topViewController()!,
 		_ popoverFromView: UIView? = nil,
 		title: String?,
 		message: String?,
@@ -82,7 +110,7 @@ extension UIAlertController {
 	///   - title: Alert title
 	///   - message: Alert message
 	static public func showAlertWithRestart(
-		_ presenter: UIViewController? = UIApplication.topViewController(),
+		_ presenter: UIViewController = UIApplication.topViewController()!,
 		_ popoverFromView: UIView? = nil,
 		title: String?,
 		message: String?,
@@ -114,7 +142,7 @@ extension UIAlertController {
 	///   - message: Alert message
 	///   - actions: Alert actions
 	static public func showAlert(
-		_ presenter: UIViewController? = UIApplication.topViewController(),
+		_ presenter: UIViewController = UIApplication.topViewController()!,
 		_ popoverFromView: UIView? = nil,
 		title: String?,
 		message: String?,
@@ -124,24 +152,16 @@ extension UIAlertController {
 		let alert = Self(title: title, message: message, preferredStyle: style)
 		actions.forEach { alert.addAction($0) }
 		
-		if style == .actionSheet, let popover = alert.popoverPresentationController {
-			if let view = popoverFromView {
-				popover.sourceView = view
-				popover.sourceRect = view.bounds
-				popover.permittedArrowDirections = .any
-			} else if let view = presenter?.view {
-				// In a regular-width window (iPad, iPhone Duo's inner display) an
-				// action sheet is a popover and needs an anchor; without one
-				// UIKit raises. Center it with no arrow instead.
-				popover.sourceView = view
-				popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
-				popover.permittedArrowDirections = []
-			}
+		if
+			style == .actionSheet,
+			let popover = alert.popoverPresentationController,
+			let view = popoverFromView
+		{
+			popover.sourceView = view
+			popover.sourceRect = view.bounds
+			popover.permittedArrowDirections = .any
 		}
 		
-		// No window to present from (e.g. a background task finishing while
-		// the app is suspended): drop the alert instead of crashing.
-		guard let presenter else { return }
 		presenter.present(alert, animated: true)
 	}
 }
