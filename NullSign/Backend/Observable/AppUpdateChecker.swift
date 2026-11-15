@@ -36,6 +36,10 @@ struct AppUpdate: Identifiable, Sendable {
 	let libraryUUIDs: [String]
 	let candidates: [Candidate]
 	let isPinned: Bool
+	/// No candidate is the listing the app came from, and they're more than
+	/// one app (often different tweaked builds sharing a bundle ID), so the
+	/// user picks rather than NullSign.
+	var isAmbiguous: Bool = false
 
 	var best: Candidate { candidates[0] }
 
@@ -50,7 +54,8 @@ struct AppUpdate: Identifiable, Sendable {
 			libraryUUID: libraryUUID,
 			libraryUUIDs: libraryUUIDs,
 			candidates: scoped,
-			isPinned: isPinned && scoped[0].id == best.id
+			isPinned: isPinned && scoped[0].id == best.id,
+			isAmbiguous: isAmbiguous && Set(scoped.map { $0.app.name ?? "" }).count > 1
 		)
 	}
 }
@@ -132,8 +137,10 @@ final class AppUpdateChecker: ObservableObject {
 
 	func isAutomatic(_ update: AppUpdate) -> Bool {
 		let defaults = UserDefaults.standard
-		return update.isPinned
-			|| defaults.bool(forKey: Self.newestKey)
+		if update.isPinned { return true }
+		// Never swap one tweaked build of an app for another on its own.
+		if update.isAmbiguous { return false }
+		return defaults.bool(forKey: Self.newestKey)
 			|| (update.candidates.count == 1 && defaults.object(forKey: Self.singleSourceKey) as? Bool ?? true)
 	}
 
@@ -302,15 +309,39 @@ final class AppUpdateChecker: ObservableObject {
 			let ignored = input.ignored.contains(group.key) || group.entries.contains { $0.origin?.appID.map(input.ignored.contains) == true }
 			guard !ignored else { return nil }
 
+			// Follow the listing the newest copy came from. Sources often list
+			// several tweaked builds of one app under the same bundle ID, so
+			// matching on the bundle ID alone can swap one for another.
+			let pin = input.pins[group.key]
+			var pool = group.candidates
+			var isAmbiguous = false
+			if let origin = group.top.origin, let name = origin.name {
+				let sameListing = pool.filter { $0.sourceID == origin.source && $0.app.name == name }
+				let sameName = pool.filter { $0.app.name == name }
+				if !sameListing.isEmpty {
+					pool = sameListing
+				} else if !sameName.isEmpty {
+					pool = sameName
+				} else {
+					isAmbiguous = Set(pool.map { $0.app.name ?? "" }).count > 1
+				}
+			} else {
+				// Imported from a file: the bundle ID is all there is to go on.
+				isAmbiguous = Set(pool.map { $0.app.name ?? "" }).count > 1
+			}
+			// A source the user pinned for this app always counts.
+			if let pin, !pool.contains(where: { $0.matches(pin) }) {
+				pool += group.candidates.filter { $0.matches(pin) }
+			}
+
 			var seen: Set<String> = []
-			var candidates = group.candidates
+			var candidates = pool
 				.filter {
 					isNewerRelease($0.version, build: $0.build, than: group.top.installedVersion, installedBuild: group.top.installedBuild)
 						&& seen.insert($0.id).inserted
 				}
 				.sorted(by: _isPreferred)
 
-			let pin = input.pins[group.key]
 			let pinnedExists = pin.map { pin in group.candidates.contains { $0.matches(pin) } } ?? false
 			if let pin, pinnedExists {
 				guard let index = candidates.firstIndex(where: { $0.matches(pin) }) else { return nil }
@@ -327,7 +358,8 @@ final class AppUpdateChecker: ObservableObject {
 				libraryUUID: group.top.uuid,
 				libraryUUIDs: group.entries.map(\.uuid),
 				candidates: candidates,
-				isPinned: pinnedExists
+				isPinned: pinnedExists,
+				isAmbiguous: isAmbiguous && !pinnedExists && Set(candidates.map { $0.app.name ?? "" }).count > 1
 			)
 		}
 		.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
