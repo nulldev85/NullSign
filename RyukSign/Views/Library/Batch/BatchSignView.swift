@@ -68,6 +68,7 @@ struct BatchSignView: View {
 						.listRowBackground(Color.clear)
 						.listRowSeparator(.hidden)
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 
 				NBSection(.localized("Signing")) {
 					if let cert = _selectedCert() {
@@ -89,6 +90,8 @@ struct BatchSignView: View {
 							options: $_options,
 							temporaryOptions: .batchBase
 						)}
+						.scrollContentBackground(.hidden)
+						.nullSignPage()
 						.navigationTitle(.localized("Properties"))
 					} label: {
 						Label(.localized("Properties"), systemImage: "slider.horizontal.3")
@@ -124,6 +127,8 @@ struct BatchSignView: View {
 					.frame(height: 30)
 					.listRowBackground(EmptyView())
 			}
+			.scrollContentBackground(.hidden)
+			.nullSignPage()
 			.overlay {
 				VStack(spacing: 0) {
 					Spacer()
@@ -343,7 +348,7 @@ struct BatchSignView: View {
 					FRAppIconView(app: app, size: 52)
 						.overlay(
 							RoundedRectangle(cornerRadius: 12, style: .continuous)
-								.stroke(Color(.systemBackground), lineWidth: 2)
+								.stroke(NullSignStyle.canvas, lineWidth: 2)
 						)
 				}
 			}

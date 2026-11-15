@@ -29,6 +29,7 @@ struct UpdatesSettingsView: View {
 					Label(.localized("All Versions"), systemImage: "square.stack.3d.up")
 				}
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 		}
 		.sheet(item: $_selected) { release in
 			SelfUpdateSheet(release: release, offersReminders: false)
@@ -100,7 +101,7 @@ struct UpdatesSettingsView: View {
 					Text(_method == 0
 						 ? .localized("Server: your certificate is sent over HTTPS, the update is signed remotely, and iOS installs it. No pairing file needed.")
 						 : .localized("IDevice: the update is signed on-device and installed over a pairing file."))
-					Text(.localized("Sign with the certificate you first installed RyukSign with, or iOS won't update it in place."))
+					Text(.localized("Sign with the certificate you first installed NullSign with, or iOS won't update it in place."))
 				}
 			}
 
@@ -124,12 +125,14 @@ struct UpdatesSettingsView: View {
 				} footer: {
 					Text(.localized("IDevice updates need the loopback VPN connected. Enable LocalDevVPN, then update."))
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			} else if !_manager.isServerConfigured {
 				Section {
 					Label(.localized("The updater server isn't available in this build."), systemImage: "exclamationmark.triangle.fill")
 						.font(.footnote)
 						.foregroundStyle(.secondary)
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			}
 		}
 	}

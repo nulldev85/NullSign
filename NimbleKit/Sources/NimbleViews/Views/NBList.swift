@@ -45,5 +45,7 @@ public struct NBList<Content>: View where Content: View {
 		}
 		.navigationTitle(_title)
 		.navigationBarTitleDisplayMode(_mode)
+		// NullSign's charcoal page and navigation bar.
+		.nbThemedPage()
 	}
 }

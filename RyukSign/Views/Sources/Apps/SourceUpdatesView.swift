@@ -48,6 +48,8 @@ struct SourceUpdatesView: View {
 				}
 			}
 		}
+		.scrollContentBackground(.hidden)
+		.nullSignPage()
 		.listStyle(.plain)
 	}
 
@@ -70,6 +72,7 @@ struct SourceUpdatesView: View {
 						.textCase(nil)
 				}
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 		}
 	}
 
@@ -242,6 +245,7 @@ struct UpdatePickerView: View {
 				Section(.localized("Pinned")) {
 					ForEach(pinned) { _row($0, key: update.id) }
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			}
 
 			ForEach(sections) { section in
@@ -258,6 +262,7 @@ struct UpdatePickerView: View {
 							.foregroundStyle(.secondary)
 					}
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			}
 		}
 		.listStyle(.plain)

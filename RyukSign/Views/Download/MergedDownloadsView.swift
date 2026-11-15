@@ -83,7 +83,7 @@ struct MergedDownloadsView: View {
                         }
                         .background(
                             RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(uiColor: .systemBackground))
+                                .fill(NullSignStyle.canvas)
                                 .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 5)
                         )
                         .fixedSize(horizontal: true, vertical: false)

@@ -7,12 +7,12 @@
 
 import SwiftUI
 import NimbleViews
-import NukeUI
+import AltSourceKit
 
 // MARK: - View
+/// A repository as a NullSign card: its icon, name, host and how many apps it
+/// lists, with RyukSign's favorite, hide-from-All, copy and delete actions.
 struct SourcesCellView: View {
-	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
-	@AppStorage("RyukSign.sourcesShowAppCount") private var _showsAppCount = true
 	@ObservedObject private var _viewModel = SourcesViewModel.shared
 	@ObservedObject private var _favorites = SourceFavorites.shared
 
@@ -25,52 +25,65 @@ struct SourcesCellView: View {
 		source.identifier ?? source.sourceURL?.absoluteString ?? ""
 	}
 
-	private var _isPremiumSource: Bool {
-		guard let url = source.sourceURL else { return false }
-		return RyukSignAPI.isPremiumSource(url)
+	private var _repository: ASRepository? {
+		_viewModel.sources[source]
 	}
 
 	// MARK: Body
 	var body: some View {
-		let isRegular = horizontalSizeClass != .compact
-
-		let cellContent = HStack {
-			FRIconCellView(
-				title: source.name ?? .localized("Unknown"),
-				subtitle: _subtitle,
-				iconUrl: source.iconURL
+		let card = HStack(spacing: 12) {
+			SourceRemoteIcon(
+				url: _repository?.currentIconURL ?? source.iconURL,
+				relativeTo: source.sourceURL,
+				size: 46,
+				fallbackAssetName: SourceBundledIcon.assetName(for: _repository)
 			)
-			if _isPremiumSource {
-				Image(systemName: "crown.fill")
-					.foregroundColor(.yellow)
-					.font(.caption)
+
+			VStack(alignment: .leading, spacing: 2) {
+				HStack(spacing: 6) {
+					Text(source.name ?? _repository?.name ?? .localized("Unknown"))
+						.font(.roundedUI(.headline))
+						.foregroundStyle(.white)
+						.lineLimit(1)
+					if _favorites.contains(source) {
+						Image(systemName: "star.fill")
+							.font(.roundedUI(size: 11, weight: .bold))
+							.foregroundStyle(NullSignStyle.yellow)
+							.accessibilityLabel(.localized("Favorite"))
+					}
+				}
+
+				Text(_displayHost)
+					.font(.roundedUI(.subheadline))
+					.foregroundStyle(NullSignStyle.muted)
+					.lineLimit(1)
+
+				_status
+					.padding(.top, 2)
 			}
-			if _isExcluded {
-				Image(systemName: "eye.slash")
-					.foregroundColor(.secondary)
-					.font(.caption2)
+
+			Spacer(minLength: 8)
+
+			if !isEditMode {
+				Image(systemName: "chevron.right")
+					.font(.roundedUI(.footnote, weight: .semibold))
+					.foregroundStyle(NullSignStyle.faint)
 			}
 		}
-		.padding(isRegular ? 12 : 0)
-		.background(
-			isRegular
-			? RoundedRectangle(cornerRadius: 18, style: .continuous)
-				.fill(Color(.quaternarySystemFill))
-			: nil
-		)
+		.padding(16)
+		.nullSignSurface()
+		.contentShape(RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous))
 		.onAppear { _isExcluded = RyukSignAPI.isSourceExcluded(_sourceIdentifier) }
 
 		if isEditMode {
-			cellContent
+			card
 		} else {
-			cellContent
+			card
 				.swipeActions(edge: .leading) {
 					_favoriteAction()
 				}
 				.swipeActions {
-					if !_isPremiumSource {
-						_actions(for: source)
-					}
+					_actions(for: source)
 					_excludeAction()
 					_contextActions(for: source)
 				}
@@ -78,10 +91,8 @@ struct SourcesCellView: View {
 					_favoriteAction()
 					_contextActions(for: source)
 					_excludeAction()
-					if !_isPremiumSource {
-						Divider()
-						_actions(for: source)
-					}
+					Divider()
+					_actions(for: source)
 				}
 		}
 	}
@@ -89,10 +100,40 @@ struct SourcesCellView: View {
 
 // MARK: - Extension: View
 extension SourcesCellView {
-	private var _subtitle: String {
-		let url = source.sourceURL?.absoluteString ?? ""
-		guard _showsAppCount, let count = _viewModel.sources[source]?.apps.count else { return url }
-		return .localized("%lld Apps", arguments: count) + " • " + url
+	@ViewBuilder
+	private var _status: some View {
+		HStack(spacing: 6) {
+			if _repository == nil && !_viewModel.isFinished {
+				ProgressView()
+					.controlSize(.mini)
+			} else {
+				Circle()
+					.fill(_repository == nil ? NullSignStyle.danger : NullSignStyle.success)
+					.frame(width: 6, height: 6)
+			}
+			Text(_statusText)
+				.font(.roundedUI(.caption))
+				.foregroundStyle(_repository == nil && _viewModel.isFinished ? NullSignStyle.danger : NullSignStyle.muted)
+				.lineLimit(1)
+			if _isExcluded {
+				Text("· \(String.localized("Hidden from All"))")
+					.font(.roundedUI(.caption))
+					.foregroundStyle(NullSignStyle.faint)
+					.lineLimit(1)
+			}
+		}
+	}
+
+	private var _statusText: String {
+		guard let repository = _repository else {
+			return _viewModel.isFinished ? "Couldn't load · pull to retry" : "Updating…"
+		}
+		return repository.apps.count == 1 ? "1 app" : "\(repository.apps.count.formatted()) apps"
+	}
+
+	private var _displayHost: String {
+		guard let url = source.sourceURL else { return .localized("Repository") }
+		return url.host?.replacingOccurrences(of: "www.", with: "") ?? url.absoluteString
 	}
 
 	private func _favoriteAction() -> some View {
@@ -105,7 +146,7 @@ extension SourcesCellView {
 				systemImage: isFavorite ? "star.slash" : "star"
 			)
 		}
-		.tint(.yellow)
+		.tint(NullSignStyle.yellow)
 	}
 
 	@ViewBuilder
@@ -113,13 +154,16 @@ extension SourcesCellView {
 		Button(.localized("Delete"), systemImage: "trash", role: .destructive) {
 			Storage.shared.deleteSource(for: source)
 		}
+		.tint(NullSignStyle.danger)
 	}
 
 	@ViewBuilder
 	private func _contextActions(for source: AltSource) -> some View {
-		Button(.localized("Copy"), systemImage: "doc.on.clipboard") {
+		Button(.localized("Copy Source URL"), systemImage: "doc.on.clipboard") {
 			UIPasteboard.general.string = source.sourceURL?.absoluteString
+			UINotificationFeedbackGenerator().notificationOccurred(.success)
 		}
+		.tint(NullSignStyle.accent)
 	}
 
 	@ViewBuilder
@@ -134,6 +178,6 @@ extension SourcesCellView {
 				systemImage: _isExcluded ? "eye" : "eye.slash"
 			)
 		}
-		.tint(.orange)
+		.tint(NullSignStyle.warning)
 	}
 }

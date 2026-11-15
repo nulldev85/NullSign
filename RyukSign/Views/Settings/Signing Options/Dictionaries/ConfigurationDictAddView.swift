@@ -31,6 +31,7 @@ struct ConfigurationDictAddView: View {
 				TextField(.localized("Value"), text: $_newKey)
 				TextField(.localized("Replacement"), text: $_newValue)
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 			.autocapitalization(.none)
 
 			Section {
@@ -38,6 +39,7 @@ struct ConfigurationDictAddView: View {
 					_isLibraryPickerPresenting = true
 				}
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 		}
 		.sheet(isPresented: $_isLibraryPickerPresenting) {
 			AppLibraryPicker(subtitle: { keyKind.value(for: $0) }) { app in

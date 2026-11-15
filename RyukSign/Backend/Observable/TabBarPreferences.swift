@@ -47,7 +47,9 @@ final class TabBarPreferences: ObservableObject {
 		let defaults = UserDefaults.standard
 
 		var loadedOrder = TabEnum.defaultTabs
-		var loadedHidden: Set<TabEnum> = []
+		// NullSign's bar is Apps, Signer and Settings. Tweaks can be shown in
+		// Settings › Tab Bar.
+		var loadedHidden: Set<TabEnum> = [.tweaks]
 		var loadedLaunch: TabEnum = .library
 
 		if

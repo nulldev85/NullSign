@@ -16,7 +16,7 @@ struct SigningLogView: View {
 	var body: some View {
 		NBNavigationView(.localized("Signing Logs"), displayMode: .inline) {
 			LogConsoleView(entries: _log.lines, showCategory: true, style: .transparent)
-				.background(Color(uiColor: .systemBackground))
+				.background(NullSignStyle.canvas)
 				.overlay {
 					if _log.lines.isEmpty {
 						Text(.localized("No logs yet"))

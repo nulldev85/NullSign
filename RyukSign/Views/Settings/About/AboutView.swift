@@ -52,6 +52,7 @@ struct AboutView: View {
 					.foregroundStyle(.secondary)
 				}
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 			.frame(maxWidth: .infinity)
 			.listRowBackground(EmptyView())
 

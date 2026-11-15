@@ -32,6 +32,7 @@ struct BackupView: View {
 			} footer: {
 				Text(.localized("Saves what you pick to one file. Signed and imported apps aren't included."))
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 
 			Section {
 				Button {
@@ -51,6 +52,7 @@ struct BackupView: View {
 			} footer: {
 				Text(.localized("Open a backup file, then pick what comes back."))
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 		}
 		.disabled(_isWorking)
 		.animation(.easeInOut(duration: 0.2), value: _isWorking)
@@ -74,7 +76,7 @@ struct BackupView: View {
 				available: archive.contents,
 				counts: _archiveCounts(archive),
 				detail: .localized(
-					"Created %@ · RyukSign %@",
+					"Created %@ · NullSign %@",
 					arguments: archive.manifest.createdAt.formatted(date: .abbreviated, time: .shortened),
 					archive.manifest.appVersion
 				),
@@ -97,7 +99,7 @@ struct BackupView: View {
 	private var _workingOverlay: some View {
 		if _isWorking {
 			ZStack {
-				Color(.systemBackground).opacity(0.6).ignoresSafeArea()
+				NullSignStyle.canvas.opacity(0.6).ignoresSafeArea()
 				VStack(spacing: 14) {
 					ProgressView()
 					Text(.localized("Working…"))
@@ -163,7 +165,7 @@ struct BackupView: View {
 
 		let needsRestart = !summary.restored.intersection([.settings, .certificates]).isEmpty
 		let message = needsRestart
-			? summary.lines.joined(separator: "\n") + "\n\n" + .localized("RyukSign will restart to apply the backup.")
+			? summary.lines.joined(separator: "\n") + "\n\n" + .localized("NullSign will restart to apply the backup.")
 			: summary.lines.joined(separator: "\n")
 
 		UIAlertController.showAlert(

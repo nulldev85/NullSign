@@ -37,6 +37,7 @@ struct ConfigurationDictView: View {
 						_actions(key: key)
 					}
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			}
 		}
 		.toolbar {

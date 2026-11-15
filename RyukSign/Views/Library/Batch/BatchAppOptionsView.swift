@@ -41,6 +41,7 @@ struct BatchAppOptionsView: View {
 				} footer: {
 					Text(.localized("The certificate and properties are set once for the whole batch."))
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			}
 		}
 		.toolbar {

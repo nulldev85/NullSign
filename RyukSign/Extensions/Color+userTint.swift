@@ -9,7 +9,8 @@ import SwiftUI
 import AltSourceKit
 
 extension Color {
-	static let defaultUserTintHex = "#B496DC"
+	/// NullSign blue (NullSignStyle.accent). The tint can still be changed in Appearance.
+	static let defaultUserTintHex = "#0094FF"
 
 	static var userTint: Color {
 		Color(hex: UserDefaults.standard.string(forKey: "Feather.userTintColor") ?? defaultUserTintHex)

@@ -30,6 +30,7 @@ struct SigningPropertiesView: View {
 				TextField(initialValue, text: $text)
 					.textInputAutocapitalization(.none)
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 			if let suggestion, suggestion != text {
 				Section {
 					Button {
@@ -40,6 +41,7 @@ struct SigningPropertiesView: View {
 				} footer: {
 					Text(verbatim: .localized("Use %@ from your selected provisioning profile.", arguments: suggestion))
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			}
 		}
 		.dismissableKeyboard()

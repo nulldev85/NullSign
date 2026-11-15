@@ -153,6 +153,8 @@ struct SourcesAddView: View {
 			displaySection
 			featuredSection
 		}
+		.scrollContentBackground(.hidden)
+		.nullSignPage()
 		.dismissableKeyboard()
 	}
 
@@ -197,6 +199,7 @@ struct SourcesAddView: View {
 		} footer: {
 			Text(.localized("Supports importing from KravaSign/MapleSign and ESign."))
 		}
+		.listRowBackground(NullSignStyle.groupedSurface)
 	}
 
 	@ViewBuilder
@@ -292,6 +295,7 @@ struct SourcesAddView: View {
 				Text("API keys are single-use.")
 			}
 		}
+		.listRowBackground(NullSignStyle.groupedSurface)
 	}
 
 	@ViewBuilder
@@ -361,6 +365,7 @@ struct SourcesAddView: View {
 				Text("Add a collection of popular repositories crafted by Ryuk.")
 			}
 		}
+		.listRowBackground(NullSignStyle.groupedSurface)
 	}
 
 	@ViewBuilder
@@ -372,6 +377,7 @@ struct SourcesAddView: View {
 		} footer: {
 			Text(.localized("When enabled, the Sources tab shows all apps directly. Toggle off to manage sources."))
 		}
+		.listRowBackground(NullSignStyle.groupedSurface)
 	}
 
 	@ViewBuilder

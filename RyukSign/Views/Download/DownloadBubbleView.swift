@@ -60,7 +60,7 @@ struct DownloadBubbleView: View {
 
                         ZStack {
                                 Circle()
-                                    .fill(Color(uiColor: .systemBackground))
+                                    .fill(NullSignStyle.canvas)
                                     .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
 
                                 DownloadPhaseRing(phase: model.summary.phase, progress: model.summary.progress, size: 44)

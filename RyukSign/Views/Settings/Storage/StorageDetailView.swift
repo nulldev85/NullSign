@@ -58,6 +58,7 @@ struct StorageDetailView: View {
 						.font(.footnote)
 						.foregroundStyle(.secondary)
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			}
 
 			Section {
@@ -69,6 +70,7 @@ struct StorageDetailView: View {
 					Text(verbatim: .localized("%lld items · %@", arguments: _all.count, _total.formattedFileSize))
 				}
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 		}
 		.searchable(text: $_query)
 		.overlay { _empty }
@@ -195,7 +197,7 @@ private extension StorageDetailView {
 					.fontWeight(.semibold)
 					.frame(maxWidth: .infinity)
 					.padding(.vertical, 14)
-					.background(Color(.secondarySystemGroupedBackground), in: Capsule())
+					.background(NullSignStyle.groupedSurface, in: Capsule())
 			}
 			.padding(.horizontal)
 			.padding(.bottom, 8)

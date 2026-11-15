@@ -57,6 +57,7 @@ struct PlistNodeView: View {
 					Text(.localized("No items"))
 				}
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 		}
 		.toolbar {
 			NBToolbarMenu(

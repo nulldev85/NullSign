@@ -61,6 +61,7 @@ extension ResetView {
 				}
 			}
 		}
+		.listRowBackground(NullSignStyle.groupedSurface)
 	}
 	
 	@ViewBuilder
@@ -111,6 +112,7 @@ extension ResetView {
 				}
 			}
 		}
+		.listRowBackground(NullSignStyle.groupedSurface)
 	}
 	
 	@ViewBuilder
@@ -128,6 +130,7 @@ extension ResetView {
 				}
 			}
 		}
+		.listRowBackground(NullSignStyle.groupedSurface)
 		.foregroundStyle(.red)
 	}
 }

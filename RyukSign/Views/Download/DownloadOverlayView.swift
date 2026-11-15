@@ -30,20 +30,20 @@ struct DownloadOverlaySheetContent: View {
             if colorScheme == .dark {
                 return Color(uiColor: UIColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1.0))
             } else {
-                return Color(uiColor: .systemBackground)
+                return NullSignStyle.canvas
             }
         } else if overlayTheme == "darkGrey" {
             if colorScheme == .dark {
                 return Color(uiColor: UIColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1.0))
             } else {
-                return Color(uiColor: .systemBackground)
+                return NullSignStyle.canvas
             }
         } else {
             // AMOLED black in dark mode
             if colorScheme == .dark {
                 return Color(uiColor: UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0))
             } else {
-                return Color(uiColor: .systemBackground)
+                return NullSignStyle.canvas
             }
         }
     }
@@ -52,7 +52,7 @@ struct DownloadOverlaySheetContent: View {
         if colorScheme == .dark {
             return Color(uiColor: UIColor(red: 0.12, green: 0.12, blue: 0.12, alpha: 1.0))
         } else {
-            return Color(uiColor: .secondarySystemBackground)
+            return NullSignStyle.groupedSurface
         }
     }
 

@@ -251,7 +251,7 @@ private struct SigningLibraryTweakPicker: View {
 						description: .localized("Every tweak in your library is already added, disabled, or has no files.")
 					)
 					.frame(maxWidth: .infinity, maxHeight: .infinity)
-					.background(Color(.systemGroupedBackground).ignoresSafeArea())
+					.background(NullSignStyle.canvas.ignoresSafeArea())
 				} else {
 					NBList(.localized("Add From Library")) {
 						_pickerContent

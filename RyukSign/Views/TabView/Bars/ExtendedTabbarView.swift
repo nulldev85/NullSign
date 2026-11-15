@@ -70,7 +70,7 @@ struct ExtendedTabbarView: View {
     }
 
     private func _badgeCount(for tab: TabEnum) -> Int {
-        if tab == .sources && _showSourcesUpdateBadge { return updateChecker.updateCount }
+        if tab == .library && _showSourcesUpdateBadge { return updateChecker.updateCount } // NullSign shows updates on Signer
         if tab == .tweaks { return _tweakManager.defaultInjectCount }
         return 0
     }

@@ -8,14 +8,15 @@ import CoreData
 import AltSourceKit
 import SwiftUI
 import NimbleViews
+import NimbleExtensions
 
 // MARK: - View
+/// NullSign's Apps tab: the catalog in NullSign's look (overview, search, All
+/// Apps, repository cards) on RyukSign's sources (favorites, sorting,
+/// selecting to delete, hiding from All, app links).
 struct SourcesView: View {
-	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 	@Environment(\.scenePhase) private var scenePhase
-	#if !NIGHTLY && !DEBUG
-	@AppStorage("Feather.shouldStar") private var _shouldStar: Int = 0
-	#endif
+	@Environment(\.accessibilityReduceMotion) private var _reduceMotion
 	@StateObject var viewModel = SourcesViewModel.shared
 	@State private var _isAddingPresenting = false
 	@State private var _addingSourceLoading = false
@@ -44,7 +45,19 @@ struct SourcesView: View {
 	@ObservedObject private var _premiumFilter = PremiumFilterPreferences.shared
 
 	private var _filteredSources: [AltSource] {
-		_sources.filter { _searchText.isEmpty || ($0.name?.localizedCaseInsensitiveContains(_searchText) ?? false) }
+		_sources.filter { source in
+			guard !_searchText.isEmpty else { return true }
+			return (source.name?.localizedCaseInsensitiveContains(_searchText) ?? false) ||
+				(source.sourceURL?.absoluteString.localizedCaseInsensitiveContains(_searchText) ?? false)
+		}
+	}
+
+	private var _loadedAppCount: Int {
+		_sources.compactMap { viewModel.sources[$0] }.reduce(0) { $0 + $1.apps.count }
+	}
+
+	private var _isLoadingCatalog: Bool {
+		!viewModel.isFinished && _loadedAppCount == 0
 	}
 
 	@FetchRequest(
@@ -55,9 +68,10 @@ struct SourcesView: View {
 
 	// MARK: Body
 	var body: some View {
-		NBNavigationView(.localized("Sources")) {
+		NBNavigationView(.localized("Apps"), displayMode: .inline) {
 			mainContent
 		}
+		.tint(NullSignStyle.accent)
 		.task(id: Array(_sources)) {
 			await viewModel.fetchSources(_sources)
 		}
@@ -88,7 +102,7 @@ struct SourcesView: View {
 
 	@ViewBuilder
 	private var mainContent: some View {
-		if _sourcesTabShowAllReposDirectly && !_filteredSources.isEmpty {
+		if _sourcesTabShowAllReposDirectly && !_sources.isEmpty {
 			allRepositoriesDirectView
 		} else {
 			sourcesListView
@@ -105,14 +119,15 @@ struct SourcesView: View {
 			},
 			isSourcesRoot: true
 		)
+		.nullSignPage()
 		.toolbar {
-			NBToolbarButton(
-				systemImage: "plus",
-				style: .icon,
-				placement: .topBarTrailing,
-				isDisabled: _addingSourceLoading
-			) {
-				_isAddingPresenting = true
+			ToolbarItem(placement: .topBarTrailing) {
+				Button {
+					_isAddingPresenting = true
+				} label: {
+					Label(.localized("Add Source"), systemImage: "plus")
+				}
+				.disabled(_addingSourceLoading)
 			}
 		}
 		.sheet(isPresented: $_isAddingPresenting) {
@@ -121,18 +136,47 @@ struct SourcesView: View {
 		}
 	}
 
-	@ViewBuilder
 	private var sourcesListView: some View {
-		NBListAdaptable {
-			if !_filteredSources.isEmpty {
-				allRepositoriesSection
+		List {
+			NullSignOverviewBanner(
+				title: "Your catalog",
+				value: _isLoadingCatalog ? "…" : _loadedAppCount.formatted(),
+				detail: _isLoadingCatalog
+					? "Updating your repositories…"
+					: "Apps from \(_sources.count) \(_sources.count == 1 ? "repository" : "repositories")",
+				systemImage: "square.grid.2x2.fill"
+			)
+			.nullSignListRow(top: 0, bottom: 0, horizontal: 0)
+
+			if _sources.isEmpty {
+				NoRepositoriesView { _isAddingPresenting = true }
+					.nullSignListRow(top: 40, bottom: 30)
+			} else {
+				NullSignSearchField(prompt: .localized("Search"), text: $_searchText)
+					.nullSignListRow(top: 4, bottom: 6)
+
+				if _searchText.isEmpty && !_isEditMode {
+					allRepositoriesRow
+						.nullSignListRow(top: 6, bottom: 4)
+				}
+
 				repositoriesSection
+
+				if _filteredSources.isEmpty {
+					Text("No repositories match “\(_searchText)”.")
+						.font(.roundedUI(.subheadline))
+						.foregroundStyle(NullSignStyle.muted)
+						.frame(maxWidth: .infinity)
+						.nullSignListRow(top: 24, bottom: 24)
+				}
 			}
 		}
-		.searchable(text: $_searchText, placement: .platform())
-		.overlay {
-			emptyStateView
-		}
+		.listStyle(.plain)
+		// Section labels are short rows; don't pad them up to 44pt.
+		.environment(\.defaultMinListRowHeight, 0)
+		.scrollContentBackground(.hidden)
+		.nullSignPage()
+		.scrollDismissesKeyboard(.interactively)
 		.toolbar {
 			toolbarContent
 		}
@@ -147,12 +191,12 @@ struct SourcesView: View {
 			deleteDialogTitle,
 			isPresented: $_showDeleteConfirmation
 		) {
-			Button("Delete", role: .destructive) {
+			Button(.localized("Delete"), role: .destructive) {
 				deleteSelectedSources()
 			}
-			Button("Cancel", role: .cancel) {}
+			Button(.localized("Cancel"), role: .cancel) {}
 		} message: {
-			Text("This action cannot be undone.")
+			Text(.localized("This action cannot be undone."))
 		}
 	}
 
@@ -161,9 +205,10 @@ struct SourcesView: View {
 		return "Delete \(count) \(count == 1 ? "repository" : "repositories")?"
 	}
 
-	@ViewBuilder
-	private var allRepositoriesSection: some View {
-		Section {
+	// MARK: All Apps
+	/// The whole catalog, from every repository not hidden from All.
+	private var allRepositoriesRow: some View {
+		ZStack {
 			NavigationLink(isActive: $_shouldNavigateToAllRepos) {
 				SourceAppsView(
 					object: _nonExcludedSources,
@@ -172,38 +217,65 @@ struct SourcesView: View {
 						await self.viewModel.fetchSources(self._sources, refresh: true)
 					}
 				)
+				.nullSignPage()
 			} label: {
-				allRepositoriesLabel
+				EmptyView()
 			}
-			.buttonStyle(.plain)
+			.opacity(0)
 			.onChange(of: _shouldNavigateToAllRepos) { isActive in
 				if isActive {
 					_activeIndividualSource = nil
 				}
 			}
+
+			_allAppsCard
 		}
-		.disabled(_isEditMode)
 	}
 
-	@ViewBuilder
-	private var allRepositoriesLabel: some View {
-		let isRegular = horizontalSizeClass != .compact
-		HStack(spacing: 18) {
-			Image("Repositories").appIconStyle()
-			NBTitleWithSubtitleView(
-				title: .localized("All Repositories"),
-				subtitle: .localized("See all apps from your sources")
+	private var _allAppsCard: some View {
+		let iconURLs = _nonExcludedSources.compactMap { source in
+			SourceAssetURL.resolve(
+				viewModel.sources[source]?.currentIconURL ?? source.iconURL,
+				relativeTo: source.sourceURL
 			)
 		}
-		.padding(isRegular ? 12 : 0)
-		.background(
-			isRegular
-			? RoundedRectangle(cornerRadius: 18, style: .continuous)
-				.fill(Color(.quaternarySystemFill))
-			: nil
-		)
+
+		return HStack(spacing: 14) {
+			if iconURLs.isEmpty {
+				NullSignIconTile(systemImage: "square.grid.2x2.fill", tint: NullSignStyle.accent, size: 48, filled: true)
+			} else {
+				SourceIconStack(urls: iconURLs, size: 40)
+			}
+
+			VStack(alignment: .leading, spacing: 2) {
+				Text(.localized("All Apps"))
+					.font(.roundedUI(.headline))
+					.foregroundStyle(.white)
+				Text(_catalogSummary)
+					.font(.roundedUI(.subheadline))
+					.foregroundStyle(NullSignStyle.muted)
+			}
+
+			Spacer(minLength: 8)
+
+			Image(systemName: "chevron.right")
+				.font(.roundedUI(.footnote, weight: .semibold))
+				.foregroundStyle(NullSignStyle.faint)
+		}
+		.padding(14)
+		.nullSignSurface()
+		.contentShape(RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous))
 	}
 
+	private var _catalogSummary: String {
+		if _isLoadingCatalog {
+			return .localized("Updating…")
+		}
+		let sources = _sources.count == 1 ? "1 source" : "\(_sources.count.formatted()) sources"
+		return "\(_loadedAppCount.formatted()) apps from \(sources)"
+	}
+
+	// MARK: Repositories
 	private var _sortedSources: [AltSource] {
 		let sorted = _filteredSources.sorted { lhs, rhs in
 			switch _sort {
@@ -225,19 +297,22 @@ struct SourcesView: View {
 		let others = sources.filter { !_favorites.contains($0) }
 
 		if !favorites.isEmpty {
-			NBSection(.localized("Favorites"), secondary: "\(favorites.count)") {
-				ForEach(favorites) { _row(for: $0) }
-			}
+			NullSignSectionLabel(title: .localized("Favorites"), count: favorites.count, prominent: true, systemImage: "star")
+				.nullSignListRow(top: 20, bottom: 8, horizontal: 24)
+			ForEach(favorites) { _row(for: $0) }
 		}
 
 		if !others.isEmpty {
-			let sectionTitle = _isEditMode ? "\(_selectedSources.count) selected" : "\(others.count)"
-			NBSection(
-				.localized("Repositories"),
-				secondary: sectionTitle
-			) {
-				ForEach(others) { _row(for: $0) }
-			}
+			NullSignSectionLabel(
+				title: _isEditMode && !_selectedSources.isEmpty
+					? "\(String.localized("Repositories")) · \(_selectedSources.count) selected"
+					: .localized("Repositories"),
+				count: others.count,
+				prominent: true,
+				systemImage: "externaldrive.connected.to.line.below"
+			)
+			.nullSignListRow(top: 20, bottom: 8, horizontal: 24)
+			ForEach(others) { _row(for: $0) }
 		}
 	}
 
@@ -245,45 +320,35 @@ struct SourcesView: View {
 	private func _row(for source: AltSource) -> some View {
 		if _isEditMode {
 			editModeRow(for: source)
+				.nullSignListRow()
 		} else {
 			normalModeRow(for: source)
+				.nullSignListRow()
 		}
 	}
 
-	@ViewBuilder
 	private func editModeRow(for source: AltSource) -> some View {
-		HStack(spacing: 12) {
-			selectionButton(for: source)
+		let isSelected = _selectedSources.contains(source)
+		return HStack(spacing: 12) {
+			Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+				.font(.roundedUI(.title2, weight: .regular))
+				.symbolRenderingMode(.palette)
+				.foregroundStyle(isSelected ? Color.white : NullSignStyle.faint, isSelected ? NullSignStyle.accent : NullSignStyle.faint)
 			SourcesCellView(source: source, isEditMode: true)
+				.overlay {
+					if isSelected {
+						RoundedRectangle(cornerRadius: NullSignStyle.cardRadius, style: .continuous)
+							.strokeBorder(NullSignStyle.accent, lineWidth: 2)
+					}
+				}
 		}
 		.contentShape(Rectangle())
 		.onTapGesture {
 			toggleSelection(for: source)
 		}
+		.accessibilityAddTraits(isSelected ? .isSelected : [])
 	}
 
-	@ViewBuilder
-	private func selectionButton(for source: AltSource) -> some View {
-		let isPremium = source.sourceURL.map { RyukSignAPI.isPremiumSource($0) } ?? false
-		Button {
-			toggleSelection(for: source)
-		} label: {
-			let isSelected = _selectedSources.contains(source)
-			if isPremium {
-				Image(systemName: "lock.fill")
-					.font(.title3)
-					.foregroundColor(.secondary.opacity(0.5))
-			} else {
-				Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-					.font(.title3)
-					.foregroundColor(isSelected ? .accentColor : .secondary)
-			}
-		}
-		.buttonStyle(.plain)
-		.disabled(isPremium)
-	}
-
-	@ViewBuilder
 	private func normalModeRow(for source: AltSource) -> some View {
 		let isActive = Binding(
 			get: { _activeIndividualSource == source },
@@ -297,73 +362,69 @@ struct SourcesView: View {
 			}
 		)
 
-		NavigationLink(isActive: isActive) {
-			SourceAppsView(
-				object: [source],
-				viewModel: viewModel,
-				onRefresh: {
-					await self.viewModel.fetchSources(self._sources, refresh: true)
-				}
-			)
-		} label: {
+		return ZStack {
+			NavigationLink(isActive: isActive) {
+				SourceAppsView(
+					object: [source],
+					viewModel: viewModel,
+					onRefresh: {
+						await self.viewModel.fetchSources(self._sources, refresh: true)
+					}
+				)
+				.nullSignPage()
+			} label: {
+				EmptyView()
+			}
+			.opacity(0)
+
 			SourcesCellView(source: source, isEditMode: false)
 		}
-		.buttonStyle(.plain)
 	}
 
-	@ViewBuilder
-	private var emptyStateView: some View {
-		if _filteredSources.isEmpty {
-			NoRepositoriesView { _isAddingPresenting = true }
-		}
-	}
-
+	// MARK: Toolbar
 	@ToolbarContentBuilder
 	private var toolbarContent: some ToolbarContent {
 		ToolbarItem(placement: .topBarLeading) {
-			if _isEditMode {
-				HStack(spacing: 12) {
-					Button("Done") {
-						withAnimation {
-							_isEditMode = false
-							_selectedSources.removeAll()
-						}
+			if !_sources.isEmpty {
+				Button {
+					withAnimation(_reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.85)) {
+						_isEditMode.toggle()
 					}
-					Button(action: selectAllSources) {
-						Text("Select All")
-					}
-				}
-			} else {
-				if !_filteredSources.isEmpty {
-					Button("Edit") {
-						withAnimation {
-							_isEditMode = true
-						}
-					}
+				} label: {
+					Text(_isEditMode ? String.localized("Done") : String.localized("Select"))
+						.font(.roundedUI(size: 15, weight: .bold))
 				}
 			}
 		}
 
 		ToolbarItem(placement: .topBarTrailing) {
 			if _isEditMode {
-				Button(role: .destructive) {
-					if !_selectedSources.isEmpty {
-						_showDeleteConfirmation = true
+				Menu {
+					Button(areAllSourcesSelected ? String.localized("Deselect All") : String.localized("Select All"), systemImage: "checkmark.circle") {
+						selectAllSources()
 					}
+					Button(.localized("Delete"), systemImage: "trash", role: .destructive) {
+						if !_selectedSources.isEmpty {
+							_showDeleteConfirmation = true
+						}
+					}
+					.disabled(_selectedSources.isEmpty)
 				} label: {
-					Image(systemName: "trash")
+					Label(.localized("Selection"), systemImage: "ellipsis.circle")
 				}
-				.disabled(_selectedSources.isEmpty)
 			} else {
-				HStack {
-					_sortMenu
-					Button {
-						_isAddingPresenting = true
-					} label: {
-						Image(systemName: "plus")
-					}
-					.disabled(_addingSourceLoading)
+				_sortMenu
+			}
+		}
+
+		ToolbarItem(placement: .topBarTrailing) {
+			if !_isEditMode {
+				Button {
+					_isAddingPresenting = true
+				} label: {
+					Label(.localized("Add Source"), systemImage: "plus")
 				}
+				.disabled(_addingSourceLoading)
 			}
 		}
 	}
@@ -380,11 +441,11 @@ struct SourcesView: View {
 
 			Section {
 				Toggle(isOn: $_sourcesTabShowAllReposDirectly) {
-					Label(.localized("Show All Repos by Default"), systemImage: "square.stack")
+					Label(.localized("Show All Apps by Default"), systemImage: "square.stack")
 				}
 			}
 		} label: {
-			Image(systemName: "line.3.horizontal.decrease")
+			Label(.localized("Sort"), systemImage: "line.3.horizontal.decrease")
 		}
 	}
 
@@ -399,6 +460,7 @@ struct SourcesView: View {
 	private func toggleSelection(for source: AltSource) {
 		// Don't allow selecting premium sources
 		if let url = source.sourceURL, RyukSignAPI.isPremiumSource(url) { return }
+		NBHaptic.selection()
 		if _selectedSources.contains(source) {
 			_selectedSources.remove(source)
 		} else {
@@ -468,19 +530,18 @@ struct SourcesView: View {
 	}
 }
 
+/// No sources yet, in NullSign's empty-state style.
 struct NoRepositoriesView: View {
 	let onAdd: () -> Void
 
 	var body: some View {
-		NBContentUnavailable(
-			.localized("No Repositories"),
-			systemImage: "globe.desk.fill",
-			description: .localized("Get started by adding your first repository.")
-		) {
-			Button(action: onAdd) {
-				NBButton(.localized("Add Source"), style: .text)
-			}
-		}
+		SourceEmptyState(
+			icon: "square.grid.2x2",
+			title: .localized("No Repositories"),
+			message: "Add an AltStore-compatible source to browse its apps and import them into NullSign.",
+			actionTitle: .localized("Add Source"),
+			action: onAdd
+		)
 	}
 }
 

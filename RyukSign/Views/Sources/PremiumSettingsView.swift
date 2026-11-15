@@ -75,6 +75,7 @@ struct PremiumSettingsView: View {
 				}
 			}
 		}
+		.listRowBackground(NullSignStyle.groupedSurface)
 	}
 
 	// MARK: Catalog filter

@@ -84,6 +84,8 @@ struct BackupComponentsView: View {
 					}
 				}
 			}
+			.scrollContentBackground(.hidden)
+			.nullSignPage()
 			.dismissableKeyboard()
 			.toolbar {
 				NBToolbarButton(role: .cancel)

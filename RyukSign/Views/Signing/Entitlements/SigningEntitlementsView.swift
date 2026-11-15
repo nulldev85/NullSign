@@ -30,6 +30,7 @@ struct SigningEntitlementsView: View {
 					Text(.localized("No entitlements files yet"))
 						.foregroundStyle(.secondary)
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			} else {
 				Section {
 					ForEach(_manager.files) { file in
@@ -38,6 +39,7 @@ struct SigningEntitlementsView: View {
 				} footer: {
 					Text(.localized("Custom entitlements are signed as-is. Entries not granted by your certificate's provisioning profile may fail to install or crash at launch."))
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			}
 		}
 		.toolbar {

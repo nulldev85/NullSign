@@ -87,7 +87,7 @@ struct SourceNewsCardInfoView: View {
 				)
 				.padding()
 			}
-			.background(Color(uiColor: .systemBackground))
+			.background(NullSignStyle.canvas)
 			.toolbar {
 				NBToolbarButton(role: .close)
 			}

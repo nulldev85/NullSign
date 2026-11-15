@@ -88,7 +88,7 @@ extension SourceAppsTableRepresentableView.Coordinator {
                 .font(.headline)
                 .padding(.vertical, 2)
             }
-            .background(Color(uiColor: .systemBackground))
+            .background(NullSignStyle.canvas)
 
             return headerView
         }

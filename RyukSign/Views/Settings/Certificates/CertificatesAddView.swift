@@ -48,7 +48,10 @@ struct CertificatesAddView: View {
 				Section {
 					TextField(.localized("Nickname (Optional)"), text: $_certificateName)
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			}
+			.scrollContentBackground(.hidden)
+			.nullSignPage()
 			.dismissableKeyboard()
 			.toolbar {
 				NBToolbarButton(role: .cancel)

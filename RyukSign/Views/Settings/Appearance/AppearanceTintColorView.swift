@@ -10,9 +10,10 @@ import NimbleViews
 
 // MARK: - View
 struct AppearanceTintColorView: View {
-	@AppStorage("Feather.userTintColor") private var _selectedColorHex: String = "#848ef9"
+	@AppStorage("Feather.userTintColor") private var _selectedColorHex: String = Color.defaultUserTintHex
 	private let _tintOptions: [(name: String, hex: String)] = [
-		("Default", 		"#848ef9"),
+		("NullSign", 		"#0094FF"),
+		("Lavender", 		"#848ef9"),
 		("V2", 				"#B496DC"),
 		("Berry",   		"#ff7a83"),
 		("Cool Blue", 		"#4161F1"),
@@ -46,7 +47,7 @@ struct AppearanceTintColorView: View {
 							.foregroundColor(.secondary)
 					}
 					.frame(width: 120, height: 100)
-					.background(Color(uiColor: .secondarySystemGroupedBackground))
+					.background(NullSignStyle.groupedSurface)
 					.clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
 					.overlay(
 						RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)

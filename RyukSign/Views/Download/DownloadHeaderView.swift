@@ -99,7 +99,7 @@ struct MinimizedDownloadHeader: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(Color(uiColor: .tertiarySystemBackground))
+        .background(NullSignStyle.raisedPanel)
         .clipShape(Capsule())
         .padding(.horizontal)
         .contentShape(Rectangle())
@@ -195,7 +195,7 @@ struct CollapsedDownloadHeader: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
-        .background(Color(uiColor: .secondarySystemBackground))
+        .background(NullSignStyle.groupedSurface)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal)
         .contentShape(Rectangle())
@@ -334,7 +334,7 @@ struct ExpandedDownloadHeader: View {
 			}
 			.padding(.horizontal)
 			.padding(.vertical, 12)
-			.background(Color(uiColor: .secondarySystemBackground))
+			.background(NullSignStyle.groupedSurface)
 			.clipShape(RoundedRectangle(cornerRadius: 12))
 			.padding(.horizontal)
 			

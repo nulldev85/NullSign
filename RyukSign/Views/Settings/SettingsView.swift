@@ -12,10 +12,13 @@ import Darwin
 import IDeviceSwift
 
 // MARK: - View
+/// NullSign's Settings: the signing identity, then RyukSign's settings in
+/// NullSign's card sections. RyukSign's donation card and its alternate app
+/// icons (Feather and RyukSign artwork) aren't part of NullSign.
 struct SettingsView: View {
-    @AppStorage("feather.selectedCert") private var _storedSelectedCert: Int = 0
-    @State private var _currentIcon: String? = UIApplication.shared.alternateIconName
     @ObservedObject private var _selfUpdate = SelfUpdateManager.shared
+    @AppStorage("Feather.installationMethod") private var _installationMethod = 0
+    @State private var _isCertificatesPresenting = false
 
     // MARK: Fetch
     @FetchRequest(
@@ -24,153 +27,112 @@ struct SettingsView: View {
         animation: .snappy
     ) private var _certificates: FetchedResults<CertificatePair>
 
-    private var selectedCertificate: CertificatePair? {
-        guard
-            _storedSelectedCert >= 0,
-            _storedSelectedCert < _certificates.count
-        else {
-            return nil
-        }
-        return _certificates[_storedSelectedCert]
+    private let _githubUrl = "https://github.com/nulldev85/NullSign"
+
+    private var _build: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
     }
 
-    private let _donationsUrl = "https://buymeacoffee.com/axryuk"
-    private let _githubUrl = "https://github.com/nulldev85/NullSign"
-    
     // MARK: Body
     var body: some View {
-        NBNavigationView(.localized("Settings")) {
-            Form {
-				#if !NIGHTLY && !DEBUG
-                SettingsDonationCellView(site: _donationsUrl)
-				#endif
-                
-                _feedback()
-                
-                Section {
-                    NavigationLink(destination: AppearanceView()) {
-                        Label(.localized("Appearance"), systemImage: "paintbrush")
+        NBNavigationView(.localized("Settings"), displayMode: .inline) {
+            ScrollView {
+                VStack(spacing: 28) {
+                    NullSignIdentityCard(certificate: NullSignIdentity.activeCertificate(in: Array(_certificates))) {
+                        _isCertificatesPresenting = true
                     }
-					NavigationLink(destination: AppIconView(currentIcon: $_currentIcon)) {
-						Label(.localized("App Icon"), systemImage: "app.badge")
-					}
-					NavigationLink(destination: TabBarSettingsView()) {
-						Label(.localized("Tab Bar"), systemImage: "squares.below.rectangle")
-					}
-					NavigationLink(destination: SourcesSettingsView()) {
-						Label(.localized("Sources"), systemImage: "globe.desk")
-					}
-					NavigationLink(destination: DownloadsSettingsView()) {
-						Label(.localized("Downloads"), systemImage: "arrow.down.circle")
-					}
-					NavigationLink(destination: UpdatesSettingsView()) {
-						HStack {
-							Label(.localized("Updates"), systemImage: "arrow.triangle.2.circlepath")
-							if _selfUpdate.available != nil {
-								Spacer()
-								Circle().fill(Color.accentColor).frame(width: 8, height: 8)
-							}
-						}
-					}
-                }
-                
-                NBSection(.localized("Certificates")) {
-                    if let cert = selectedCertificate {
-                        CertificatesCellView(cert: cert)
-                    } else {
-                        Text(.localized("No Certificate"))
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                    }
-                    NavigationLink(destination: CertificatesView()) {
-                        Label(.localized("Certificates"), systemImage: "checkmark.seal")
-                    }
-                } footer: {
-                    Text(.localized("Add and manage certificates used for signing applications."))
-                }
 
-                NBSection(.localized("Signing")) {
-                    NavigationLink(destination: ConfigurationView()) {
-                        Label(.localized("Signing Options"), systemImage: "signature")
-                    }
-                    NavigationLink {
-                        TweakLibraryList().navigationTitle(.localized("Tweaks"))
-                    } label: {
-                        Label(.localized("Tweaks"), systemImage: "wrench.and.screwdriver")
-                    }
-                    NavigationLink(destination: InstallationView()) {
-                        Label(.localized("Installation"), systemImage: "arrow.down.app")
-                    }
-                }
+                    _signingSection
+                    _appSection
+                    _filesSection
+                    _maintenanceSection
+                    _aboutSection
 
-                _files()
-
-                Section {
-                    NavigationLink(destination: StorageView()) {
-                        Label(.localized("Storage"), systemImage: "internaldrive")
-                    }
-                    NavigationLink(destination: LogsHistoryView()) {
-                        Label(.localized("Activity Logs"), systemImage: "text.alignleft")
-                    }
-                    NavigationLink(destination: BackupView()) {
-                        Label(.localized("Backup & Restore"), systemImage: "clock.arrow.circlepath")
-                    }
-                    NavigationLink(destination: ResetView()) {
-                        Label(.localized("Reset"), systemImage: "trash")
-                    }
-                } footer: {
-                    Text(.localized("Check what is using space, back up your setup, or reset the app."))
+                    Text("Apps are signed on this device. Certificates and passwords never leave it.")
+                        .font(.roundedUI(.footnote))
+                        .foregroundStyle(NullSignStyle.faint)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 12)
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 24)
+            }
+            .nullSignPage()
+            .navigationDestination(isPresented: $_isCertificatesPresenting) {
+                CertificatesView()
             }
         }
+        .tint(NullSignStyle.accent)
+        .nullSignTypography()
     }
 }
 
-// MARK: - View extension
+// MARK: - Sections
 extension SettingsView {
-    @ViewBuilder
-    private func _feedback() -> some View {
-        Section {
-            NavigationLink(destination: AboutView()) {
-                Label {
-                    Text(verbatim: .localized("About %@", arguments: Bundle.main.name))
-                } icon: {
-					FRAppIconView(size: 23)
-                }
+    private var _signingSection: some View {
+        NullSignSettingsSection(.localized("Signing")) {
+            _link(.localized("Certificates"), systemImage: "checkmark.seal", value: _certificates.count.description) {
+                CertificatesView()
             }
-            
-            Button(.localized("Submit Feedback"), systemImage: "safari") {
-				let bugAction: UIAlertAction = .init(title: .localized("Bug Report"), style: .default) { _ in
-					UIApplication.open(_makeGitHubIssueURL(url: _githubUrl))
-				}
-				
-				let chooseAction: UIAlertAction = .init(title: .localized("Other"), style: .default) { _ in
-					UIApplication.open(URL(string: "\(_githubUrl)/issues/new/choose")!)
-				}
-				
-				UIAlertController.showAlertWithCancel(
-					title: .localized("Submit Feedback"),
-					message: nil,
-					actions: [bugAction, chooseAction]
-				)
+            NullSignSettingsDivider()
+            _link(.localized("Signing Defaults"), systemImage: "signature") {
+                ConfigurationView()
             }
-            Button(.localized("GitHub Repository"), systemImage: "safari") {
-                UIApplication.open(_githubUrl)
+            NullSignSettingsDivider()
+            _link(.localized("Tweaks"), systemImage: "puzzlepiece.extension") {
+                TweakLibraryList().navigationTitle(.localized("Tweaks"))
             }
-        } footer: {
-            Text(.localized("If any issues occur within the app please report it via the GitHub repository. When submitting an issue, make sure to submit detailed information."))
+            NullSignSettingsDivider()
+            _link(
+                .localized("Installation Method"),
+                systemImage: "arrow.down.app",
+                value: _installationMethod == 0 ? String.localized("Server") : String.localized("Pairing")
+            ) {
+                InstallationView()
+            }
         }
     }
-    
-    @ViewBuilder
-    private func _files() -> some View {
-        NBSection(.localized("Files")) {
-            NavigationLink(destination: FilesCompressionView()) {
-                Label(.localized("Files & Compression"), systemImage: "archivebox")
+
+    private var _appSection: some View {
+        NullSignSettingsSection(.localized("App")) {
+            _link(.localized("Appearance"), systemImage: "circle.lefthalf.filled") {
+                AppearanceView()
             }
-            NavigationLink(destination: WebManagerView()) {
-                Label(.localized("Web Manager"), systemImage: "externaldrive.badge.wifi")
+            NullSignSettingsDivider()
+            _link(.localized("Tab Bar"), systemImage: "square.stack.3d.up") {
+                TabBarSettingsView()
             }
+            NullSignSettingsDivider()
+            _link(.localized("Sources"), systemImage: "externaldrive.connected.to.line.below") {
+                SourcesSettingsView()
+            }
+            NullSignSettingsDivider()
+            _link(.localized("Downloads"), systemImage: "arrow.down.circle") {
+                DownloadsSettingsView()
+            }
+            NullSignSettingsDivider()
+            _link(
+                .localized("Updates"),
+                systemImage: "arrow.triangle.2.circlepath",
+                value: _selfUpdate.available != nil ? String.localized("Available") : nil
+            ) {
+                UpdatesSettingsView()
+            }
+        }
+    }
+
+    private var _filesSection: some View {
+        NullSignSettingsSection(.localized("Files")) {
+            _link(.localized("Files & Compression"), systemImage: "shippingbox") {
+                FilesCompressionView()
+            }
+            NullSignSettingsDivider()
+            _link(.localized("Web Manager"), systemImage: "externaldrive.badge.wifi") {
+                WebManagerView()
+            }
+            NullSignSettingsDivider()
             Menu {
                 Button(.localized("Open Documents"), systemImage: "folder") {
                     UIApplication.open(URL.documentsDirectory.toSharedDocumentsURL()!)
@@ -182,14 +144,99 @@ extension SettingsView {
                     UIApplication.open(FileManager.default.certificates.toSharedDocumentsURL()!)
                 }
             } label: {
-                Label(.localized("Open in Files"), systemImage: "folder")
+                NullSignSettingsRow(title: .localized("Open in Files"), detail: nil, systemImage: "folder")
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var _maintenanceSection: some View {
+        NullSignSettingsSection(
+            .localized("Maintenance"),
+            detail: .localized("Check what is using space, back up your setup, or reset the app.")
+        ) {
+            _link(.localized("Storage"), systemImage: "internaldrive") {
+                StorageView()
+            }
+            NullSignSettingsDivider()
+            _link(.localized("Activity Logs"), systemImage: "list.bullet") {
+                LogsHistoryView()
+            }
+            NullSignSettingsDivider()
+            _link(.localized("Backup & Restore"), systemImage: "clock.arrow.circlepath") {
+                BackupView()
+            }
+            NullSignSettingsDivider()
+            _link(.localized("Reset"), systemImage: "trash") {
+                ResetView()
             }
         }
     }
-    
+
+    private var _aboutSection: some View {
+        NullSignSettingsSection(.localized("About")) {
+            _link(
+                .localized("About NullSign"),
+                systemImage: "info.circle",
+                value: "\(Bundle.main.version) (\(_build))"
+            ) {
+                AboutView()
+            }
+            NullSignSettingsDivider()
+            Button {
+                _submitFeedback()
+            } label: {
+                NullSignSettingsRow(title: .localized("Submit Feedback"), detail: nil, systemImage: "exclamationmark.bubble", showsChevron: false)
+            }
+            .buttonStyle(.plain)
+            NullSignSettingsDivider()
+            Button {
+                UIApplication.open(_githubUrl)
+            } label: {
+                NullSignSettingsRow(title: .localized("GitHub Repository"), detail: nil, systemImage: "safari", showsChevron: false)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    /// A settings row that opens a screen.
+    private func _link<Destination: View>(
+        _ title: String,
+        systemImage: String,
+        value: String? = nil,
+        @ViewBuilder destination: () -> Destination
+    ) -> some View {
+        NavigationLink {
+            destination()
+                .nullSignPage()
+        } label: {
+            NullSignSettingsRow(title: title, detail: nil, systemImage: systemImage, value: value)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Feedback
+extension SettingsView {
+    private func _submitFeedback() {
+        let bugAction: UIAlertAction = .init(title: .localized("Bug Report"), style: .default) { _ in
+            UIApplication.open(_makeGitHubIssueURL(url: _githubUrl))
+        }
+
+        let chooseAction: UIAlertAction = .init(title: .localized("Other"), style: .default) { _ in
+            UIApplication.open(URL(string: "\(_githubUrl)/issues/new/choose")!)
+        }
+
+        UIAlertController.showAlertWithCancel(
+            title: .localized("Submit Feedback"),
+            message: nil,
+            actions: [bugAction, chooseAction]
+        )
+    }
+
     private func _makeGitHubIssueURL(url: String) -> String {
         var configurationSection = "### App Configuration:\n"
-		
+
         switch UserDefaults.standard.integer(forKey: "Feather.installationMethod") {
         case 0: // Server
             let serverMethod = UserDefaults.standard.integer(forKey: "Feather.serverMethod")
@@ -207,25 +254,25 @@ extension SettingsView {
         default:
             configurationSection += "- Install method: `Unknown`\n"
         }
-        
+
         let body = """
 		### Device Information
 		- Device: `\(MobileGestalt().getStringForName("PhysicalHardwareNameString") ?? "Unknown")`
 		- iOS Version: `\(UIDevice.current.systemVersion)`
 		- App Version: `\(Bundle.main.version)`
-		
+
 		\(configurationSection)
-		
+
 		### Issue Description
 		<!-- Describe your issue here -->
-		
+
 		### Steps to Reproduce
-		1. 
-		2. 
-		3. 
-		
+		1.
+		2.
+		3.
+
 		### Expected Behavior
-		
+
 		### Actual Behavior
 		"""
         let encodedTitle = "[Bug] replace this with a descriptive title "

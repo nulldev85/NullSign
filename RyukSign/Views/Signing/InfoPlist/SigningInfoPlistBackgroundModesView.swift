@@ -60,6 +60,7 @@ struct SigningInfoPlistBackgroundModesView: View {
 			} footer: {
 				Text(.localized("Background modes only work when the app or an injected tweak actually implements them. Some also need a matching entitlement to install."))
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 		}
 	}
 }

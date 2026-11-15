@@ -30,7 +30,7 @@ struct SourceAppsCellView: View {
 						LazyImage(url: iconURL) { state in
 							if let image = state.image {
 								image
-									.appIconStyle(size: 20, isCircle: true, background: Color(uiColor: .secondarySystemBackground))
+									.appIconStyle(size: 20, isCircle: true, background: NullSignStyle.groupedSurface)
 									.offset(x: 41, y: 4)
 							}
 						}

@@ -42,55 +42,43 @@ where 	Content: View,
 		self._footer = EmptyView()
 	}
 	
+	/// NullSign's grouped section: a quiet uppercase label with an optional
+	/// symbol and count, rows on the charcoal surface, muted footer.
 	public var body: some View {
 		Section(
 			header:
-				HStack(alignment: .center, spacing: 4) {
+				HStack(alignment: .firstTextBaseline, spacing: 6) {
 					if let _systemName {
 						Image(systemName: _systemName)
-							.font(.system(size: 12))
-							.offset(y: -2)
+							.font(.system(size: 13, weight: .bold, design: .rounded))
+							.foregroundStyle(NBTheme.muted)
+							.accessibilityHidden(true)
 					}
-					
-					Text(_headerText)
-						.fontWeight(.bold)
-						.font(.title2)
-						.foregroundStyle(.primary)
-						
-					
-                    Spacer()
-                    
+
+					Text(_headerText.uppercased())
+						.font(.system(.caption, design: .rounded).weight(.heavy))
+						.tracking(0.65)
+						.foregroundStyle(NBTheme.muted)
+
 					if let _headerTextSecondary {
-						if #available(iOS 26.0, *) {
-							Text(_headerTextSecondary)
-								.font(.caption)
-								.foregroundStyle(.secondary)
-								.contentTransition(.numericText())
-								.padding(.horizontal, 8)
-								.padding(.vertical, 4.4)
-								.background(Color(uiColor: .quaternarySystemFill))
-								.clipShape(Capsule())
-								.glassEffect()
-						} else {
-							Text(_headerTextSecondary)
-								.font(.caption)
-								.foregroundStyle(.secondary)
-								.contentTransition(.numericText())
-								.padding(.horizontal, 8)
-								.padding(.vertical, 4.4)
-								.background(Color(uiColor: .quaternarySystemFill))
-								.clipShape(Capsule())
-						}
+						Text(_headerTextSecondary)
+							.font(.system(.caption, design: .rounded).weight(.bold))
+							.foregroundStyle(NBTheme.faint)
+							.contentTransition(.numericText())
 					}
+
+					Spacer(minLength: 0)
 				}
-				.offset(y: 2)
+				.textCase(nil)
+				.accessibilityElement(children: .combine)
+				.accessibilityAddTraits(.isHeader)
 			,
 			footer: _footer
-				.font(.caption)
-				.foregroundColor(.secondary)
+				.font(.system(.caption, design: .rounded))
+				.foregroundColor(NBTheme.faint)
 		) {
 			_content
+				.listRowBackground(NBTheme.surface)
 		}
-		.headerProminence(.increased)
 	}
 }

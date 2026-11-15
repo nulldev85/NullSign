@@ -16,8 +16,9 @@ enum TabEnum: String, CaseIterable, Hashable, Codable {
 
 	var title: String {
 		switch self {
-		case .sources:     	return .localized("Sources")
-		case .library: 		return .localized("Library")
+		// NullSign's names: Apps (sources) and Signer (library).
+		case .sources:     	return .localized("Apps")
+		case .library: 		return .localized("Signer")
 		case .tweaks: 		return .localized("Tweaks")
 		case .settings: 	return .localized("Settings")
 		case .certificates:	return .localized("Certificates")
@@ -26,10 +27,10 @@ enum TabEnum: String, CaseIterable, Hashable, Codable {
 
 	var icon: String {
 		switch self {
-		case .sources: 		return "globe.desk"
-		case .library: 		return "square.grid.2x2"
+		case .sources: 		return "square.grid.2x2"
+		case .library: 		return "signature"
 		case .tweaks: 		return "wrench.and.screwdriver"
-		case .settings: 	return "gearshape.2"
+		case .settings: 	return "gearshape"
 		case .certificates: return "person.text.rectangle"
 		}
 	}

@@ -34,6 +34,7 @@ struct SigningDylibView: View {
 					)
 				}
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 			.disabled(options == nil)
 
 			NBSection(.localized("Hidden")) {

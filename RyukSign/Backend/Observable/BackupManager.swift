@@ -275,7 +275,7 @@ final class BackupManager {
 
 		let outDir = _fm.uniqueTemporaryDirectory("RyukBackupOut")
 		try _fm.createDirectory(at: outDir, withIntermediateDirectories: true)
-		let file = outDir.appendingPathComponent("RyukSign-Backup-\(Self._stamp()).ryukbackup")
+		let file = outDir.appendingPathComponent("NullSign-Backup-\(Self._stamp()).ryukbackup")
 		try packed.write(to: file)
 		return file
 	}

@@ -68,6 +68,7 @@ struct ServerView: View {
 				Toggle(.localized("Only use localhost address"), systemImage: "lifepreserver", isOn: $_ipFix)
 					.disabled(_serverMethod != 1)
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 			
 			if _serverMethod == 0 {
 				_certificateSection
@@ -78,6 +79,7 @@ struct ServerView: View {
 			} footer: {
 				Text(.localized("Shows an error when iOS rejects an app, like an update signed with a different certificate. Turn it off if installs that worked show as failed."))
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 		}
 		.task(id: _useLocalCertificate) { _refreshTrust() }
 		.onChange(of: _scenePhase) { phase in
@@ -126,6 +128,7 @@ private extension ServerView {
 				Text(.localized("After installing the profile, turn on full trust for it in Settings › General › About › Certificate Trust Settings."))
 			}
 		}
+		.listRowBackground(NullSignStyle.groupedSurface)
 	}
 
 	func _refreshTrust() {

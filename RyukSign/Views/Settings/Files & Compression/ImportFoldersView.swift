@@ -28,6 +28,7 @@ struct ImportFoldersView: View {
 			} footer: {
 				Text(.localized("Give a type its own folder and its picker always opens there. Anything left unset reopens wherever you last browsed, which iOS shares across every picker. Swipe a row to clear it."))
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 
 			if !_names.isEmpty {
 				Section {
@@ -40,6 +41,7 @@ struct ImportFoldersView: View {
 				} footer: {
 					Text(.localized("Puts every type back to reopening where you last browsed."))
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			}
 		}
 		.animation(.default, value: _names.isEmpty)

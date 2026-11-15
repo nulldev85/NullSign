@@ -119,7 +119,7 @@ struct SourceAppsView: View {
             if let sources = _sources, !sources.isEmpty {
                 tableView(for: sources)
                     .ignoresSafeArea(.container, edges: _showsTabBar ? .bottom : [.top, .bottom])
-                    .background(Color(.systemBackground))
+                    .background(NullSignStyle.canvas)
             } else if _sources == nil || isLoading || !viewModel.isFinished {
                 // Loading or a load in flight — show skeleton, never the empty/error
                 // state, so the mid-load window can't flash "Couldn't load apps".
@@ -137,7 +137,7 @@ struct SourceAppsView: View {
                 } onOpen: { candidate in
                     _selectedRoute = SourceAppRoute(source: candidate.repository, app: candidate.app)
                 }
-                .background(Color(.systemBackground))
+                .background(NullSignStyle.canvas)
                 .transition(.opacity)
             }
         }
@@ -218,6 +218,7 @@ struct SourceAppsView: View {
                 }
             }
         }
+        .listRowBackground(NullSignStyle.groupedSurface)
     }
 
     // MARK: - View Builders

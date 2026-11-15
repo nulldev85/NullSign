@@ -24,13 +24,17 @@ struct BatchProgressView: View {
 						.listRowBackground(Color.clear)
 						.listRowSeparator(.hidden)
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 
 				Section {
 					ForEach(runner.items) { item in
 						_row(for: item)
 					}
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			}
+			.scrollContentBackground(.hidden)
+			.nullSignPage()
 			.toolbar {
 				if runner.isFinished || runner.isCancelled {
 					NBToolbarButton(.localized("Done"), style: .text, placement: .topBarTrailing) {

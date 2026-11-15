@@ -30,8 +30,11 @@ struct IgnoredUpdatesView: View {
 				} footer: {
 					Text(.localized("Ignored apps don't count toward the Sources update badge and don't appear in the Updates list. You can still update them manually."))
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			}
 		}
+		.scrollContentBackground(.hidden)
+		.nullSignPage()
 		.navigationTitle(.localized("Ignored Updates"))
 		.navigationBarTitleDisplayMode(.inline)
 		.searchable(text: $_search, placement: .navigationBarDrawer(displayMode: .always))

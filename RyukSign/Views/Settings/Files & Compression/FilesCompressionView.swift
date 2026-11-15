@@ -33,18 +33,21 @@ struct FilesCompressionView: View {
 			} footer: {
 				Text(.localized("The engine used to pack signed apps into IPAs. ZIPFoundation can be a more reliable fallback if Zip fails."))
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 
 			Section {
 				Toggle(.localized("Show Sheet when Exporting"), systemImage: "square.and.arrow.up", isOn: $_useShareSheet)
 			} footer: {
 				Text(.localized("Toggling show sheet will present a share sheet after exporting to your files."))
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 
 			Section {
 				Toggle(.localized("Remember Last Export Location"), systemImage: "clock.arrow.circlepath", isOn: $_useLastExportLocation)
 			} footer: {
-				Text(.localized("Reopen the Save to Files picker at the last folder you used instead of always starting at the RyukSign documents folder."))
+				Text(.localized("Reopen the Save to Files picker at the last folder you used instead of always starting at the NullSign documents folder."))
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 
 			Section {
 				NavigationLink(destination: ImportFoldersView()) {
@@ -53,6 +56,7 @@ struct FilesCompressionView: View {
 			} footer: {
 				Text(.localized("Choose which folder each kind of import opens in."))
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 		}
     }
 }

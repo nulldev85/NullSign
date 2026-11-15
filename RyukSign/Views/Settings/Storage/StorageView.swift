@@ -60,8 +60,8 @@ extension StorageCategory {
 		case .leftovers: .localized("Left behind by imports and signings that got interrupted. Nothing uses them.")
 		case .temporary: .localized("Work files from importing and signing. Recreated when needed.")
 		case .archives: .localized("Saved every time you export or share an IPA. Safe to delete.")
-		case .caches: .localized("Icons and web data RyukSign downloaded. Rebuilt as you browse.")
-		case .other: .localized("Anything outside RyukSign's own folders, including files you added yourself. The app database is locked so it can't be deleted here.")
+		case .caches: .localized("Icons and web data NullSign downloaded. Rebuilt as you browse.")
+		case .other: .localized("Anything outside NullSign's own folders, including files you added yourself. The app database is locked so it can't be deleted here.")
 		default: nil
 		}
 	}
@@ -79,6 +79,7 @@ struct StorageView: View {
 				StorageUsageBar(report: _manager.report)
 					.listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 16, trailing: 20))
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 
 			if let report = _manager.report {
 				Section {
@@ -86,6 +87,7 @@ struct StorageView: View {
 						_row(usage)
 					}
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			} else {
 				_scanning
 			}
@@ -112,6 +114,7 @@ private extension StorageView {
 			.padding(.vertical, 12)
 			.listRowBackground(Color.clear)
 		}
+		.listRowBackground(NullSignStyle.groupedSurface)
 	}
 
 	@ViewBuilder
@@ -156,6 +159,7 @@ private extension StorageView {
 		} footer: {
 			Text(.localized("Signing keeps the imported copy too, so an app you signed is stored twice. Delete the import if you won't sign it again."))
 		}
+		.listRowBackground(NullSignStyle.groupedSurface)
 	}
 
 	func _clear() {
@@ -208,7 +212,7 @@ struct StorageUsageBar: View {
 				Text(report?.total.formattedFileSize ?? "—")
 					.font(.system(size: 30, weight: .semibold, design: .rounded))
 					.contentTransition(.numericText())
-				Text(.localized("used by RyukSign"))
+				Text(.localized("used by NullSign"))
 					.font(.subheadline)
 					.foregroundStyle(.secondary)
 			}

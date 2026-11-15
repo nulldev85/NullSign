@@ -47,7 +47,9 @@ struct RyukSignApp: App {
             "Feather.downloadDisplayMode": "floating", // Default to floating icon
 			"Feather.sourcesShowUpdatesAsTab": true,
             "Feather.downloadOverlayTheme": "darkGrey",
-            "Feather.dynamicOverlaySize": true
+            "Feather.dynamicOverlaySize": true,
+            // NullSign's look is dark only.
+            "Feather.userInterfaceStyle": UIUserInterfaceStyle.dark.rawValue
         ])
 
         // Enable liquid glass on iOS 19+
@@ -101,6 +103,10 @@ struct RyukSignApp: App {
             .overlay(alignment: .bottom) {
                 InstallQueuePill()
             }
+            // NullSign's look: charcoal, dark only, SF Rounded throughout.
+            .background(NullSignStyle.canvas.ignoresSafeArea())
+            .preferredColorScheme(.dark)
+            .nullSignTypography()
             .onReceive(NotificationCenter.default.publisher(for: .heartbeatInvalidHost)) { _ in
                 DispatchQueue.main.async {
                     UIAlertController.showAlertWithOk(
@@ -110,9 +116,8 @@ struct RyukSignApp: App {
                 }
             }
             .onAppear {
-                if let style = UIUserInterfaceStyle(rawValue: UserDefaults.standard.integer(forKey: "Feather.userInterfaceStyle")) {
-                    UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = style
-                }
+                // NullSign's palette is built for dark only.
+                UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = .dark
 
                 UIApplication.topViewController()?.view.window?.tintColor = UIColor(Color.userTint)
             }
@@ -400,6 +405,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, DownloadManager.ErrorDelegat
 		_ application: UIApplication,
 		didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
 	) -> Bool {
+		_configureNullSignAppearance()
 		_createPipeline()
 		_createDocumentsDirectories()
 		StorageManager.purgeStaleTemporary()
@@ -585,6 +591,26 @@ class AppDelegate: NSObject, UIApplicationDelegate, DownloadManager.ErrorDelegat
             Logger.misc.error("Failed to submit BGContinuedProcessingTask: \(error.localizedDescription)")
         }
     }
+
+	/// UIKit pieces sit outside SwiftUI's environment: navigation titles, bar
+	/// buttons and the backgrounds of hosted tables and collections.
+	private func _configureNullSignAppearance() {
+		UITableView.appearance().backgroundColor = UIColor(NullSignStyle.canvas)
+		UICollectionView.appearance().backgroundColor = UIColor(NullSignStyle.canvas)
+
+		UINavigationBar.appearance().largeTitleTextAttributes = [
+			.font: UIFont.roundedUI(size: 34, weight: .heavy, textStyle: .largeTitle)
+		]
+		UINavigationBar.appearance().titleTextAttributes = [
+			.font: UIFont.roundedUI(size: 17, weight: .bold, textStyle: .headline)
+		]
+
+		// Back/Done/Cancel buttons are UIKit text, outside SwiftUI's font environment.
+		let controlFont = UIFont.roundedUI(size: 17, weight: .bold, textStyle: .body)
+		for state in [UIControl.State.normal, .highlighted, .disabled, .focused] {
+			UIBarButtonItem.appearance().setTitleTextAttributes([.font: controlFont], for: state)
+		}
+	}
 
 	private func _addDefaultCertificates() {
 		CertificateAutoImporter.shared.importBundledCertificatesIfNeeded()

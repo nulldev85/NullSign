@@ -31,6 +31,7 @@ struct TunnelView: View {
 					Text(.localized("No pairing file found, please import it."))
 				}
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 			
 			Section {
 				Button(.localized("Import Pairing File"), systemImage: "square.and.arrow.down") {
@@ -58,6 +59,7 @@ struct TunnelView: View {
 					}
 				}
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 			
 			NBSection(.localized("Help")) {
 				Button(.localized("Pairing File Guide"), systemImage: "questionmark.circle") {

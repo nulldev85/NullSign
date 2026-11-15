@@ -52,6 +52,7 @@ struct SelfUpdateSheet: View {
 			}
 			.frame(maxWidth: .infinity, maxHeight: .infinity)
 			.animation(.spring(response: 0.42, dampingFraction: 0.82), value: _isWorking)
+			.nullSignPage()
 			.toolbar {
 				ToolbarItem(placement: .topBarTrailing) {
 					Button(.localized("Close")) { dismiss() }
@@ -183,7 +184,7 @@ struct SelfUpdateSheet: View {
 
 	private var _actions: some View {
 		VStack(spacing: 10) {
-			Label(.localized("Sign with the certificate you first installed RyukSign with, or iOS won't update it in place."), systemImage: "info.circle")
+			Label(.localized("Sign with the certificate you first installed NullSign with, or iOS won't update it in place."), systemImage: "info.circle")
 				.font(.caption)
 				.foregroundStyle(.secondary)
 				.frame(maxWidth: .infinity, alignment: .leading)

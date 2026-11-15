@@ -79,6 +79,8 @@ struct SigningView: View {
 						.frame(height: 30)
 						.listRowBackground(EmptyView())
 				}
+				.scrollContentBackground(.hidden)
+				.nullSignPage()
 			}
 			.disabled(_isSigning)
 			.animation(.smooth, value: _isSigning)

@@ -9,9 +9,6 @@ import NimbleViews
 import UIKit
 // MARK: - View
 struct AppearanceView: View {
-	@AppStorage("Feather.userInterfaceStyle")
-	private var _userIntefacerStyle: Int = UIUserInterfaceStyle.unspecified.rawValue
-	
 	@AppStorage("Feather.storeCellAppearance")
 	private var _storeCellAppearance: Int = 0
 	private let _storeCellAppearanceMethods: [(name: String, desc: String)] = [
@@ -38,7 +35,7 @@ struct AppearanceView: View {
 	private var _shouldChangeIconsBasedOffStyle: Bool = false
 
 	@AppStorage("Feather.userTintColor")
-	private var _selectedColorHex: String = "#848ef9"
+	private var _selectedColorHex: String = Color.defaultUserTintHex
 
 	private var _tintColorBinding: Binding<Color> {
 		Binding(
@@ -50,16 +47,8 @@ struct AppearanceView: View {
 	// MARK: Body
 	var body: some View {
 		NBList(.localized("Appearance")) {
-			Section {
-				Picker(.localized("Appearance"), selection: $_userIntefacerStyle) {
-					ForEach(UIUserInterfaceStyle.allCases.sorted(by: { $0.rawValue < $1.rawValue }), id: \.rawValue) { style in
-						Text(style.label).tag(style.rawValue)
-					}
-				}
-				.pickerStyle(.segmented)
-			}
-
-			NBSection(.localized("Theme")) {
+			// NullSign is always dark, so there's no light/dark choice here.
+			NBSection(.localized("Accent Color")) {
 				AppearanceTintColorView()
 					.listRowInsets(EdgeInsets())
 					.listRowBackground(EmptyView())
@@ -72,6 +61,7 @@ struct AppearanceView: View {
 					supportsOpacity: false
 				)
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 
 			if #available(iOS 18.0, *) {
 				NBSection(.localized("Library")) {
@@ -100,7 +90,7 @@ struct AppearanceView: View {
 				Toggle(.localized("Show Updates as Tab"), isOn: $_sourcesShowUpdatesAsTab)
 				Toggle(.localized("Update Count Badge"), isOn: $_showSourcesUpdateBadge)
 			} footer: {
-				Text(.localized("When enabled, the Sources tab shows all apps directly. Toggle off to manage sources. The update count badge shows the number of available app updates on the Sources tab."))
+				Text(.localized("When enabled, the Apps tab shows all apps directly. Toggle off to manage repositories. The update count badge shows the number of available app updates on the Signer tab."))
 			}
 			
 			if #available(iOS 19.0, *) {
@@ -109,11 +99,6 @@ struct AppearanceView: View {
 				} footer: {
 					Text(.localized("This enables liquid glass for this app, this requires a restart of the app to take effect."))
 				}
-			}
-		}
-		.onChange(of: _userIntefacerStyle) { value in
-			if let style = UIUserInterfaceStyle(rawValue: value) {
-				UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = style
 			}
 		}
 		.onChange(of: _ignoreSolariumLinkedOnCheck) { _ in

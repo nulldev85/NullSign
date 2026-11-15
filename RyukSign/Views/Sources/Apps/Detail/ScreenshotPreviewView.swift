@@ -32,7 +32,7 @@ struct ScreenshotPreviewView: View {
                 _imageScrollView()
             }
         }
-        .background(Color(uiColor: .systemBackground))
+        .background(NullSignStyle.canvas)
     }
 }
 

@@ -38,11 +38,13 @@ struct ConfigurationView: View {
             }footer: {
                 Text(.localized("This allows you to set rules for automatically replacing the Bundle ID/Display Name when signing an app."))
             }
+            .listRowBackground(NullSignStyle.groupedSurface)
             Section {
                 Toggle(.localized("Show Logs While Signing"), systemImage: "text.alignleft", isOn: $_autoShowLogs)
             } footer: {
                 Text(.localized("Automatically open a live log console when signing starts. You can also open it from the Show Logs button while a sign is running."))
             }
+            .listRowBackground(NullSignStyle.groupedSurface)
             SigningOptionsView(options: $_optionsManager.options)
 		}
 		.dismissableKeyboard()
@@ -76,6 +78,7 @@ extension ConfigurationView {
 				UIPasteboard.general.string = _optionsManager.options.ppqString
 			}
 		}
+		.listRowBackground(NullSignStyle.groupedSurface)
 	}
 	
 	@ViewBuilder

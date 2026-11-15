@@ -282,6 +282,9 @@ struct SourceAppsDetailView: View {
 		}
 		.flexibleHeaderScrollView()
 		.shouldSetInset()
+		.background(NullSignStyle.canvas.ignoresSafeArea())
+		.tint(NullSignStyle.accent)
+		.nullSignTypography()
 		.toolbar {
 			NBToolbarButton(
 				systemImage: "square.and.arrow.up",

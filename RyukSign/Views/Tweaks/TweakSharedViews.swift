@@ -192,6 +192,7 @@ struct TweakFolderPickerView: View {
 						_pickRow(title: folder.name, systemImage: "folder", folderId: folder.id)
 					}
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 				Section {
 					Button {
 						_newFolderName = ""
@@ -200,6 +201,7 @@ struct TweakFolderPickerView: View {
 						Label(.localized("New Folder"), systemImage: "folder.badge.plus")
 					}
 				}
+				.listRowBackground(NullSignStyle.groupedSurface)
 			}
 			.toolbar { NBToolbarButton(role: .close) }
 			.alert(.localized("New Folder"), isPresented: $_showNewFolder) {

@@ -41,7 +41,8 @@ final class InstallQueueWindow {
 		let window = InstallPassthroughWindow(windowScene: scene)
 		window.windowLevel = .alert
 		window.tintColor = UIColor(Color.userTint)
-		window.overrideUserInterfaceStyle = UIUserInterfaceStyle(rawValue: UserDefaults.standard.integer(forKey: "Feather.userInterfaceStyle")) ?? .unspecified
+		// NullSign's look is dark only.
+		window.overrideUserInterfaceStyle = .dark
 		window.backgroundColor = .clear
 		window.isOpaque = false
 		window.rootViewController = host

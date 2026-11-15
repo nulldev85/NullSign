@@ -52,12 +52,14 @@ struct SigningInfoPlistView: View {
 			} footer: {
 				Text(.localized("These changes are written into the app's Info.plist before it is signed. Editing keys the app relies on can stop it from launching."))
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 
 			Section {
 				ForEach(_keys(in: merged), id: \.self) { key in
 					_row(for: key, in: merged)
 				}
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 		}
 		.searchable(
 			text: $_query,
@@ -99,7 +101,7 @@ private extension MergedInfoPlist.Status {
 	var note: String? {
 		switch self {
 		case .original: nil
-		case .managed: .localized("RyukSign will set this")
+		case .managed: .localized("NullSign will set this")
 		case .overridden: .localized("Custom value")
 		case .removed: .localized("Will be removed")
 		}

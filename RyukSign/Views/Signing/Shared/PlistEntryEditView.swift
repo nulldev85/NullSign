@@ -150,6 +150,7 @@ struct PlistEntryEditView: View {
 			} footer: {
 				_matchFooter
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 
 			Section {
 				_valueField
@@ -163,6 +164,7 @@ struct PlistEntryEditView: View {
 					Text(.localized("One value per line"))
 				}
 			}
+			.listRowBackground(NullSignStyle.groupedSurface)
 		}
 		.dismissableKeyboard()
 		.toolbar {

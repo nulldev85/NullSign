@@ -83,6 +83,7 @@ struct SigningOptionsView: View {
 				values: Options.SigningOption.allCases
 			)
 		}
+		.listRowBackground(NullSignStyle.groupedSurface)
 		
 		if (temporaryOptions == nil) {
 			NBSection(.localized("Tweaks")) {
@@ -183,6 +184,7 @@ struct SigningOptionsView: View {
 		} footer: {
 			Text(.localized("By default, localized titles for the app won't be changed, however this option overrides it."))
 		}
+		.listRowBackground(NullSignStyle.groupedSurface)
 		
 		if (temporaryOptions == nil) {
 			NBSection(.localized("Pre Signing")) {

@@ -103,6 +103,8 @@ struct SigningAdvancedView: View {
 						options: $options,
 						temporaryOptions: OptionsManager.shared.options
 					)}
+					.scrollContentBackground(.hidden)
+					.nullSignPage()
 					.navigationTitle(.localized("Properties"))
 				} label: {
 					Label(.localized("Properties"), systemImage: "slider.horizontal.3")

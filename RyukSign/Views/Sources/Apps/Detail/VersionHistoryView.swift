@@ -25,7 +25,7 @@ struct VersionHistoryView: View {
                         description: version.localizedDescription ?? .localized("No release notes available")
                     )
                     .padding(.horizontal)
-                    .background(Color(.systemBackground))
+                    .background(NullSignStyle.canvas)
                     .contextMenu {
                         if let downloadURL = version.downloadURL {
                             Button {
@@ -48,6 +48,7 @@ struct VersionHistoryView: View {
             }
             .padding(.top, 8)
         }
+        .nullSignPage()
     }
 }
 
