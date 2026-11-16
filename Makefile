@@ -15,6 +15,7 @@ clean:
 	rm -rf Payload
 
 deps:
+	python3 scripts/patch-zsign.py
 	rm -rf deps || true
 	# NullSign doesn't fetch NullSign's server-hosted install certificate; the
 	# app creates its own local install certificate on the device.
