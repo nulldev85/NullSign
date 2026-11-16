@@ -199,7 +199,13 @@ final class AppUpdateChecker: ObservableObject {
 		let origins = AppOrigins.shared.all
 		// Builds are read from each bundle here, on the main actor, before the
 		// compute runs detached.
-		let library = Storage.shared.getAllApps().compactMap { LibraryEntry($0, origins: origins) }
+		// NullSign's own copies in the library are leftovers of past updates,
+		// not the NullSign that's running. Its updates come from the NullSign
+		// update card, which compares against the running version.
+		let ownIdentifiers: Set<String> = [SelfUpdateManager.sourceBundleIdentifier, Bundle.main.bundleIdentifier ?? ""]
+		let library = Storage.shared.getAllApps()
+			.compactMap { LibraryEntry($0, origins: origins) }
+			.filter { !ownIdentifiers.contains($0.key) }
 
 		if !_didPrune, !library.isEmpty {
 			_didPrune = true
