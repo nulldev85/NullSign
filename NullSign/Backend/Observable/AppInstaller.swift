@@ -69,6 +69,54 @@ final class AppInstaller: ObservableObject {
 		return method
 	}
 
+	/// tvOS only accepts an app whose embedded profile is current and lists
+	/// the Apple TV. Say which of those is wrong instead of tvOS's "A valid
+	/// provisioning profile for this executable was not found".
+	private func _verifyProfileForAppleTV() throws {
+		guard let directory = Storage.shared.getAppDirectory(for: app) else { return }
+		let profileURL = directory.appendingPathComponent("embedded.mobileprovision")
+
+		guard FileManager.default.fileExists(atPath: profileURL.path) else {
+			throw Self.error(.localized("This copy was signed without its provisioning profile, so Apple TV won't accept it. Sign it again, then install."))
+		}
+		guard let profile = CertificateReader(profileURL).decoded else { return }
+
+		if profile.ExpirationDate < Date() {
+			throw Self.error(.localized("The provisioning profile in this app has expired. Sign it again with a current certificate."))
+		}
+		if !profile.Platform.contains(where: { $0.lowercased().contains("tvos") || $0.lowercased().contains("appletv") }) {
+			throw Self.error(.localized("This app was signed with a profile that doesn't include tvOS. Sign it again with your Apple TV certificate."))
+		}
+	}
+
+	/// tvOS's "A valid provisioning profile for this executable was not found"
+	/// almost always means the profile doesn't list this Apple TV.
+	private func _explainAppleTVFailure(_ error: Error) -> Error {
+		let message = error.localizedDescription
+		guard message.contains("0xe8008015") || message.localizedCaseInsensitiveContains("valid provisioning profile") else {
+			return error
+		}
+		let udid = AppleTVManager.shared.pairedDevice?.udid ?? ""
+		var listed: Bool?
+		if !udid.isEmpty,
+		   let directory = Storage.shared.getAppDirectory(for: app),
+		   let profile = CertificateReader(directory.appendingPathComponent("embedded.mobileprovision")).decoded,
+		   profile.ProvisionsAllDevices != true,
+		   let devices = profile.ProvisionedDevices {
+			listed = devices.contains { $0.caseInsensitiveCompare(udid) == .orderedSame }
+		}
+
+		let explanation: String
+		if listed == false {
+			explanation = .localized("Apple TV refused the app because your provisioning profile doesn't include this Apple TV. Ask your certificate provider to add its UDID, %@, then sign the app again with the new profile.", arguments: udid)
+		} else if !udid.isEmpty {
+			explanation = .localized("Apple TV refused the provisioning profile. Make sure your certificate provider added this Apple TV's UDID, %@, to your tvOS profile, then sign the app again.", arguments: udid)
+		} else {
+			explanation = .localized("Apple TV refused the provisioning profile. Make sure your certificate provider added this Apple TV's UDID to your tvOS profile, then sign the app again.")
+		}
+		return Self.error(explanation + "\n\n" + message)
+	}
+
 	/// Ends the search and points the device connection back at this iPhone.
 	private func _releaseAppleTV() {
 		guard _isAppleTV else { return }
@@ -151,6 +199,7 @@ final class AppInstaller: ObservableObject {
 				if AppleTVManager.shared.pairedDevice == nil {
 					try AppleTVManager.shared.prepareForInstall()
 				}
+				try _verifyProfileForAppleTV()
 				// Find the Apple TV on the network while the app is packaged.
 				AppleTVManager.shared.startScanning()
 			}
@@ -333,6 +382,12 @@ final class AppInstaller: ObservableObject {
 		_statusObserver = nil
 		fallbackPage = nil
 
+		var result = result
+		if _isAppleTV, case .failure(let error) = result {
+			let explained = _explainAppleTVFailure(error)
+			result = .failure(explained)
+			if viewModel.isFailed { viewModel.status = .broken(explained) }
+		}
 		if case .failure(let error) = result, !viewModel.isFailed {
 			viewModel.status = .broken(error)
 		}

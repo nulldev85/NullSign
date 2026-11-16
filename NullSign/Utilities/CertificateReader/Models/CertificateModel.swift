@@ -40,6 +40,7 @@ struct Certificate: Codable {
 			 ExpirationDate,
 			 Name,
 			 ProvisionedDevices,
+			 ProvisionsAllDevices,
 			 TeamIdentifier,
 			 TeamName,
 			 TimeToLive,

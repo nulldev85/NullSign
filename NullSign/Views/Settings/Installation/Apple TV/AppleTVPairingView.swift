@@ -54,6 +54,21 @@ struct AppleTVPairingView: View {
 
 					if let paired = _appleTV.pairedDevice {
 						_pairedRow(paired)
+						if let udid = paired.udid, !udid.isEmpty {
+							NullSignSettingsDivider()
+							Button {
+								UIPasteboard.general.string = udid
+								Toast.success(.localized("UDID copied"))
+							} label: {
+								NullSignSettingsRow(
+									title: .localized("UDID"),
+									detail: udid,
+									systemImage: "number",
+									showsChevron: false
+								)
+							}
+							.buttonStyle(.plain)
+						}
 					} else if _appleTV.discovered.isEmpty {
 						_searchingRow
 					} else {
@@ -92,7 +107,7 @@ struct AppleTVPairingView: View {
 					NullSignSettingsDivider()
 					NullSignSettingsRow(
 						title: .localized("Use a tvOS certificate"),
-						detail: .localized("tvOS apps are signed with a certificate whose provisioning profile includes tvOS."),
+						detail: .localized("tvOS apps are signed with a certificate whose provisioning profile includes tvOS and this Apple TV's UDID. A new Apple TV has to be added to the profile first; tap UDID above to copy it for your certificate provider."),
 						systemImage: "checkmark.seal",
 						showsChevron: false
 					)
