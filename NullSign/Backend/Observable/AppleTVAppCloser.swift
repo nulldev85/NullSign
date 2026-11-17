@@ -1,0 +1,160 @@
+//
+//  AppleTVAppCloser.swift
+//  NullSign
+//
+
+import Darwin
+import Foundation
+import IDevice
+import IDeviceSwift
+
+/// tvOS won't swap in a new copy of an app while the old one is still open
+/// or sitting suspended in the background, so the install just sits at
+/// "Installing". Closing the app first, the way you would from the Apple TV's
+/// app switcher, lets the install go through.
+enum AppleTVAppCloser {
+	/// Closes every running copy of `bundleID` (and its extensions) on the
+	/// Apple TV NullSign is currently pointed at. When `cycleIfIdle` is set and
+	/// nothing is running, the app is opened in the background and closed
+	/// right away, which is what un-sticks a stalled install by hand.
+	/// Best effort: gives up quietly after `timeout` seconds.
+	@discardableResult
+	static func close(_ bundleID: String, cycleIfIdle: Bool = false, timeout: TimeInterval = 12) async -> Int {
+		let heartbeat = HeartbeatManager.shared
+		let host = heartbeat.ipAddress
+		let port = heartbeat.port_rsd
+		let pairingPath = heartbeat.activePairingPath
+
+		return await withCheckedContinuation { continuation in
+			let once = _Once()
+			Thread.detachNewThread {
+				let closed = _close(bundleID, host: host, port: port, pairingPath: pairingPath, cycleIfIdle: cycleIfIdle)
+				if once.claim() { continuation.resume(returning: closed) }
+			}
+			DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
+				if once.claim() {
+					FileLogger.log("closing \(bundleID) on Apple TV timed out", category: "install")
+					continuation.resume(returning: 0)
+				}
+			}
+		}
+	}
+
+	private final class _Once: @unchecked Sendable {
+		private let _lock = NSLock()
+		private var _done = false
+
+		func claim() -> Bool {
+			_lock.lock()
+			defer { _lock.unlock() }
+			guard !_done else { return false }
+			_done = true
+			return true
+		}
+	}
+
+	private static func _close(_ bundleID: String, host: String, port: UInt16, pairingPath: String, cycleIfIdle: Bool) -> Int {
+		var pairing: OpaquePointer?
+		guard _ok(rp_pairing_file_read(pairingPath, &pairing), "read pairing"), let pairing else { return 0 }
+		defer { rp_pairing_file_free(pairing) }
+
+		var hints = addrinfo()
+		hints.ai_family = AF_UNSPEC
+		hints.ai_socktype = SOCK_STREAM
+		hints.ai_protocol = IPPROTO_TCP
+		var info: UnsafeMutablePointer<addrinfo>?
+		guard getaddrinfo(host, String(port), &hints, &info) == 0, let first = info, let address = first.pointee.ai_addr else {
+			FileLogger.error("couldn't resolve Apple TV address", category: "install")
+			return 0
+		}
+		defer { freeaddrinfo(info) }
+
+		var adapter: OpaquePointer?
+		var handshake: OpaquePointer?
+		guard _ok(tunnel_create_rppairing(UnsafePointer(address), first.pointee.ai_addrlen, "IdeviceKit", pairing, nil, nil, &adapter, &handshake), "connect"),
+			  let adapter, let handshake else { return 0 }
+		defer {
+			rsd_handshake_free(handshake)
+			adapter_free(adapter)
+		}
+
+		var service: OpaquePointer?
+		guard _ok(app_service_connect_rsd(adapter, handshake, &service), "open app service"), let service else { return 0 }
+		defer { app_service_free(service) }
+
+		guard let appPath = _installedPath(of: bundleID, service: service) else {
+			// Not installed yet, so there's nothing to close.
+			return 0
+		}
+
+		var closed = _killProcesses(under: appPath, service: service)
+		if closed == 0, cycleIfIdle {
+			var response: UnsafeMutablePointer<LaunchResponseC>?
+			let argv: [UnsafePointer<CChar>?] = [nil]
+			let launched = argv.withUnsafeBufferPointer { argvBuffer in
+				bundleID.withCString { id in
+					_ok(app_service_launch_app(service, id, argvBuffer.baseAddress, 0, 1, 1, nil, &response), "open in background")
+				}
+			}
+			if launched, let response {
+				let pid = response.pointee.pid
+				app_service_free_launch_response(response)
+				if _kill(pid, service: service) { closed = 1 }
+			}
+		}
+		FileLogger.log("closed \(closed) running copies of \(bundleID) on Apple TV", category: "install")
+		return closed
+	}
+
+	private static func _installedPath(of bundleID: String, service: OpaquePointer) -> String? {
+		var apps: UnsafeMutablePointer<AppListEntryC>?
+		var count: UInt = 0
+		guard _ok(app_service_list_apps(service, 0, 1, 1, 0, 0, &apps, &count), "list apps"), let apps else { return nil }
+		defer { app_service_free_app_list(apps, count) }
+
+		for entry in UnsafeBufferPointer(start: apps, count: Int(count)) {
+			guard let id = entry.bundle_identifier, String(cString: id) == bundleID, let path = entry.path else { continue }
+			return _normalized(String(cString: path))
+		}
+		return nil
+	}
+
+	private static func _killProcesses(under appPath: String, service: OpaquePointer) -> Int {
+		var processes: UnsafeMutablePointer<ProcessTokenC>?
+		var count: UInt = 0
+		guard _ok(app_service_list_processes(service, &processes, &count), "list processes"), let processes else { return 0 }
+		let prefix = appPath.hasSuffix("/") ? appPath : appPath + "/"
+		let pids = UnsafeBufferPointer(start: processes, count: Int(count)).compactMap { process -> UInt32? in
+			guard let url = process.executable_url else { return nil }
+			return _normalized(String(cString: url)).hasPrefix(prefix) ? process.pid : nil
+		}
+		app_service_free_process_list(processes, count)
+		return pids.filter { _kill($0, service: service) }.count
+	}
+
+	private static func _kill(_ pid: UInt32, service: OpaquePointer) -> Bool {
+		var response: UnsafeMutablePointer<SignalResponseC>?
+		guard _ok(app_service_send_signal(service, pid, UInt32(SIGKILL), &response), "close \(pid)") else { return false }
+		if let response { app_service_free_signal_response(response) }
+		return true
+	}
+
+	/// Executable URLs come back as `file:///private/var/...` while app paths
+	/// may be plain `/var/...`, so both are brought to one form.
+	private static func _normalized(_ path: String) -> String {
+		var path = path
+		if path.hasPrefix("file://") {
+			path = URL(string: path)?.path ?? String(path.dropFirst("file://".count))
+		}
+		if path.hasPrefix("/private/") { path = String(path.dropFirst("/private".count)) }
+		return path
+	}
+
+	private static func _ok(_ error: UnsafeMutablePointer<IdeviceFfiError>?, _ step: String) -> Bool {
+		guard let error else { return true }
+		let message = error.pointee.message.map { String(cString: $0) } ?? "code \(error.pointee.code)"
+		FileLogger.error("Apple TV couldn't \(step): \(message)", category: "install")
+		idevice_error_free(error)
+		return false
+	}
+}

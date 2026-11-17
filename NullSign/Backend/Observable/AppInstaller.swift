@@ -35,6 +35,7 @@ final class AppInstaller: ObservableObject {
 	private var _archive: ArchiveHandler?
 	private var _packageTask: Task<(package: URL, exported: URL?), Error>?
 	private var _progressTask: Task<Void, Never>?
+	private var _stallWatch: Task<Void, Never>?
 	private var _statusObserver: AnyCancellable?
 	private var _completion: ((Result<Outcome, Error>) -> Void)?
 	private var _hasFinished = false
@@ -124,6 +125,11 @@ final class AppInstaller: ObservableObject {
 		let attempts = 3
 		for attempt in 1...attempts {
 			try await _connectAppleTV()
+			if attempt == 1, let id = app.identifier {
+				// tvOS waits for an open copy of the app to quit before
+				// replacing it, so close it first.
+				await AppleTVAppCloser.close(id)
+			}
 			FileLogger.log("installing \(app.identifier ?? "?") on Apple TV \(AppleTVManager.shared.pairedDevice?.name ?? "?"), attempt \(attempt)", category: "install")
 			do {
 				try await InstallationProxy(viewModel: viewModel).install(at: packageUrl, suspend: false)
@@ -143,8 +149,26 @@ final class AppInstaller: ObservableObject {
 		}
 	}
 
+	/// If the Apple TV sits on "Installing", the app is usually still open
+	/// there (or tvOS brought it back), so NullSign closes it again, the same
+	/// way opening and closing it by hand gets the install moving.
+	private func _watchAppleTVStall() {
+		guard _stallWatch == nil, let id = app.identifier else { return }
+		_stallWatch = Task { [weak self] in
+			for delay: UInt64 in [8, 15, 20] {
+				try? await Task.sleep(nanoseconds: delay * 1_000_000_000)
+				guard let self, !Task.isCancelled, !self._hasFinished,
+					  case .installing = self.viewModel.status else { return }
+				FileLogger.log("Apple TV install still waiting, closing \(id) on the TV", category: "install")
+				await AppleTVAppCloser.close(id, cycleIfIdle: true)
+			}
+		}
+	}
+
 	/// Ends the search and points the device connection back at this iPhone.
 	private func _releaseAppleTV() {
+		_stallWatch?.cancel()
+		_stallWatch = nil
 		guard _isAppleTV else { return }
 		// Discovery keeps running while an Apple TV is paired, so its address
 		// and port stay current for the next install.
@@ -171,6 +195,7 @@ final class AppInstaller: ObservableObject {
 	deinit {
 		_archive?.cleanup()
 		_progressTask?.cancel()
+		_stallWatch?.cancel()
 		_declineCheck?.cancel()
 		if let _declineObserver { NotificationCenter.default.removeObserver(_declineObserver) }
 	}
@@ -323,6 +348,8 @@ final class AppInstaller: ObservableObject {
 					self?._stepAsideForSelfUpdate()
 				}
 			}
+		case .installing where _isAppleTV:
+			_watchAppleTVStall()
 		case .completed(let result):
 			_progressTask?.cancel()
 			_progressTask = nil
