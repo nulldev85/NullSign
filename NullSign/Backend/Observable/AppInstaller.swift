@@ -45,6 +45,7 @@ final class AppInstaller: ObservableObject {
 	private var _installEndedByCheck = false
 	/// The fallback install sent when the TV leaves the first one queued.
 	private var _developerInstall: Task<Void, Error>?
+	private var _triedDeveloperInstall = false
 	private var _statusObserver: AnyCancellable?
 	private var _completion: ((Result<Outcome, Error>) -> Void)?
 	private var _hasFinished = false
@@ -127,13 +128,18 @@ final class AppInstaller: ObservableObject {
 		return Self.error(explanation + "\n\n" + message)
 	}
 
+	/// Apple TV apps go over unpacked, as a developer install, the way Xcode
+	/// sends them: tvOS starts those right away, while a packaged install can
+	/// sit queued at 0% until the app is opened on the TV.
+	///
 	/// The Wi-Fi connection to an Apple TV doesn't always open on the first
 	/// try. Until the app starts uploading, a failed attempt is retried on a
 	/// fresh connection; a refusal after that (a profile problem, say) isn't.
-	private func _installOnAppleTV(_ packageUrl: URL) async throws {
+	private func _installOnAppleTV() async throws {
 		guard let id = app.identifier else {
 			throw Self.error(.localized("This app has no bundle identifier."))
 		}
+		let appURL = Storage.shared.getAppDirectory(for: app)
 		let attempts = 3
 		for attempt in 1...attempts {
 			try await _connectAppleTV()
@@ -145,27 +151,24 @@ final class AppInstaller: ObservableObject {
 					FileLogger.log("Apple TV has \(before?.description ?? "no copy of \(id)") before installing", category: "install")
 				}
 				if AppleTVAppCloser.mayBeAvailable {
-					// tvOS waits for an open copy of the app to quit before
-					// replacing it, so close it first where the TV allows it.
+					// Close an open copy first where the TV allows it.
 					await AppleTVAppCloser.close(id)
 				}
 			}
 			FileLogger.log("installing \(id) on Apple TV \(AppleTVManager.shared.pairedDevice?.name ?? "?"), attempt \(attempt)", category: "install")
 			do {
-				viewModel.updateStatus(.sendingPayload)
-				try await AppleTVInstaller.install(
-					.package(packageUrl),
-					bundleID: id,
-					onUpload: { [weak self] value in Task { @MainActor in self?.viewModel.updateUploadProgress(value) } },
-					onInstalling: { [weak self] in Task { @MainActor in self?.viewModel.updateStatus(.installing) } },
-					onProgress: { [weak self] value in Task { @MainActor in self?.viewModel.updateInstallProgress(value) } }
-				)
+				if let appURL {
+					_triedDeveloperInstall = true
+					try await _sendToAppleTV(.developer(appURL), bundleID: id)
+				} else {
+					try await _sendPackageToAppleTV(bundleID: id)
+				}
 				_markAppleTVInstalled()
 				return
 			} catch {
 				if let developerInstall = _developerInstall {
-					// The developer install replaces the queued request, which
-					// then ends with an error; its outcome is what counts.
+					// The developer install replaces a queued package request,
+					// which then ends with an error; its outcome is what counts.
 					FileLogger.log("first request ended (\(error.localizedDescription)), waiting on the developer install", category: "install")
 					try await developerInstall.value
 					_markAppleTVInstalled()
@@ -176,12 +179,44 @@ final class AppInstaller: ObservableObject {
 				case .installing, .completed: started = true
 				default: started = viewModel.uploadProgress > 0
 				}
+				if started, appURL != nil, !Self._isProfileRefusal(error), !Task.isCancelled {
+					// Should a TV turn down developer installs, the packaged app
+					// still has a way in.
+					FileLogger.error("developer install failed (\(error.localizedDescription)), sending the package instead", category: "install")
+					viewModel.resetProgress()
+					try await _sendPackageToAppleTV(bundleID: id)
+					_markAppleTVInstalled()
+					return
+				}
 				guard attempt < attempts, !started, !Task.isCancelled else { throw error }
 				FileLogger.error("Apple TV attempt \(attempt) failed before uploading: \(error.localizedDescription)", category: "install")
 				viewModel.resetProgress()
 				try await Task.sleep(nanoseconds: 1_500_000_000)
 			}
 		}
+	}
+
+	private func _sendPackageToAppleTV(bundleID: String) async throws {
+		let (packageUrl, _) = try await _package()
+		try await _sendToAppleTV(.package(packageUrl), bundleID: bundleID)
+	}
+
+	private func _sendToAppleTV(_ method: AppleTVInstaller.Method, bundleID: String) async throws {
+		if case .developer = method { viewModel.updatePackageProgress(1) }
+		viewModel.updateStatus(.sendingPayload)
+		try await AppleTVInstaller.install(
+			method,
+			bundleID: bundleID,
+			onUpload: { [weak self] value in Task { @MainActor in self?.viewModel.updateUploadProgress(value) } },
+			onInstalling: { [weak self] in Task { @MainActor in self?.viewModel.updateStatus(.installing) } },
+			onProgress: { [weak self] value in Task { @MainActor in self?.viewModel.updateInstallProgress(value) } }
+		)
+	}
+
+	/// A provisioning profile the TV won't accept fails either way.
+	private static func _isProfileRefusal(_ error: Error) -> Bool {
+		let message = "\(error.localizedDescription) \(error)"
+		return message.contains("0xe8008015") || message.contains("ApplicationVerificationFailed")
 	}
 
 	private func _markAppleTVInstalled() {
@@ -215,7 +250,7 @@ final class AppInstaller: ObservableObject {
 					}
 				}
 
-				if check >= 1, self.viewModel.installProgress == 0, self._developerInstall == nil,
+				if check >= 1, self.viewModel.installProgress == 0, self._developerInstall == nil, !self._triedDeveloperInstall,
 				   let appURL = Storage.shared.getAppDirectory(for: self.app) {
 					// The TV has the app queued but hasn't started on it. Sent
 					// the way Xcode sends apps, it installs right away and
@@ -339,6 +374,11 @@ final class AppInstaller: ObservableObject {
 				AppleTVManager.shared.startScanning()
 			}
 
+			if _isAppleTV {
+				try await _installOnAppleTV()
+				return
+			}
+
 			let (packageUrl, exported) = try await _package()
 
 			guard !_isSharing else {
@@ -346,9 +386,7 @@ final class AppInstaller: ObservableObject {
 				return
 			}
 
-			if _isAppleTV {
-				try await _installOnAppleTV(packageUrl)
-			} else if _installationMethod == 1 {
+			if _installationMethod == 1 {
 				// An Apple TV install leaves the connection pointed at the TV.
 				if HeartbeatManager.shared.isAppleTVTarget {
 					HeartbeatManager.shared.usePhoneTarget()
