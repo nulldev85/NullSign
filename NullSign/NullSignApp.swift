@@ -417,6 +417,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, DownloadManager.ErrorDelegat
 		_addDefaultCertificates()
 		Storage.shared.addNullSignSourceIfNeeded()
 		Storage.shared.migrateNullSign1CertificateChoice()
+		// Keep a paired Apple TV's address and port current for installs.
+		if AppleTVManager.shared.pairedDevice != nil {
+			AppleTVManager.shared.startScanning()
+		}
 		_migrateNullSign1InstallationMethod()
 		FR.refreshSSLCertificatesIfStale()
 		_registerBackgroundTasks()

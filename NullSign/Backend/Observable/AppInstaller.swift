@@ -117,10 +117,37 @@ final class AppInstaller: ObservableObject {
 		return Self.error(explanation + "\n\n" + message)
 	}
 
+	/// The Wi-Fi connection to an Apple TV doesn't always open on the first
+	/// try. Until the app starts uploading, a failed attempt is retried on a
+	/// fresh connection; a refusal after that (a profile problem, say) isn't.
+	private func _installOnAppleTV(_ packageUrl: URL) async throws {
+		let attempts = 3
+		for attempt in 1...attempts {
+			try await _connectAppleTV()
+			FileLogger.log("installing \(app.identifier ?? "?") on Apple TV \(AppleTVManager.shared.pairedDevice?.name ?? "?"), attempt \(attempt)", category: "install")
+			do {
+				try await InstallationProxy(viewModel: viewModel).install(at: packageUrl, suspend: false)
+				return
+			} catch {
+				let started: Bool
+				switch viewModel.status {
+				case .sendingPayload, .installing, .completed: started = true
+				default: started = viewModel.uploadProgress > 0
+				}
+				guard attempt < attempts, !started, !Task.isCancelled else { throw error }
+				FileLogger.error("Apple TV attempt \(attempt) failed before uploading: \(error.localizedDescription)", category: "install")
+				viewModel.resetProgress()
+				HeartbeatManager.shared.resetRSDTunnel()
+				try await Task.sleep(nanoseconds: 1_500_000_000)
+			}
+		}
+	}
+
 	/// Ends the search and points the device connection back at this iPhone.
 	private func _releaseAppleTV() {
 		guard _isAppleTV else { return }
-		AppleTVManager.shared.stopScanning()
+		// Discovery keeps running while an Apple TV is paired, so its address
+		// and port stay current for the next install.
 		if HeartbeatManager.shared.isAppleTVTarget {
 			HeartbeatManager.shared.usePhoneTarget()
 		}
@@ -212,9 +239,7 @@ final class AppInstaller: ObservableObject {
 			}
 
 			if _isAppleTV {
-				try await _connectAppleTV()
-				FileLogger.log("installing \(app.identifier ?? "?") on Apple TV \(AppleTVManager.shared.pairedDevice?.name ?? "?")", category: "install")
-				try await InstallationProxy(viewModel: viewModel).install(at: packageUrl, suspend: false)
+				try await _installOnAppleTV(packageUrl)
 			} else if _installationMethod == 1 {
 				// An Apple TV install leaves the connection pointed at the TV.
 				if HeartbeatManager.shared.isAppleTVTarget {
@@ -291,8 +316,12 @@ final class AppInstaller: ObservableObject {
 			_disarmDeclineWatch()
 		case .installing where _usesServer:
 			_startProgressPolling()
-			if app.identifier == Bundle.main.bundleIdentifier {
-				_stepAsideForSelfUpdate()
+			if _isSelfUpdate {
+				// Normally the progress watch steps aside once iOS has the whole
+				// update; this covers an iOS that never reports it.
+				DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [weak self] in
+					self?._stepAsideForSelfUpdate()
+				}
 			}
 		case .completed(let result):
 			_progressTask?.cancel()
@@ -412,7 +441,12 @@ final class AppInstaller: ObservableObject {
 	/// installing its own update, the new version has been handed over by
 	/// now, so it stops keeping itself awake and goes to the Home Screen; iOS
 	/// then closes it and puts the new version in its place.
+	private var _isSelfUpdate: Bool { app.identifier == Bundle.main.bundleIdentifier }
+	private var _hasSteppedAside = false
+
 	private func _stepAsideForSelfUpdate() {
+		guard _isSelfUpdate, !_hasSteppedAside, !viewModel.isFailed else { return }
+		_hasSteppedAside = true
 		FileLogger.log("stepping aside for NullSign's own update", category: "install")
 		_server?.endKeepAlive()
 		DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
@@ -450,6 +484,13 @@ final class AppInstaller: ObservableObject {
 				if abs(raw - logged) >= 0.1 || (raw == 0) != (logged == 0) {
 					FileLogger.log("progress \(bundleID): \(raw)", category: "install")
 					logged = raw
+				}
+
+				// iOS has the whole update once its progress passes the download
+				// stage; only then can NullSign get out of the way without
+				// cutting the transfer short.
+				if raw >= 0.6 {
+					await self?._stepAsideForSelfUpdate()
 				}
 
 				// The drop back to zero at the end is installd finishing, not progress going backwards.

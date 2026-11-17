@@ -120,7 +120,10 @@ struct AppleTVPairingView: View {
 		.nullSignPage()
 		.nullSignNavigationTitle(.localized("Apple TV"))
 		.onAppear { _appleTV.startScanning() }
-		.onDisappear { _appleTV.stopScanning() }
+		.onDisappear {
+			// A paired Apple TV stays in view so installs find it straight away.
+			if _appleTV.pairedDevice == nil { _appleTV.stopScanning() }
+		}
 		.alert(.localized("Pair Apple TV"), isPresented: Binding(
 			get: { _appleTV.isAwaitingPIN },
 			set: { if !$0 && _appleTV.isAwaitingPIN { _appleTV.cancelPairing() } }
