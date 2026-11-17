@@ -22,6 +22,9 @@ final class AppInstaller: ObservableObject {
 	let viewModel: InstallerStatusViewModel
 
 	@Published var fallbackPage: URL?
+	/// Set once an Apple TV install has sat on "Installing" for a while, so
+	/// the card can say how to get it moving.
+	@Published var appleTVIsStalled = false
 
 	private let _isSharing: Bool
 	/// tvOS apps install on the paired Apple TV over Wi-Fi, whatever method
@@ -125,7 +128,7 @@ final class AppInstaller: ObservableObject {
 		let attempts = 3
 		for attempt in 1...attempts {
 			try await _connectAppleTV()
-			if attempt == 1, let id = app.identifier {
+			if attempt == 1, AppleTVAppCloser.mayBeAvailable, let id = app.identifier {
 				// tvOS waits for an open copy of the app to quit before
 				// replacing it, so close it first.
 				await AppleTVAppCloser.close(id)
@@ -150,8 +153,9 @@ final class AppInstaller: ObservableObject {
 	}
 
 	/// If the Apple TV sits on "Installing", the app is usually still open
-	/// there (or tvOS brought it back), so NullSign closes it again, the same
-	/// way opening and closing it by hand gets the install moving.
+	/// there (or tvOS brought it back). Where the TV lets NullSign close apps
+	/// it does so; either way the card explains how to close it by hand,
+	/// which gets the install moving right away.
 	private func _watchAppleTVStall() {
 		guard _stallWatch == nil, let id = app.identifier else { return }
 		_stallWatch = Task { [weak self] in
@@ -159,6 +163,8 @@ final class AppInstaller: ObservableObject {
 				try? await Task.sleep(nanoseconds: delay * 1_000_000_000)
 				guard let self, !Task.isCancelled, !self._hasFinished,
 					  case .installing = self.viewModel.status else { return }
+				self.appleTVIsStalled = true
+				guard AppleTVAppCloser.mayBeAvailable else { return }
 				FileLogger.log("Apple TV install still waiting, closing \(id) on the TV", category: "install")
 				await AppleTVAppCloser.close(id, cycleIfIdle: true)
 			}

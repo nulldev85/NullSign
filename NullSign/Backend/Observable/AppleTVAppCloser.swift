@@ -13,6 +13,12 @@ import IDeviceSwift
 /// "Installing". Closing the app first, the way you would from the Apple TV's
 /// app switcher, lets the install go through.
 enum AppleTVAppCloser {
+	/// The service that closes apps only exists on an Apple TV that has
+	/// Apple's developer tools mounted (Xcode does this). Once a TV says it
+	/// doesn't have it, NullSign stops asking until it's next launched.
+	private static let _state = _State()
+	static var mayBeAvailable: Bool { !_state.isUnavailable }
+
 	/// Closes every running copy of `bundleID` (and its extensions) on the
 	/// Apple TV NullSign is currently pointed at. When `cycleIfIdle` is set and
 	/// nothing is running, the app is opened in the background and closed
@@ -37,6 +43,23 @@ enum AppleTVAppCloser {
 					continuation.resume(returning: 0)
 				}
 			}
+		}
+	}
+
+	private final class _State: @unchecked Sendable {
+		private let _lock = NSLock()
+		private var _unavailable = false
+
+		var isUnavailable: Bool {
+			_lock.lock()
+			defer { _lock.unlock() }
+			return _unavailable
+		}
+
+		func markUnavailable() {
+			_lock.lock()
+			_unavailable = true
+			_lock.unlock()
 		}
 	}
 
@@ -79,7 +102,17 @@ enum AppleTVAppCloser {
 		}
 
 		var service: OpaquePointer?
-		guard _ok(app_service_connect_rsd(adapter, handshake, &service), "open app service"), let service else { return 0 }
+		if let error = app_service_connect_rsd(adapter, handshake, &service) {
+			if (error.pointee.message.map { String(cString: $0) } ?? "").contains("ServiceNotFound") {
+				_state.markUnavailable()
+				FileLogger.log("Apple TV can't close apps without developer tools mounted. It offers: \(_serviceNames(handshake))", category: "install")
+				idevice_error_free(error)
+			} else {
+				_ = _ok(error, "open app service")
+			}
+			return 0
+		}
+		guard let service else { return 0 }
 		defer { app_service_free(service) }
 
 		guard let appPath = _installedPath(of: bundleID, service: service) else {
@@ -104,6 +137,15 @@ enum AppleTVAppCloser {
 		}
 		FileLogger.log("closed \(closed) running copies of \(bundleID) on Apple TV", category: "install")
 		return closed
+	}
+
+	/// The services the Apple TV offers, for the log.
+	private static func _serviceNames(_ handshake: OpaquePointer) -> String {
+		var list: UnsafeMutablePointer<CRsdServiceArray>?
+		guard rsd_get_services(handshake, &list) == nil, let list else { return "?" }
+		defer { rsd_free_services(list) }
+		let services = UnsafeBufferPointer(start: list.pointee.services, count: Int(list.pointee.count))
+		return services.compactMap { $0.name.map { String(cString: $0) } }.sorted().joined(separator: ", ")
 	}
 
 	private static func _installedPath(of bundleID: String, service: OpaquePointer) -> String? {

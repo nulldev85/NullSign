@@ -22,6 +22,7 @@ struct InstallCardView: View {
 				app: installer.app,
 				viewModel: installer.viewModel,
 				upcoming: upcoming,
+				appleTVIsStalled: installer.appleTVIsStalled,
 				onCancel: onCancel
 			)
 		}
@@ -44,9 +45,14 @@ private struct InstallStatusView: View {
 	var app: AppInfoPresentable
 	@ObservedObject var viewModel: InstallerStatusViewModel
 	var upcoming: [AnyApp]
+	var appleTVIsStalled = false
 	var onCancel: () -> Void
 
 	@State private var _isShowingError = false
+
+	private var _showsStallHint: Bool {
+		appleTVIsStalled && !viewModel.isCompleted && !viewModel.isFailed
+	}
 
 	var body: some View {
 		ZStack {
@@ -54,10 +60,28 @@ private struct InstallStatusView: View {
 			_button()
 			_close()
 
-			if !upcoming.isEmpty {
+			if _showsStallHint {
+				_stallHint()
+			} else if !upcoming.isEmpty {
 				_upNext()
 			}
 		}
+		.animation(.easeInOut(duration: 0.3), value: _showsStallHint)
+	}
+
+	/// tvOS won't replace an app that's still open, and NullSign usually
+	/// can't close it from here, so this says how to do it on the TV.
+	@ViewBuilder
+	private func _stallHint() -> some View {
+		Text(String.localized("Taking a while? On your Apple TV, open %@, then close it from the app switcher. The install finishes right after.", arguments: app.name ?? String.localized("the app")))
+			.font(.roundedUI(.footnote, weight: .medium))
+			.foregroundStyle(NullSignStyle.muted)
+			.fixedSize(horizontal: false, vertical: true)
+			.padding(.leading)
+			.padding(.top)
+			.padding(.trailing, 48)
+			.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+			.compatTransition()
 	}
 
 	@ViewBuilder
