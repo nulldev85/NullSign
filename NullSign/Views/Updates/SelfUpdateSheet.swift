@@ -40,7 +40,7 @@ struct SelfUpdateSheet: View {
 					ScrollView {
 						VStack(alignment: .leading, spacing: 20) {
 							_header
-							if !release.notes.isEmpty {
+							if !_noteReleases.isEmpty {
 								_notes
 							}
 						}
@@ -100,13 +100,42 @@ struct SelfUpdateSheet: View {
 		}
 	}
 
+	/// Every release with notes between the running NullSign and this one,
+	/// newest first, so skipping a few builds doesn't hide what they added.
+	/// Reinstalls and older builds show just their own notes.
+	private var _noteReleases: [SelfUpdateRelease] {
+		guard release.orderAgainstInstalled == .orderedDescending else {
+			return release.notes.isEmpty ? [] : [release]
+		}
+		let between = _manager.releases.filter { candidate in
+			!candidate.notes.isEmpty
+				&& candidate.orderAgainstInstalled == .orderedDescending
+				&& !AppUpdateChecker.isNewerRelease(candidate.version, build: candidate.build, than: release.version, installedBuild: release.build)
+		}
+		if between.isEmpty { return release.notes.isEmpty ? [] : [release] }
+		return between.sorted {
+			AppUpdateChecker.isNewerRelease($0.version, build: $0.build, than: $1.version, installedBuild: $1.build)
+		}
+	}
+
 	private var _notes: some View {
-		VStack(alignment: .leading, spacing: 8) {
+		let releases = _noteReleases
+		return VStack(alignment: .leading, spacing: 8) {
 			Text(.localized("What's New"))
 				.font(.headline)
-			MarkdownView(text: release.notes)
-				.foregroundStyle(.secondary)
-				.textSelection(.enabled)
+			ForEach(releases) { entry in
+				VStack(alignment: .leading, spacing: 4) {
+					if releases.count > 1 {
+						Text(entry.label)
+							.font(.subheadline.weight(.semibold))
+							.foregroundStyle(entry == releases.first ? NullSignStyle.accent : .primary)
+					}
+					MarkdownView(text: entry.notes)
+						.foregroundStyle(.secondary)
+						.textSelection(.enabled)
+				}
+				.padding(.top, entry == releases.first ? 0 : 6)
+			}
 		}
 		.frame(maxWidth: .infinity, alignment: .leading)
 	}
