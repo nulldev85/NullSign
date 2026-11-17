@@ -99,6 +99,9 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 		/// The signed copy of an update handed to the installer: its library
 		/// uuid, removed on the next launch.
 		static let pendingCopy = "NullSign.selfUpdatePendingCopy"
+		/// The last release the full-screen update page was shown for, so a
+		/// check while NullSign is open shows it once per release.
+		static let prompted = "NullSign.selfUpdatePrompted"
 	}
 
 	/// A release that installed while this NullSign kept running. Until iOS
@@ -168,7 +171,17 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 		_removeUpdateCopy()
 		guard isAutoCheckEnabled else { return }
 		await check()
-		if available != nil { presentUpdatePrompt = true }
+		_presentPrompt(force: true)
+	}
+
+	/// Shows the full-screen update page for a release NullSign just found:
+	/// on every launch, and once per release while NullSign stays open.
+	@MainActor
+	private func _presentPrompt(force: Bool) {
+		guard let available, phase == .idle, !presentUpdatePrompt else { return }
+		if !force, UserDefaults.standard.string(forKey: Keys.prompted) == available.label { return }
+		UserDefaults.standard.set(available.label, forKey: Keys.prompted)
+		presentUpdatePrompt = true
 	}
 
 	/// Looks again when NullSign comes back or the Signer opens, at most every
@@ -195,6 +208,7 @@ final class SelfUpdateManager: NSObject, ObservableObject {
 			lastError = nil
 			UserDefaults.standard.set(Date(), forKey: Keys.lastCheck)
 			_recomputeAvailable()
+			if isAutoCheckEnabled { _presentPrompt(force: false) }
 		} catch {
 			lastError = error.localizedDescription
 			Logger.misc.error("Self-update check failed: \(error.localizedDescription)")

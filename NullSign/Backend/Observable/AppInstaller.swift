@@ -460,13 +460,19 @@ final class AppInstaller: ObservableObject {
 		case .sendingPayload:
 			fallbackPage = nil
 			_disarmDeclineWatch()
+			if _usesServer, _isSelfUpdate {
+				// You've tapped Install, so get out of iOS's way now. The
+				// server keeps sending the update from the background.
+				_stepAsideForSelfUpdate(reason: "iOS started downloading the update")
+			}
 		case .installing where _usesServer:
 			_startProgressPolling()
 			if _isSelfUpdate {
-				// Normally the progress watch steps aside once iOS has the whole
+				_stepAsideForSelfUpdate(reason: "the update was sent")
+				// Normally the progress watch lets go once iOS has the whole
 				// update; this covers an iOS that never reports it.
-				DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [weak self] in
-					self?._stepAsideForSelfUpdate()
+				DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in
+					self?._letGoForSelfUpdate(reason: "30 seconds after sending the update")
 				}
 			}
 		case .installing where _isAppleTV:
@@ -534,7 +540,14 @@ final class AppInstaller: ObservableObject {
 
 	// Slow manifest fetch can mimic a decline.
 	private func _cancelIfIdle() async {
-		if let id = app.identifier, (await UIApplication.installProgress(for: id) ?? 0) > 0 { return }
+		if let id = app.identifier, (await UIApplication.installProgress(for: id) ?? 0) > 0 {
+			// iOS took the update but may not fetch it while NullSign is on
+			// screen, so step aside instead of waiting for it.
+			if _usesServer, _isSelfUpdate {
+				_stepAsideForSelfUpdate(reason: "iOS accepted the update")
+			}
+			return
+		}
 		switch viewModel.status {
 		case .ready, .sendingManifest: _finish(.success(.cancelled))
 		default: break
@@ -585,21 +598,35 @@ final class AppInstaller: ObservableObject {
 		NSError(domain: "Install", code: -1, userInfo: [NSLocalizedDescriptionKey: message])
 	}
 
-	/// iOS replaces an app only once it's off the screen. When NullSign is
-	/// installing its own update, the new version has been handed over by
-	/// now, so it stops keeping itself awake and goes to the Home Screen; iOS
-	/// then closes it and puts the new version in its place.
+	/// iOS won't replace an app that's on screen, and may not even fetch its
+	/// update while it is. So once you've tapped Install, NullSign goes to
+	/// the Home Screen but keeps itself (and its install server) running in
+	/// the background until iOS has the whole update. Then it lets go of
+	/// every keep-alive, and iOS closes it and puts the new version in place.
 	private var _isSelfUpdate: Bool { app.identifier == Bundle.main.bundleIdentifier }
 	private var _hasSteppedAside = false
+	private var _hasLetGo = false
 
-	private func _stepAsideForSelfUpdate() {
+	private func _stepAsideForSelfUpdate(reason: String) {
 		guard _isSelfUpdate, !_hasSteppedAside, !viewModel.isFailed else { return }
 		_hasSteppedAside = true
-		FileLogger.log("stepping aside for NullSign's own update", category: "install")
-		_server?.endKeepAlive()
+		FileLogger.log("stepping aside for NullSign's own update: \(reason)", category: "install")
 		DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
 			UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
 		}
+		// Should iOS never report progress or finish, don't stay awake forever.
+		DispatchQueue.main.asyncAfter(deadline: .now() + 90) { [weak self] in
+			self?._letGoForSelfUpdate(reason: "90 seconds after stepping aside")
+		}
+	}
+
+	private func _letGoForSelfUpdate(reason: String) {
+		guard _isSelfUpdate, !_hasLetGo else { return }
+		_stepAsideForSelfUpdate(reason: reason)
+		_hasLetGo = true
+		FileLogger.log("letting iOS close NullSign for its update: \(reason)", category: "install")
+		_server?.endKeepAlive()
+		BackgroundTaskManager.stopAll()
 	}
 
 	// MARK: Progress
@@ -638,7 +665,7 @@ final class AppInstaller: ObservableObject {
 				// stage; only then can NullSign get out of the way without
 				// cutting the transfer short.
 				if raw >= 0.6 {
-					await self?._stepAsideForSelfUpdate()
+					await self?._letGoForSelfUpdate(reason: "iOS has the whole update")
 				}
 
 				// The drop back to zero at the end is installd finishing, not progress going backwards.

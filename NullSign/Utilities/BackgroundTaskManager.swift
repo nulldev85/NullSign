@@ -28,6 +28,19 @@ final class BackgroundTaskManager {
 		return _sessionUsers == 0
 	}
 
+	/// Every manager keeping NullSign awake right now, so they can all be
+	/// let go at once. Touched on the main thread only.
+	private static let _running = NSHashTable<BackgroundTaskManager>.weakObjects()
+
+	/// Lets go of every keep-alive, so iOS can suspend or close NullSign.
+	/// Used when NullSign steps aside for its own update.
+	static func stopAll() {
+		let stop = {
+			for manager in _running.allObjects { manager._stop() }
+		}
+		if Thread.isMainThread { stop() } else { DispatchQueue.main.async(execute: stop) }
+	}
+
 	private var _player: AVAudioPlayer?
 	private var _taskID: UIBackgroundTaskIdentifier = .invalid
 	private var _loop: Task<Void, Never>?
@@ -79,6 +92,7 @@ final class BackgroundTaskManager {
 
 		Self._retainSession()
 		_isRunning = true
+		Self._running.add(self)
 
 		_loop = Task { @MainActor [weak self] in
 			while !Task.isCancelled, self?._renew() == true {
@@ -90,6 +104,7 @@ final class BackgroundTaskManager {
 	private func _stop() {
 		guard _isRunning else { return }
 		_isRunning = false
+		Self._running.remove(self)
 
 		_loop?.cancel()
 		_loop = nil

@@ -136,9 +136,12 @@ struct NullSignApp: App {
             .task {
                 await selfUpdate.checkOnLaunch()
             }
-            .sheet(isPresented: $selfUpdate.presentUpdatePrompt) {
+            .fullScreenCover(isPresented: $selfUpdate.presentUpdatePrompt) {
                 if let release = selfUpdate.available {
                     SelfUpdateSheet(release: release)
+                } else {
+                    // Nothing to offer any more: never leave an empty page up.
+                    Color.clear.onAppear { selfUpdate.presentUpdatePrompt = false }
                 }
             }
         }
