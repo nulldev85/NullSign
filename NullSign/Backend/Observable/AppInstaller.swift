@@ -43,6 +43,8 @@ final class AppInstaller: ObservableObject {
 	/// asked. The inner `nil` means it had no copy.
 	private var _tvCopyBefore: AppleTVLink.InstalledCopy??
 	private var _installEndedByCheck = false
+	private var _tvPackageSize: Int?
+	private var _resendTask: Task<Void, Never>?
 	private var _statusObserver: AnyCancellable?
 	private var _completion: ((Result<Outcome, Error>) -> Void)?
 	private var _hasFinished = false
@@ -132,6 +134,9 @@ final class AppInstaller: ObservableObject {
 		let attempts = 3
 		for attempt in 1...attempts {
 			try await _connectAppleTV()
+			if attempt == 1 {
+				_tvPackageSize = (try? packageUrl.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? nil
+			}
 			if attempt == 1, let id = app.identifier {
 				// What the TV has now, so a stalled install can tell when the
 				// new copy has actually landed.
@@ -172,7 +177,7 @@ final class AppInstaller: ObservableObject {
 	private func _watchAppleTVStall() {
 		guard _stallWatch == nil, let id = app.identifier else { return }
 		_stallWatch = Task { [weak self] in
-			for delay: UInt64 in [8, 7, 10, 10, 15, 15, 20, 20, 30] {
+			for (check, delay) in ([8, 7, 10, 10, 15, 15, 20, 20, 30] as [UInt64]).enumerated() {
 				try? await Task.sleep(nanoseconds: delay * 1_000_000_000)
 				guard let self, !Task.isCancelled, !self._hasFinished,
 					  case .installing = self.viewModel.status else { return }
@@ -187,6 +192,24 @@ final class AppInstaller: ObservableObject {
 						self._installEndedByCheck = true
 						self.viewModel.updateStatus(.completed(.success(())))
 						return
+					}
+				}
+
+				if check >= 1, self.viewModel.installProgress == 0, self._resendTask == nil, let size = self._tvPackageSize {
+					// The TV has the package but hasn't started on it, so ask
+					// again on a fresh connection in case the first request
+					// never got through.
+					FileLogger.log("Apple TV hasn't started installing, asking again", category: "install")
+					self._resendTask = Task { [weak self] in
+						let installed = await AppleTVLink.installStagedPackage(ofSize: size) { progress in
+							Task { @MainActor [weak self] in self?.viewModel.updateInstallProgress(progress) }
+						}
+						guard let self else { return }
+						FileLogger.log("second install request ended: \(installed.map { $0 ? "installed" : "refused" } ?? "not sent")", category: "install")
+						if installed == true, !self._hasFinished, case .installing = self.viewModel.status {
+							self._installEndedByCheck = true
+							self.viewModel.updateStatus(.completed(.success(())))
+						}
 					}
 				}
 

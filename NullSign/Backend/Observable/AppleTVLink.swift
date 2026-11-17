@@ -146,3 +146,68 @@ extension AppleTVLink {
 		}
 	}
 }
+
+// MARK: - Asking again
+extension AppleTVLink {
+	private final class _ProgressBox {
+		let report: (Double) -> Void
+		init(_ report: @escaping (Double) -> Void) { self.report = report }
+	}
+
+	private static let _progressCallback: @convention(c) (UInt64, UnsafeMutableRawPointer?) -> Void = { progress, context in
+		guard let context else { return }
+		Unmanaged<_ProgressBox>.fromOpaque(context).takeUnretainedValue().report(Double(progress) / 100)
+	}
+
+	/// Finds the package NullSign already uploaded (by its size) in the TV's
+	/// staging folder and asks the TV to install it on a fresh connection.
+	/// `true` once installed, `false` if the TV refused, `nil` if the package
+	/// couldn't be found or the TV couldn't be reached.
+	static func installStagedPackage(ofSize size: Int, timeout: TimeInterval = 600, progress: @escaping (Double) -> Void) async -> Bool? {
+		await run(timeout: timeout, fallback: Optional<Bool>.none) { adapter, handshake in
+			guard let path = _stagedPackage(ofSize: size, adapter: adapter, handshake: handshake) else {
+				FileLogger.log("couldn't find the uploaded package on the Apple TV", category: "install")
+				return nil
+			}
+
+			var client: OpaquePointer?
+			guard ok(installation_proxy_connect_rsd(adapter, handshake, &client), "open installer"), let client else { return nil }
+			defer { installation_proxy_client_free(client) }
+
+			FileLogger.log("asking the Apple TV again to install \(path)", category: "install")
+			let box = Unmanaged.passRetained(_ProgressBox(progress))
+			defer { box.release() }
+			let error = installation_proxy_install_with_callback(client, path, nil, _progressCallback, box.toOpaque())
+			return ok(error, "install on the second request")
+		}
+	}
+
+	private static func _stagedPackage(ofSize size: Int, adapter: OpaquePointer, handshake: OpaquePointer) -> String? {
+		var afc: OpaquePointer?
+		guard ok(afc_client_connect_rsd(adapter, handshake, &afc), "open file access"), let afc else { return nil }
+		defer { afc_client_free(afc) }
+
+		let folder = "/PublicStaging"
+		var entries: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+		var count: Int = 0
+		guard ok(afc_list_directory(afc, folder, &entries, &count), "list staging"), let entries else { return nil }
+
+		var names: [String] = []
+		for entry in UnsafeBufferPointer(start: entries, count: count) {
+			guard let entry else { continue }
+			let name = String(cString: entry)
+			if name != ".", name != ".." { names.append(name) }
+		}
+		FileLogger.log("Apple TV staging has \(names.count) item(s)", category: "install")
+
+		for name in names {
+			let path = "\(folder)/\(name)"
+			var info = AfcFileInfo()
+			guard afc_get_file_info(afc, path, &info) == nil else { continue }
+			let matches = Int(info.size) == size
+			afc_file_info_free(&info)
+			if matches { return path }
+		}
+		return nil
+	}
+}
