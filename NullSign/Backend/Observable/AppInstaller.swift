@@ -39,6 +39,10 @@ final class AppInstaller: ObservableObject {
 	private var _packageTask: Task<(package: URL, exported: URL?), Error>?
 	private var _progressTask: Task<Void, Never>?
 	private var _stallWatch: Task<Void, Never>?
+	/// What the Apple TV had installed before this install, when it could be
+	/// asked. The inner `nil` means it had no copy.
+	private var _tvCopyBefore: AppleTVLink.InstalledCopy??
+	private var _installEndedByCheck = false
 	private var _statusObserver: AnyCancellable?
 	private var _completion: ((Result<Outcome, Error>) -> Void)?
 	private var _hasFinished = false
@@ -128,10 +132,18 @@ final class AppInstaller: ObservableObject {
 		let attempts = 3
 		for attempt in 1...attempts {
 			try await _connectAppleTV()
-			if attempt == 1, AppleTVAppCloser.mayBeAvailable, let id = app.identifier {
-				// tvOS waits for an open copy of the app to quit before
-				// replacing it, so close it first.
-				await AppleTVAppCloser.close(id)
+			if attempt == 1, let id = app.identifier {
+				// What the TV has now, so a stalled install can tell when the
+				// new copy has actually landed.
+				if let before = await AppleTVLink.installedCopy(of: id) {
+					_tvCopyBefore = .some(before)
+					FileLogger.log("Apple TV has \(before?.description ?? "no copy of \(id)") before installing", category: "install")
+				}
+				if AppleTVAppCloser.mayBeAvailable {
+					// tvOS waits for an open copy of the app to quit before
+					// replacing it, so close it first where the TV allows it.
+					await AppleTVAppCloser.close(id)
+				}
 			}
 			FileLogger.log("installing \(app.identifier ?? "?") on Apple TV \(AppleTVManager.shared.pairedDevice?.name ?? "?"), attempt \(attempt)", category: "install")
 			do {
@@ -152,21 +164,35 @@ final class AppInstaller: ObservableObject {
 		}
 	}
 
-	/// If the Apple TV sits on "Installing", the app is usually still open
-	/// there (or tvOS brought it back). Where the TV lets NullSign close apps
-	/// it does so; either way the card explains how to close it by hand,
-	/// which gets the install moving right away.
+	/// If the Apple TV sits on "Installing", NullSign keeps checking what the
+	/// TV actually has. When the new copy is already there, the install is
+	/// done even if the TV never said so, and NullSign finishes. Where the TV
+	/// lets NullSign close apps it does that too, and the card explains how
+	/// to close the app by hand, which gets a stuck install moving.
 	private func _watchAppleTVStall() {
 		guard _stallWatch == nil, let id = app.identifier else { return }
 		_stallWatch = Task { [weak self] in
-			for delay: UInt64 in [8, 15, 20] {
+			for delay: UInt64 in [8, 7, 10, 10, 15, 15, 20, 20, 30] {
 				try? await Task.sleep(nanoseconds: delay * 1_000_000_000)
 				guard let self, !Task.isCancelled, !self._hasFinished,
 					  case .installing = self.viewModel.status else { return }
 				self.appleTVIsStalled = true
-				guard AppleTVAppCloser.mayBeAvailable else { return }
-				FileLogger.log("Apple TV install still waiting, closing \(id) on the TV", category: "install")
-				await AppleTVAppCloser.close(id, cycleIfIdle: true)
+				FileLogger.log("Apple TV install still waiting at \(Int(self.viewModel.installProgress * 100))%", category: "install")
+
+				if let now = await AppleTVLink.installedCopy(of: id) {
+					FileLogger.log("Apple TV now has \(now?.description ?? "no copy of \(id)")", category: "install")
+					if let now, case .some(let before) = self._tvCopyBefore, now != before,
+					   !self._hasFinished, case .installing = self.viewModel.status {
+						FileLogger.log("the new copy is on the Apple TV, finishing", category: "install")
+						self._installEndedByCheck = true
+						self.viewModel.updateStatus(.completed(.success(())))
+						return
+					}
+				}
+
+				if AppleTVAppCloser.mayBeAvailable, !Task.isCancelled {
+					await AppleTVAppCloser.close(id, cycleIfIdle: true)
+				}
 			}
 		}
 	}
@@ -176,6 +202,9 @@ final class AppInstaller: ObservableObject {
 		_stallWatch?.cancel()
 		_stallWatch = nil
 		guard _isAppleTV else { return }
+		// The install's own connection may still be waiting on the TV, so it's
+		// left alone rather than closed underneath it.
+		guard !_installEndedByCheck else { return }
 		// Discovery keeps running while an Apple TV is paired, so its address
 		// and port stay current for the next install.
 		if HeartbeatManager.shared.isAppleTVTarget {

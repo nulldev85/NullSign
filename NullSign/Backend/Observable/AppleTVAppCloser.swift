@@ -26,23 +26,8 @@ enum AppleTVAppCloser {
 	/// Best effort: gives up quietly after `timeout` seconds.
 	@discardableResult
 	static func close(_ bundleID: String, cycleIfIdle: Bool = false, timeout: TimeInterval = 12) async -> Int {
-		let heartbeat = HeartbeatManager.shared
-		let host = heartbeat.ipAddress
-		let port = heartbeat.port_rsd
-		let pairingPath = heartbeat.activePairingPath
-
-		return await withCheckedContinuation { continuation in
-			let once = _Once()
-			Thread.detachNewThread {
-				let closed = _close(bundleID, host: host, port: port, pairingPath: pairingPath, cycleIfIdle: cycleIfIdle)
-				if once.claim() { continuation.resume(returning: closed) }
-			}
-			DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
-				if once.claim() {
-					FileLogger.log("closing \(bundleID) on Apple TV timed out", category: "install")
-					continuation.resume(returning: 0)
-				}
-			}
+		await AppleTVLink.run(timeout: timeout, fallback: 0) { adapter, handshake in
+			_close(bundleID, adapter: adapter, handshake: handshake, cycleIfIdle: cycleIfIdle)
 		}
 	}
 
@@ -63,44 +48,7 @@ enum AppleTVAppCloser {
 		}
 	}
 
-	private final class _Once: @unchecked Sendable {
-		private let _lock = NSLock()
-		private var _done = false
-
-		func claim() -> Bool {
-			_lock.lock()
-			defer { _lock.unlock() }
-			guard !_done else { return false }
-			_done = true
-			return true
-		}
-	}
-
-	private static func _close(_ bundleID: String, host: String, port: UInt16, pairingPath: String, cycleIfIdle: Bool) -> Int {
-		var pairing: OpaquePointer?
-		guard _ok(rp_pairing_file_read(pairingPath, &pairing), "read pairing"), let pairing else { return 0 }
-		defer { rp_pairing_file_free(pairing) }
-
-		var hints = addrinfo()
-		hints.ai_family = AF_UNSPEC
-		hints.ai_socktype = SOCK_STREAM
-		hints.ai_protocol = IPPROTO_TCP
-		var info: UnsafeMutablePointer<addrinfo>?
-		guard getaddrinfo(host, String(port), &hints, &info) == 0, let first = info, let address = first.pointee.ai_addr else {
-			FileLogger.error("couldn't resolve Apple TV address", category: "install")
-			return 0
-		}
-		defer { freeaddrinfo(info) }
-
-		var adapter: OpaquePointer?
-		var handshake: OpaquePointer?
-		guard _ok(tunnel_create_rppairing(UnsafePointer(address), first.pointee.ai_addrlen, "IdeviceKit", pairing, nil, nil, &adapter, &handshake), "connect"),
-			  let adapter, let handshake else { return 0 }
-		defer {
-			rsd_handshake_free(handshake)
-			adapter_free(adapter)
-		}
-
+	private static func _close(_ bundleID: String, adapter: OpaquePointer, handshake: OpaquePointer, cycleIfIdle: Bool) -> Int {
 		var service: OpaquePointer?
 		if let error = app_service_connect_rsd(adapter, handshake, &service) {
 			if (error.pointee.message.map { String(cString: $0) } ?? "").contains("ServiceNotFound") {
@@ -108,7 +56,7 @@ enum AppleTVAppCloser {
 				FileLogger.log("Apple TV can't close apps without developer tools mounted. It offers: \(_serviceNames(handshake))", category: "install")
 				idevice_error_free(error)
 			} else {
-				_ = _ok(error, "open app service")
+				_ = AppleTVLink.ok(error, "open app service")
 			}
 			return 0
 		}
@@ -126,7 +74,7 @@ enum AppleTVAppCloser {
 			let argv: [UnsafePointer<CChar>?] = [nil]
 			let launched = argv.withUnsafeBufferPointer { argvBuffer in
 				bundleID.withCString { id in
-					_ok(app_service_launch_app(service, id, argvBuffer.baseAddress, 0, 1, 1, nil, &response), "open in background")
+					AppleTVLink.ok(app_service_launch_app(service, id, argvBuffer.baseAddress, 0, 1, 1, nil, &response), "open in background")
 				}
 			}
 			if launched, let response {
@@ -151,7 +99,7 @@ enum AppleTVAppCloser {
 	private static func _installedPath(of bundleID: String, service: OpaquePointer) -> String? {
 		var apps: UnsafeMutablePointer<AppListEntryC>?
 		var count: UInt = 0
-		guard _ok(app_service_list_apps(service, 0, 1, 1, 0, 0, &apps, &count), "list apps"), let apps else { return nil }
+		guard AppleTVLink.ok(app_service_list_apps(service, 0, 1, 1, 0, 0, &apps, &count), "list apps"), let apps else { return nil }
 		defer { app_service_free_app_list(apps, count) }
 
 		for entry in UnsafeBufferPointer(start: apps, count: Int(count)) {
@@ -164,7 +112,7 @@ enum AppleTVAppCloser {
 	private static func _killProcesses(under appPath: String, service: OpaquePointer) -> Int {
 		var processes: UnsafeMutablePointer<ProcessTokenC>?
 		var count: UInt = 0
-		guard _ok(app_service_list_processes(service, &processes, &count), "list processes"), let processes else { return 0 }
+		guard AppleTVLink.ok(app_service_list_processes(service, &processes, &count), "list processes"), let processes else { return 0 }
 		let prefix = appPath.hasSuffix("/") ? appPath : appPath + "/"
 		let pids = UnsafeBufferPointer(start: processes, count: Int(count)).compactMap { process -> UInt32? in
 			guard let url = process.executable_url else { return nil }
@@ -176,7 +124,7 @@ enum AppleTVAppCloser {
 
 	private static func _kill(_ pid: UInt32, service: OpaquePointer) -> Bool {
 		var response: UnsafeMutablePointer<SignalResponseC>?
-		guard _ok(app_service_send_signal(service, pid, UInt32(SIGKILL), &response), "close \(pid)") else { return false }
+		guard AppleTVLink.ok(app_service_send_signal(service, pid, UInt32(SIGKILL), &response), "close \(pid)") else { return false }
 		if let response { app_service_free_signal_response(response) }
 		return true
 	}
@@ -190,13 +138,5 @@ enum AppleTVAppCloser {
 		}
 		if path.hasPrefix("/private/") { path = String(path.dropFirst("/private".count)) }
 		return path
-	}
-
-	private static func _ok(_ error: UnsafeMutablePointer<IdeviceFfiError>?, _ step: String) -> Bool {
-		guard let error else { return true }
-		let message = error.pointee.message.map { String(cString: $0) } ?? "code \(error.pointee.code)"
-		FileLogger.error("Apple TV couldn't \(step): \(message)", category: "install")
-		idevice_error_free(error)
-		return false
 	}
 }
