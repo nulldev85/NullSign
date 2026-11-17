@@ -43,8 +43,8 @@ final class AppInstaller: ObservableObject {
 	/// asked. The inner `nil` means it had no copy.
 	private var _tvCopyBefore: AppleTVLink.InstalledCopy??
 	private var _installEndedByCheck = false
-	private var _tvPackageSize: Int?
-	private var _resendTask: Task<Void, Never>?
+	/// The fallback install sent when the TV leaves the first one queued.
+	private var _developerInstall: Task<Void, Error>?
 	private var _statusObserver: AnyCancellable?
 	private var _completion: ((Result<Outcome, Error>) -> Void)?
 	private var _hasFinished = false
@@ -131,13 +131,13 @@ final class AppInstaller: ObservableObject {
 	/// try. Until the app starts uploading, a failed attempt is retried on a
 	/// fresh connection; a refusal after that (a profile problem, say) isn't.
 	private func _installOnAppleTV(_ packageUrl: URL) async throws {
+		guard let id = app.identifier else {
+			throw Self.error(.localized("This app has no bundle identifier."))
+		}
 		let attempts = 3
 		for attempt in 1...attempts {
 			try await _connectAppleTV()
 			if attempt == 1 {
-				_tvPackageSize = (try? packageUrl.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? nil
-			}
-			if attempt == 1, let id = app.identifier {
 				// What the TV has now, so a stalled install can tell when the
 				// new copy has actually landed.
 				if let before = await AppleTVLink.installedCopy(of: id) {
@@ -150,23 +150,43 @@ final class AppInstaller: ObservableObject {
 					await AppleTVAppCloser.close(id)
 				}
 			}
-			FileLogger.log("installing \(app.identifier ?? "?") on Apple TV \(AppleTVManager.shared.pairedDevice?.name ?? "?"), attempt \(attempt)", category: "install")
+			FileLogger.log("installing \(id) on Apple TV \(AppleTVManager.shared.pairedDevice?.name ?? "?"), attempt \(attempt)", category: "install")
 			do {
-				try await InstallationProxy(viewModel: viewModel).install(at: packageUrl, suspend: false)
+				viewModel.updateStatus(.sendingPayload)
+				try await AppleTVInstaller.install(
+					.package(packageUrl),
+					bundleID: id,
+					onUpload: { [weak self] value in Task { @MainActor in self?.viewModel.updateUploadProgress(value) } },
+					onInstalling: { [weak self] in Task { @MainActor in self?.viewModel.updateStatus(.installing) } },
+					onProgress: { [weak self] value in Task { @MainActor in self?.viewModel.updateInstallProgress(value) } }
+				)
+				_markAppleTVInstalled()
 				return
 			} catch {
+				if let developerInstall = _developerInstall {
+					// The developer install replaces the queued request, which
+					// then ends with an error; its outcome is what counts.
+					FileLogger.log("first request ended (\(error.localizedDescription)), waiting on the developer install", category: "install")
+					try await developerInstall.value
+					_markAppleTVInstalled()
+					return
+				}
 				let started: Bool
 				switch viewModel.status {
-				case .sendingPayload, .installing, .completed: started = true
+				case .installing, .completed: started = true
 				default: started = viewModel.uploadProgress > 0
 				}
 				guard attempt < attempts, !started, !Task.isCancelled else { throw error }
 				FileLogger.error("Apple TV attempt \(attempt) failed before uploading: \(error.localizedDescription)", category: "install")
 				viewModel.resetProgress()
-				HeartbeatManager.shared.resetRSDTunnel()
 				try await Task.sleep(nanoseconds: 1_500_000_000)
 			}
 		}
+	}
+
+	private func _markAppleTVInstalled() {
+		guard !_hasFinished else { return }
+		viewModel.updateStatus(.completed(.success(())))
 	}
 
 	/// If the Apple TV sits on "Installing", NullSign keeps checking what the
@@ -195,20 +215,25 @@ final class AppInstaller: ObservableObject {
 					}
 				}
 
-				if check >= 1, self.viewModel.installProgress == 0, self._resendTask == nil, let size = self._tvPackageSize {
-					// The TV has the package but hasn't started on it, so ask
-					// again on a fresh connection in case the first request
-					// never got through.
-					FileLogger.log("Apple TV hasn't started installing, asking again", category: "install")
-					self._resendTask = Task { [weak self] in
-						let installed = await AppleTVLink.installStagedPackage(ofSize: size) { progress in
-							Task { @MainActor [weak self] in self?.viewModel.updateInstallProgress(progress) }
-						}
-						guard let self else { return }
-						FileLogger.log("second install request ended: \(installed.map { $0 ? "installed" : "refused" } ?? "not sent")", category: "install")
-						if installed == true, !self._hasFinished, case .installing = self.viewModel.status {
-							self._installEndedByCheck = true
-							self.viewModel.updateStatus(.completed(.success(())))
+				if check >= 1, self.viewModel.installProgress == 0, self._developerInstall == nil,
+				   let appURL = Storage.shared.getAppDirectory(for: self.app) {
+					// The TV has the app queued but hasn't started on it. Sent
+					// the way Xcode sends apps, it installs right away and
+					// replaces the queued request.
+					FileLogger.log("Apple TV hasn't started installing, sending it as a developer install", category: "install")
+					self._developerInstall = Task { [weak self] in
+						do {
+							try await AppleTVInstaller.install(
+								.developer(appURL),
+								bundleID: id,
+								onUpload: { _ in },
+								onInstalling: {},
+								onProgress: { [weak self] value in Task { @MainActor in self?.viewModel.updateInstallProgress(value) } }
+							)
+							self?._markAppleTVInstalled()
+						} catch {
+							FileLogger.error("developer install failed: \(error.localizedDescription)", category: "install")
+							throw error
 						}
 					}
 				}
