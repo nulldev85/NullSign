@@ -51,6 +51,7 @@ class Download: Identifiable, @unchecked Sendable {
 	/// The signed library app this download updates. Once imported, it's
 	/// signed like that app and installed over it.
 	var replacesLibraryUUID: String?
+	var action: AutoSignManager.Action?
 
 	var isManual: Bool {
 		id.contains("FeatherManualDownload")

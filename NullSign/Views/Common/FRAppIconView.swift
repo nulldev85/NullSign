@@ -117,7 +117,8 @@ private func looseIcon(in bundleURL: URL, files: [String]) -> UIImage? {
 
 @MainActor
 final class FRAppIconLoader: ObservableObject {
-	@Published var image: UIImage?
+	@Published private(set) var image: UIImage?
+	private(set) var bundleURL: URL?
 	private var task: Task<Void, Never>?
 	private var representedRequest: String?
 
@@ -126,6 +127,7 @@ final class FRAppIconLoader: ObservableObject {
 		task?.cancel()
 		// A reused row must not keep showing the previous app's icon.
 		if representedRequest != request { image = nil }
+		self.bundleURL = bundleURL
 		representedRequest = request
 
 		if let cached = FRIconCache.shared.image(for: bundleURL, appearance: appearance, tint: tint, isTinted: isTinted, dynamic: dynamic) {
@@ -202,7 +204,7 @@ struct FRAppIconView: View {
 				Image("NullSignBrand")
 					.renderingMode(.original)
 					.appIconStyle(size: size)
-			} else if let image = loader.image ?? _cachedImage {
+			} else if let image = _cachedImage ?? (loader.bundleURL == _bundleURL ? loader.image : nil) {
 				Image(uiImage: image)
 					.appIconStyle(size: size)
 			} else {
