@@ -103,7 +103,7 @@ extension SourcesCellView {
 	@ViewBuilder
 	private var _status: some View {
 		HStack(spacing: 6) {
-			if _repository == nil && !_viewModel.isFinished {
+			if !_viewModel.isFinished {
 				ProgressView()
 					.controlSize(.mini)
 			} else {
@@ -113,7 +113,7 @@ extension SourcesCellView {
 			}
 			Text(_statusText)
 				.font(.roundedUI(.caption))
-				.foregroundStyle(_repository == nil && _viewModel.isFinished ? NullSignStyle.danger : (_isOutOfDate ? NullSignStyle.warning : NullSignStyle.muted))
+				.foregroundStyle(_statusColor)
 				.lineLimit(1)
 			if _isExcluded {
 				Text("· \(String.localized("Hidden from All"))")
@@ -124,6 +124,16 @@ extension SourcesCellView {
 		}
 	}
 
+	private var _statusColor: Color {
+		if !_viewModel.isFinished {
+			return NullSignStyle.muted
+		}
+		if _repository == nil {
+			return NullSignStyle.danger
+		}
+		return _isOutOfDate ? NullSignStyle.warning : NullSignStyle.muted
+	}
+
 	/// Showing a saved copy because the last refresh failed.
 	private var _isOutOfDate: Bool {
 		guard _repository != nil, let url = source.sourceURL?.absoluteString else { return false }
@@ -131,8 +141,11 @@ extension SourcesCellView {
 	}
 
 	private var _statusText: String {
+		if !_viewModel.isFinished {
+			return .localized("Updating…")
+		}
 		guard let repository = _repository else {
-			return _viewModel.isFinished ? "Couldn't load · pull to retry" : "Updating…"
+			return "Couldn't load · pull to retry"
 		}
 		if _isOutOfDate {
 			return String.localized("Couldn't refresh · showing saved copy")

@@ -152,12 +152,6 @@ struct SourceAppsView: View {
         .legacyOpaqueNavigationBar()
         // Attach the search bar only once a real list exists, else it floats above skeleton/empty.
         .if(_hasLoadedContent) { $0.searchable(text: $_searchText, placement: .platform()) }
-        .refreshable {
-            if let refreshCallback = onRefresh {
-                await refreshCallback()
-            }
-            _load()
-        }
         .toolbarTitleMenu {
             toolbarMenuContent
         }

@@ -11,101 +11,123 @@ import CoreData
 
 extension SourceAppsTableRepresentableView.Coordinator {
         // MARK: - Sorting & Filtering
-        
-        func calculateSortedApps() -> [(source: ASRepository, app: ASRepository.App)] {
-            let allApps = allAppsWithSource
-            
-            let filtered = searchText.isEmpty ? allApps : filterBySearch(allApps)
-            
+
+        /// Computes a complete `Cache` snapshot off-main from value inputs so
+        /// `UITableViewDataSource` never reads half-built or wiped state.
+        static func buildCache(
+            sources: [ASRepository],
+            existingAllApps: [(source: ASRepository, app: ASRepository.App)],
+            existingSearchableApps: [(app: (source: ASRepository, app: ASRepository.App), searchString: String)],
+            rebuildBase: Bool,
+            searchText: String,
+            sortOption: SourceAppsView.SortOption,
+            sortAscending: Bool
+        ) -> Cache {
+            var next = Cache()
+
+            if !rebuildBase && !existingAllApps.isEmpty {
+                next.allApps = existingAllApps
+                next.searchableApps = existingSearchableApps
+            } else {
+                next.allApps = sources.flatMap { source in
+                    source.apps.map { (source: source, app: $0) }
+                }
+                next.searchableApps = next.allApps.map { entry in
+                    let searchComponents = [
+                        entry.app.name,
+                        entry.app.description,
+                        entry.app.subtitle,
+                        entry.app.localizedDescription,
+                        entry.app.id // bundle identifier
+                    ].compactMap { $0?.lowercased() }
+
+                    return (app: entry, searchString: searchComponents.joined(separator: " "))
+                }
+            }
+
+            let lowercaseSearch = searchText.lowercased()
+            let filtered: [(source: ASRepository, app: ASRepository.App)]
+            if lowercaseSearch.isEmpty {
+                filtered = next.allApps
+            } else {
+                filtered = next.searchableApps.compactMap { searchableApp in
+                    searchableApp.searchString.contains(lowercaseSearch) ? searchableApp.app : nil
+                }
+            }
+
             switch sortOption {
             case .default:
-                clearGroupedData()
-                return sortAscending ? filtered : filtered.reversed()
-                
+                next.sortedApps = sortAscending ? filtered : filtered.reversed()
+
             case .name:
-                return sortByName(filtered)
-                
-            case .date:
-                return sortByDate(filtered)
-            }
-        }
-        
-        func filterBySearch(_ apps: [(source: ASRepository, app: ASRepository.App)]) -> [(source: ASRepository, app: ASRepository.App)] {
-            let lowercaseSearch = searchText.lowercased()
-            guard !lowercaseSearch.isEmpty else { return apps }
-
-            return cache.searchableApps.compactMap { searchableApp in
-                searchableApp.searchString.contains(lowercaseSearch) ? searchableApp.app : nil
-            }
-        }
-        
-        func sortByName(_ apps: [(source: ASRepository, app: ASRepository.App)]) -> [(source: ASRepository, app: ASRepository.App)] {
-            let sorted = apps.sorted { lhs, rhs in
-                let n1 = lhs.app.name ?? ""
-                let n2 = rhs.app.name ?? ""
-                let comparison = n1.localizedCaseInsensitiveCompare(n2) == .orderedAscending
-                return sortAscending ? comparison : !comparison
-            }
-            
-            cache.groupedByName = Dictionary(grouping: sorted) { entry in
-                let first = entry.app.name?.trimmingCharacters(in: .whitespacesAndNewlines).first?.uppercased() ?? "#"
-                return first.range(of: "[A-Z]", options: .regularExpression) != nil ? first : "#"
-            }
-            
-            cache.sectionTitles = cache.groupedByName.keys.sorted { lhs, rhs in
-                if lhs == "#" { return false }
-                if rhs == "#" { return true }
-                return sortAscending ? lhs < rhs : lhs > rhs
-            }
-            
-            clearDateGrouping()
-            return sorted
-        }
-        
-        func sortByDate(_ apps: [(source: ASRepository, app: ASRepository.App)]) -> [(source: ASRepository, app: ASRepository.App)] {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMMM d, yyyy"
-
-            let grouped = Dictionary(grouping: apps) {
-                $0.app.currentDate?.date.stripTime() ?? .distantPast
-            }
-
-            let sortedDates = grouped.keys.sorted(by: { sortAscending ? $0 > $1 : $0 < $1 })
-
-            // Within each day, always sort newest-first regardless of sortAscending.
-            cache.groupedByDate = grouped.reduce(into: [:]) { result, pair in
-                let key = formatter.string(from: pair.key)
-                let sortedApps = pair.value.sorted { lhs, rhs in
-                    let d1 = lhs.app.currentDate?.date ?? .distantPast
-                    let d2 = rhs.app.currentDate?.date ?? .distantPast
-                    return d1 > d2
+                let sorted = filtered.sorted { lhs, rhs in
+                    let n1 = lhs.app.name ?? ""
+                    let n2 = rhs.app.name ?? ""
+                    let comparison = n1.localizedCaseInsensitiveCompare(n2) == .orderedAscending
+                    return sortAscending ? comparison : !comparison
                 }
-                result[key] = sortedApps
+
+                next.groupedByName = Dictionary(grouping: sorted) { entry in
+                    let first = entry.app.name?.trimmingCharacters(in: .whitespacesAndNewlines).first?.uppercased() ?? "#"
+                    return first.range(of: "[A-Z]", options: .regularExpression) != nil ? first : "#"
+                }
+
+                next.sectionTitles = next.groupedByName.keys.sorted { lhs, rhs in
+                    if lhs == "#" { return false }
+                    if rhs == "#" { return true }
+                    return sortAscending ? lhs < rhs : lhs > rhs
+                }
+                next.sortedApps = sorted
+
+            case .date:
+                let formatter = DateFormatter()
+                formatter.dateFormat = "MMMM d, yyyy"
+
+                let grouped = Dictionary(grouping: filtered) {
+                    $0.app.currentDate?.date.stripTime() ?? .distantPast
+                }
+
+                let sortedDates = grouped.keys.sorted(by: { sortAscending ? $0 > $1 : $0 < $1 })
+
+                // Within each day, always sort newest-first regardless of sortAscending.
+                next.groupedByDate = grouped.reduce(into: [:]) { result, pair in
+                    let key = formatter.string(from: pair.key)
+                    let sortedApps = pair.value.sorted { lhs, rhs in
+                        let d1 = lhs.app.currentDate?.date ?? .distantPast
+                        let d2 = rhs.app.currentDate?.date ?? .distantPast
+                        return d1 > d2
+                    }
+                    result[key] = sortedApps
+                }
+
+                next.sectionTitles = sortedDates.map { formatter.string(from: $0) }
+                next.sortedApps = sortedDates.flatMap { date -> [(source: ASRepository, app: ASRepository.App)] in
+                    let key = formatter.string(from: date)
+                    return next.groupedByDate[key] ?? []
+                }
             }
 
-            cache.sectionTitles = sortedDates.map { formatter.string(from: $0) }
-
-            let sorted = sortedDates.flatMap { date -> [(source: ASRepository, app: ASRepository.App)] in
-                let key = formatter.string(from: date)
-                return cache.groupedByDate[key] ?? []
+            let counts: [Int]
+            switch sortOption {
+            case .default:
+                counts = [next.sortedApps.count]
+            case .name:
+                counts = next.sectionTitles.map { next.groupedByName[$0]?.count ?? 0 }
+            case .date:
+                counts = next.sectionTitles.map { next.groupedByDate[$0]?.count ?? 0 }
             }
+            next.sectionRowCounts = counts
 
-            clearNameGrouping()
-            return sorted
-        }
-        
-        func clearGroupedData() {
-            cache.groupedByDate = [:]
-            cache.groupedByName = [:]
-            cache.sectionTitles = []
-        }
-        
-        func clearNameGrouping() {
-            cache.groupedByName = [:]
-        }
-        
-        func clearDateGrouping() {
-            cache.groupedByDate = [:]
+            var cumulative = [Int]()
+            cumulative.reserveCapacity(counts.count)
+            var running = 0
+            for c in counts {
+                cumulative.append(running)
+                running += c
+            }
+            next.sectionCumulative = cumulative
+
+            return next
         }
         
         // MARK: - Index Path Calculation
@@ -200,29 +222,39 @@ extension SourceAppsTableRepresentableView.Coordinator {
         }
 
         func invalidateCache(rebuildBase: Bool = true, resetWindow: Bool = true) {
-            if rebuildBase {
-                cache.clearBase()
-            }
-            cache.clearSorted()
             isBuilding = true
+            buildGeneration += 1
+            let generation = buildGeneration
+            let sourcesSnapshot = sources
+            let existingAllApps = rebuildBase ? [] : cache.allApps
+            let existingSearchableApps = rebuildBase ? [] : cache.searchableApps
+            let searchTextSnapshot = searchText
+            let sortOptionSnapshot = sortOption
+            let sortAscendingSnapshot = sortAscending
 
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                guard let self = self else { return }
-
-                let newSortedApps = self.calculateSortedApps()
+                guard self != nil else { return }
+                let builtCache = Self.buildCache(
+                    sources: sourcesSnapshot,
+                    existingAllApps: existingAllApps,
+                    existingSearchableApps: existingSearchableApps,
+                    rebuildBase: rebuildBase,
+                    searchText: searchTextSnapshot,
+                    sortOption: sortOptionSnapshot,
+                    sortAscending: sortAscendingSnapshot
+                )
 
                 DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
+                    guard let self = self, generation == self.buildGeneration else { return }
 
-                    self.cache.sortedApps = newSortedApps
-                    self.rebuildSectionMetrics()
+                    self.cache = builtCache
                     self.isBuilding = false
                     // Reset the window to top only when the list changed; cosmetic refreshes keep scroll position.
                     if resetWindow {
                         self.displayLimit = self.pageSize
                     } else {
                         // Keep covering the current scroll position.
-                        self.displayLimit = min(max(self.displayLimit, self.pageSize), max(newSortedApps.count, self.pageSize))
+                        self.displayLimit = min(max(self.displayLimit, self.pageSize), max(builtCache.sortedApps.count, self.pageSize))
                     }
                     self.isGrowingWindow = false
 
@@ -233,10 +265,18 @@ extension SourceAppsTableRepresentableView.Coordinator {
                             return
                         }
 
-                        UIView.transition(with: tableView, duration: 0.3, options: [.transitionCrossDissolve], animations: {
+                        // Avoid cross-dissolve transitions while UIRefreshControl is active —
+                        // snapshotting the table mid-refresh conflicts with UISearchController
+                        // and refresh-control inset collapse.
+                        if tableView.refreshControl?.isRefreshing == true {
                             tableView.reloadData()
-                        }) { [weak self] _ in
-                            self?.onUIReady?()
+                            self.onUIReady?()
+                        } else {
+                            UIView.transition(with: tableView, duration: 0.25, options: [.transitionCrossDissolve], animations: {
+                                tableView.reloadData()
+                            }) { [weak self] _ in
+                                self?.onUIReady?()
+                            }
                         }
                     }
                 }

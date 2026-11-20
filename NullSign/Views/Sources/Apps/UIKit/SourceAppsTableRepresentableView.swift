@@ -8,6 +8,7 @@
 import SwiftUI
 import AltSourceKit
 import CoreData
+import NimbleExtensions
 
 // MARK: - Representable
 struct SourceAppsTableRepresentableView: UIViewRepresentable {
@@ -226,6 +227,8 @@ extension SourceAppsTableRepresentableView {
         // True while the cache rebuilds off-main. Stops duplicate builds and keeps
         // `numberOfSections` from forcing a synchronous build on first mount (~1s freeze).
         var isBuilding = false
+        // Monotonic generation so overlapping off-main rebuilds never apply stale results.
+        var buildGeneration = 0
 
         // Incremental render window for the flat (.default) list: render a page,
         // grow on scroll — keeps reloadData/tab-switches cheap on huge sources.
@@ -282,46 +285,19 @@ extension SourceAppsTableRepresentableView {
         
         @objc func handleRefresh(_ refreshControl: UIRefreshControl) {
             Task { @MainActor in
-                // Keep the refresh control pinned to the top during refresh.
-                if let tableView = self.uiTableView {
-                    tableView.setContentOffset(CGPoint(x: 0, y: tableView.contentOffset.y), animated: false)
-                }
-
                 if let onRefresh = self.onRefresh {
                     await onRefresh()
+                } else {
+                    self.invalidateCache(rebuildBase: false, resetWindow: false)
                 }
-                self.invalidateCache()
 
                 await Task.yield()
                 refreshControl.endRefreshing()
+                NBHaptic.tap(.light)
             }
         }
         
         // MARK: - Computed Properties
-        
-        var allAppsWithSource: [(source: ASRepository, app: ASRepository.App)] {
-            if !cache.allApps.isEmpty {
-                return cache.allApps
-            }
-            
-            cache.allApps = sources.flatMap { source in
-                source.apps.map { (source: source, app: $0) }
-            }
-            
-            cache.searchableApps = cache.allApps.map { entry in
-                let searchComponents = [
-                    entry.app.name,
-                    entry.app.description,
-                    entry.app.subtitle,
-                    entry.app.localizedDescription,
-                    entry.app.id // bundle identifier
-                ].compactMap { $0?.lowercased() }
-                
-                return (app: entry, searchString: searchComponents.joined(separator: " "))
-            }
-            
-            return cache.allApps
-        }
         
         var sortedApps: [(source: ASRepository, app: ASRepository.App)] {
             // Never build synchronously on main — the flatten+sort over 100k+ apps is
@@ -337,15 +313,30 @@ extension SourceAppsTableRepresentableView {
         func scheduleSortedAppsBuild() {
             guard !isBuilding, !sources.isEmpty else { return }
             isBuilding = true
+            buildGeneration += 1
+            let generation = buildGeneration
+            let sourcesSnapshot = sources
+            let existingAllApps = cache.allApps
+            let existingSearchableApps = cache.searchableApps
+            let searchTextSnapshot = searchText
+            let sortOptionSnapshot = sortOption
+            let sortAscendingSnapshot = sortAscending
 
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                guard let self = self else { return }
-                let newSorted = self.calculateSortedApps()
+                guard self != nil else { return }
+                let builtCache = Self.buildCache(
+                    sources: sourcesSnapshot,
+                    existingAllApps: existingAllApps,
+                    existingSearchableApps: existingSearchableApps,
+                    rebuildBase: existingAllApps.isEmpty,
+                    searchText: searchTextSnapshot,
+                    sortOption: sortOptionSnapshot,
+                    sortAscending: sortAscendingSnapshot
+                )
 
                 DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-                    self.cache.sortedApps = newSorted
-                    self.rebuildSectionMetrics()
+                    guard let self = self, generation == self.buildGeneration else { return }
+                    self.cache = builtCache
                     self.isBuilding = false
 
                     guard let tableView = self.uiTableView, tableView.window != nil else {

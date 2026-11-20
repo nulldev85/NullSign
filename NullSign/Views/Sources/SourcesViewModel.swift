@@ -75,6 +75,7 @@ final class SourcesViewModel: ObservableObject {
 
 	@MainActor
 	private func _performFetch(_ sourcesArray: [AltSource], key: Set<String>, force: Bool, batchSize: Int) async {
+		let startedAt = Date()
 		isFinished = false
 
 		if backgroundTaskManager == nil {
@@ -216,6 +217,16 @@ final class SourcesViewModel: ObservableObject {
 		}
 
 		Logger.misc.info("fetchSources DONE: \(working.count, privacy: .public)/\(items.count, privacy: .public) loaded")
+
+		// Keep manual pull-to-refresh feedback visible briefly on fast repos so
+		// the spinner and updating status don't flash and disappear immediately.
+		if force {
+			let elapsed = Date().timeIntervalSince(startedAt)
+			let minimumDwell: TimeInterval = 0.45
+			if elapsed < minimumDwell {
+				try? await Task.sleep(nanoseconds: UInt64((minimumDwell - elapsed) * 1_000_000_000))
+			}
+		}
 	}
 }
 

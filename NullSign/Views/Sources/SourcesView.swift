@@ -135,7 +135,7 @@ struct SourcesView: View {
 			NullSignOverviewBanner(
 				title: "Your catalog",
 				value: _isLoadingCatalog ? "…" : _loadedAppCount.formatted(),
-				detail: _isLoadingCatalog
+				detail: !viewModel.isFinished
 					? "Updating your repositories…"
 					: "Apps from \(_sources.count) \(_sources.count == 1 ? "repository" : "repositories")",
 				systemImage: "square.grid.2x2.fill"
@@ -176,6 +176,7 @@ struct SourcesView: View {
 		}
 		.refreshable {
 			await viewModel.fetchSources(_sources, refresh: true)
+			NBHaptic.tap(.light)
 		}
 		.sheet(isPresented: $_isAddingPresenting) {
 			SourcesAddView()
@@ -262,7 +263,7 @@ struct SourcesView: View {
 	}
 
 	private var _catalogSummary: String {
-		if _isLoadingCatalog {
+		if !viewModel.isFinished {
 			return .localized("Updating…")
 		}
 		let sources = _sources.count == 1 ? "1 source" : "\(_sources.count.formatted()) sources"
